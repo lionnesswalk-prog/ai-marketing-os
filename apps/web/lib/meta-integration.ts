@@ -143,12 +143,13 @@ export async function disconnectMetaConnection() {
 }
 
 export async function getMetaConnection(): Promise<MetaConnection | null> {
-  if (process.env.META_ACCESS_TOKEN && (process.env.FACEBOOK_PAGE_ID || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID)) {
+  const staticPageToken = process.env.META_PAGE_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN;
+  if (staticPageToken && (process.env.FACEBOOK_PAGE_ID || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID)) {
     return {
       source: "env",
       pageId: process.env.FACEBOOK_PAGE_ID,
       pageName: process.env.FACEBOOK_PAGE_NAME,
-      pageAccessToken: process.env.META_ACCESS_TOKEN,
+      pageAccessToken: staticPageToken,
       instagramBusinessAccountId: process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID,
       instagramUsername: process.env.INSTAGRAM_USERNAME,
     };
@@ -261,9 +262,8 @@ export async function publishInstagram(input: {
 
   const container = await postForm<{ id: string }>(`${graphBase}/${connection.instagramBusinessAccountId}/media`, createFields);
   if (isVideo) await waitForInstagramContainer(container.id, connection.pageAccessToken);
-  const published = await postForm<{ id: string }>(`${graphBase}/${connection.instagramBusinessAccountId}/media_publish`, {
+  return postForm<{ id: string }>(`${graphBase}/${connection.instagramBusinessAccountId}/media_publish`, {
     creation_id: container.id,
     access_token: connection.pageAccessToken,
   });
-  return published;
 }
