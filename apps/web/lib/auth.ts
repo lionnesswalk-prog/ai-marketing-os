@@ -8,9 +8,13 @@ export type AppSession = {
   email: string;
   role: AppRole;
   name?: string;
+  userId: string;
+  workspaceId: string;
 };
 
-type SessionTokenPayload = AppSession & {
+type SessionTokenPayload = Partial<AppSession> & {
+  email: string;
+  role: AppRole;
   iat: number;
   exp: number;
 };
@@ -55,7 +59,27 @@ export function readSessionToken(token: string | undefined): AppSession | null {
   try {
     const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as SessionTokenPayload;
     if (!payload.email || !payload.role || !payload.exp || payload.exp < Math.floor(Date.now() / 1000)) return null;
-    return { email: payload.email, role: payload.role, name: payload.name };
+
+    // Preview sessions can be upgraded transparently after deployments. Database
+    // sessions must always be bound to a real user and workspace.
+    if (!payload.userId || !payload.workspaceId) {
+      if (process.env.AUTH_MODE === "database") return null;
+      return {
+        email: payload.email,
+        role: payload.role,
+        name: payload.name,
+        userId: "preview_user",
+        workspaceId: "preview_workspace",
+      };
+    }
+
+    return {
+      email: payload.email,
+      role: payload.role,
+      name: payload.name,
+      userId: payload.userId,
+      workspaceId: payload.workspaceId,
+    };
   } catch {
     return null;
   }
