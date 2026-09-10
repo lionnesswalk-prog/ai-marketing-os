@@ -23,6 +23,9 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "ACCOUNT_EXISTS") {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
     }
+    if (error instanceof Error && error.message === "SIGNUP_CLOSED") {
+      return NextResponse.json({ error: "Public signup is closed for this workspace. Ask an administrator to add you." }, { status: 403 });
+    }
     console.error("signup failed", error);
     return NextResponse.json({ error: "Signup failed. Please try again." }, { status: 500 });
   }
