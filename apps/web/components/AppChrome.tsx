@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import type { AppSession } from "../lib/auth";
 
 const nav = [
   ["/dashboard", "Dashboard"],
@@ -12,11 +13,25 @@ const nav = [
   ["/approvals", "Approvals"],
 ] as const;
 
-export function AppChrome({ children }: { children: ReactNode }) {
+function initials(session: AppSession | null) {
+  if (!session) return "AI";
+  const source = session.name?.trim() || session.email.split("@")[0];
+  const parts = source.split(/\s+/).filter(Boolean);
+  return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : source.slice(0, 2)).toUpperCase();
+}
+
+function roleLabel(role?: string) {
+  if (!role) return "Account";
+  return role.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+}
+
+export function AppChrome({ children, session }: { children: ReactNode; session: AppSession | null }) {
   const pathname = usePathname();
   const isAuthPage = pathname === "/login" || pathname === "/signup";
 
   if (isAuthPage) return <main className="auth-shell">{children}</main>;
+
+  const displayName = session?.name?.trim() || session?.email.split("@")[0] || "Your profile";
 
   return (
     <>
@@ -43,6 +58,14 @@ export function AppChrome({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="sidebar-foot sidebar-foot-stack">
+          <a className={`sidebar-profile ${pathname === "/profile" ? "active" : ""}`} href="/profile">
+            <span className="profile-avatar">{initials(session)}</span>
+            <span className="sidebar-profile-copy">
+              <strong>{displayName}</strong>
+              <small>{session?.email ?? roleLabel(session?.role)}</small>
+            </span>
+            <span className="profile-chevron" aria-hidden="true">›</span>
+          </a>
           <div className="safe-mode"><span className="status-dot" /> Human-approved automation</div>
           <form action="/api/auth/logout" method="post"><button className="logout-button" type="submit">Sign out</button></form>
         </div>
