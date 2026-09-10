@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSession } from "../../../../lib/auth";
 import { createSocialPosts } from "../../../../lib/repository";
 import { publishFacebook, publishInstagram } from "../../../../lib/meta-integration";
+import { publishLinkedIn } from "../../../../lib/linkedin-integration";
 
 const platform = z.enum(["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest"]);
 const contentType = z.enum(["reel", "carousel", "static", "story", "video", "short"]);
@@ -21,11 +22,14 @@ const publishRequest = z.object({
   action: z.enum(["draft", "schedule", "publish"]),
 });
 
-function friendlyMetaError(error: unknown, platformName: string) {
+function friendlyPublishError(error: unknown, platformName: string) {
   const message = error instanceof Error ? error.message : "Unknown publishing error";
-  if (message === "FACEBOOK_NOT_CONNECTED" || message === "INSTAGRAM_NOT_CONNECTED") return `${platformName} is not connected yet.`;
+  if (["FACEBOOK_NOT_CONNECTED", "INSTAGRAM_NOT_CONNECTED", "LINKEDIN_NOT_CONNECTED"].includes(message)) {
+    return `${platformName} is not connected yet.`;
+  }
   if (message === "INSTAGRAM_MEDIA_REQUIRED") return "Instagram needs a public image or video URL before it can publish.";
-  if (message.endsWith("FORMAT_NOT_READY")) return `${platformName} publishing for this format is still queued; static posts and Instagram Reels are the first live formats.`;
+  if (message === "LINKEDIN_MEDIA_UPLOAD_NOT_READY") return "LinkedIn media upload is not enabled yet; the post stayed safely in the queue.";
+  if (message.endsWith("FORMAT_NOT_READY")) return `${platformName} publishing for this format is still queued.`;
   if (message === "INSTAGRAM_MEDIA_STILL_PROCESSING") return "Instagram is still processing the video. The post was kept in the queue so it can be retried safely.";
   return `${platformName}: ${message}`;
 }
@@ -77,6 +81,8 @@ export async function POST(request: Request) {
 
     for (const channel of input.platforms) {
       let status: "draft" | "published" = "draft";
+      const label = channel === "x" ? "X" : channel.charAt(0).toUpperCase() + channel.slice(1);
+
       if (channel === "facebook") {
         try {
           await publishFacebook(common);
@@ -84,7 +90,7 @@ export async function POST(request: Request) {
           published.push("Facebook");
         } catch (error) {
           queued.push("Facebook");
-          warnings.push(friendlyMetaError(error, "Facebook"));
+          warnings.push(friendlyPublishError(error, "Facebook"));
         }
       } else if (channel === "instagram") {
         try {
@@ -93,10 +99,19 @@ export async function POST(request: Request) {
           published.push("Instagram");
         } catch (error) {
           queued.push("Instagram");
-          warnings.push(friendlyMetaError(error, "Instagram"));
+          warnings.push(friendlyPublishError(error, "Instagram"));
+        }
+      } else if (channel === "linkedin") {
+        try {
+          await publishLinkedIn(common);
+          status = "published";
+          published.push("LinkedIn");
+        } catch (error) {
+          queued.push("LinkedIn");
+          warnings.push(friendlyPublishError(error, "LinkedIn"));
         }
       } else {
-        queued.push(channel === "x" ? "X" : channel.charAt(0).toUpperCase() + channel.slice(1));
+        queued.push(label);
       }
 
       const [created] = await createSocialPosts({ ...common, platforms: [channel], status });
