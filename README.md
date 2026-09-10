@@ -14,7 +14,10 @@ The source currently includes:
 - safe inquiry reply drafting,
 - memory-mode demo repository,
 - PostgreSQL/Prisma 7 data model and repository path,
-- development role checks,
+- signup/login/logout with signed HTTP-only sessions,
+- preview authentication that works before a database is connected,
+- database-backed password authentication path,
+- role checks,
 - audit-log write path for PostgreSQL approval decisions,
 - OpenAI Agents SDK specialist agents and live/mock runtime modes.
 
@@ -65,7 +68,7 @@ The defaults use:
 ```env
 DATA_BACKEND=memory
 AI_MODE=mock
-AUTH_MODE=dev
+AUTH_MODE=preview
 ```
 
 This allows the dashboard and workflows to run before Meta, Google, PostgreSQL or OpenAI credentials are connected.
@@ -125,3 +128,18 @@ scripts/                     database seed
 ## Next milestone
 
 Connect real Meta and Google accounts, ingest live metrics, persist recommendations, and execute only user-approved actions. After that, add Instagram/WhatsApp inbound messaging and verified catalog/inventory tools.
+
+## Authentication modes
+
+`AUTH_MODE=preview` is the default for demos and Vercel previews. It stores one test account in an HTTP-only browser cookie so signup, logout and login can be tested without a database.
+
+For production, use:
+
+```env
+AUTH_MODE=database
+AUTH_SECRET=<long-random-secret>
+DATA_BACKEND=postgres
+DATABASE_URL=postgresql://...
+```
+
+Then run the Prisma migration before launch. Production passwords are salted and hashed with Node.js scrypt.
