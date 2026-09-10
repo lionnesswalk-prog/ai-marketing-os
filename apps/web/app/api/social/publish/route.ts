@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "../../../../lib/auth";
 import { createSocialPosts } from "../../../../lib/repository";
-import { getSocialPlatforms } from "../../../../lib/social-platforms";
+import { publishFacebook, publishInstagram } from "../../../../lib/meta-integration";
 
 const platform = z.enum(["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest"]);
 const contentType = z.enum(["reel", "carousel", "static", "story", "video", "short"]);
@@ -21,6 +21,15 @@ const publishRequest = z.object({
   action: z.enum(["draft", "schedule", "publish"]),
 });
 
+function friendlyMetaError(error: unknown, platformName: string) {
+  const message = error instanceof Error ? error.message : "Unknown publishing error";
+  if (message === "FACEBOOK_NOT_CONNECTED" || message === "INSTAGRAM_NOT_CONNECTED") return `${platformName} is not connected yet.`;
+  if (message === "INSTAGRAM_MEDIA_REQUIRED") return "Instagram needs a public image or video URL before it can publish.";
+  if (message.endsWith("FORMAT_NOT_READY")) return `${platformName} publishing for this format is still queued; static posts and Instagram Reels are the first live formats.`;
+  if (message === "INSTAGRAM_MEDIA_STILL_PROCESSING") return "Instagram is still processing the video. The post was kept in the queue so it can be retried safely.";
+  return `${platformName}: ${message}`;
+}
+
 export async function POST(request: Request) {
   if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -34,53 +43,79 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Choose a schedule date and time first." }, { status: 400 });
   }
 
-  const platformState = getSocialPlatforms();
-  const disconnected = input.platforms.filter((id) => !platformState.find((item) => item.id === id)?.connected);
-
-  // Live provider adapters are intentionally not faked. Until OAuth-backed provider
-  // publishers are implemented, Publish Now saves a ready draft in the queue.
-  const status = input.action === "schedule" ? "scheduled" : "draft";
+  const common = {
+    contentType: input.contentType,
+    title: input.title,
+    caption: input.caption,
+    scheduledAt: input.action === "schedule" ? input.scheduledAt : undefined,
+    mediaUrl: input.mediaUrl || undefined,
+    linkUrl: input.linkUrl || undefined,
+    hashtags: input.hashtags || undefined,
+    cta: input.cta || undefined,
+    altText: input.altText || undefined,
+  };
 
   try {
-    const posts = await createSocialPosts({
-      platforms: input.platforms,
-      contentType: input.contentType,
-      title: input.title,
-      caption: input.caption,
-      status,
-      scheduledAt: input.action === "schedule" ? input.scheduledAt : undefined,
-      mediaUrl: input.mediaUrl || undefined,
-      linkUrl: input.linkUrl || undefined,
-      hashtags: input.hashtags || undefined,
-      cta: input.cta || undefined,
-      altText: input.altText || undefined,
-    });
-
-    if (input.action === "publish") {
+    if (input.action !== "publish") {
+      const posts = await createSocialPosts({
+        ...common,
+        platforms: input.platforms,
+        status: input.action === "schedule" ? "scheduled" : "draft",
+      });
       return NextResponse.json({
         ok: true,
         posts,
         mode: "queue",
-        message: disconnected.length
-          ? `Saved to the publishing queue. Connect ${disconnected.join(", ")} to publish live from this portal.`
-          : "Saved as publish-ready. Live provider adapters still need to be enabled before external posting.",
-      }, { status: 202 });
-    }
-
-    if (input.action === "schedule") {
-      return NextResponse.json({
-        ok: true,
-        posts,
-        mode: "queue",
-        message: disconnected.length
-          ? `Scheduled in the portal queue. Connect ${disconnected.join(", ")} before the scheduled time for live delivery.`
-          : "Scheduled in the portal queue. Live provider adapters must be enabled for external delivery.",
+        message: input.action === "schedule" ? "Post scheduled in the portal queue." : "Draft saved for the selected channels.",
       });
     }
 
-    return NextResponse.json({ ok: true, posts, mode: "queue", message: "Draft saved for the selected channels." });
+    const posts = [];
+    const published: string[] = [];
+    const queued: string[] = [];
+    const warnings: string[] = [];
+
+    for (const channel of input.platforms) {
+      let status: "draft" | "published" = "draft";
+      if (channel === "facebook") {
+        try {
+          await publishFacebook(common);
+          status = "published";
+          published.push("Facebook");
+        } catch (error) {
+          queued.push("Facebook");
+          warnings.push(friendlyMetaError(error, "Facebook"));
+        }
+      } else if (channel === "instagram") {
+        try {
+          await publishInstagram(common);
+          status = "published";
+          published.push("Instagram");
+        } catch (error) {
+          queued.push("Instagram");
+          warnings.push(friendlyMetaError(error, "Instagram"));
+        }
+      } else {
+        queued.push(channel === "x" ? "X" : channel.charAt(0).toUpperCase() + channel.slice(1));
+      }
+
+      const [created] = await createSocialPosts({ ...common, platforms: [channel], status });
+      posts.push(created);
+    }
+
+    const message = published.length
+      ? `Published to ${published.join(", ")}.${queued.length ? ` ${queued.join(", ")} stayed in the portal queue.` : ""}`
+      : `Saved to the publishing queue for ${queued.join(", ")}.`;
+
+    return NextResponse.json({
+      ok: true,
+      posts,
+      mode: queued.length ? "partial" : "live",
+      message,
+      warning: warnings.length ? warnings.join(" ") : queued.length ? "Connect the remaining social APIs to publish those channels directly." : undefined,
+    }, { status: queued.length ? 207 : 200 });
   } catch (error) {
     console.error("social publish failed", error);
-    return NextResponse.json({ error: "Unable to save this post right now." }, { status: 500 });
+    return NextResponse.json({ error: "Unable to save or publish this post right now." }, { status: 500 });
   }
 }
