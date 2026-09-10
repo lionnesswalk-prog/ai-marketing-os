@@ -139,18 +139,19 @@ model LeadMessage {
 }
 
 model SocialPost {
-  id          String    @id @default(cuid())
-  brandId     String
-  platform    String
-  contentType String
-  title       String
-  caption     String
-  status      String    @default("draft")
-  scheduledAt DateTime?
-  externalId  String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  brand       Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  brandId      String
+  platform     String
+  contentType  String
+  title        String
+  caption      String
+  status       String    @default("draft")
+  scheduledAt  DateTime?
+  externalId   String?
+  metadataJson Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  brand        Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId, status, scheduledAt])
 }
