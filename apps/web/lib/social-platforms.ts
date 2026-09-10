@@ -1,5 +1,6 @@
 import type { SocialPlatform } from "./domain";
 import { getMetaConnection, getMetaSetupState } from "./meta-integration";
+import { getLinkedInConnection, getLinkedInSetupState } from "./linkedin-integration";
 
 export type SocialPlatformConfig = {
   id: SocialPlatform;
@@ -14,10 +15,15 @@ export type SocialPlatformConfig = {
 };
 
 export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
-  const meta = await getMetaConnection().catch(() => null);
+  const [meta, linkedin] = await Promise.all([
+    getMetaConnection().catch(() => null),
+    getLinkedInConnection().catch(() => null),
+  ]);
   const metaSetup = getMetaSetupState();
+  const linkedinSetup = getLinkedInSetupState();
   const instagramConnected = Boolean(meta?.instagramBusinessAccountId && meta.pageAccessToken);
   const facebookConnected = Boolean(meta?.pageId && meta.pageAccessToken);
+  const linkedinConnected = Boolean(linkedin?.accessToken && linkedin.authorUrn);
 
   return [
     {
@@ -42,7 +48,17 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       disconnectUrl: facebookConnected ? "/api/integrations/meta/disconnect" : undefined,
       setupReady: metaSetup.appConfigured && metaSetup.storageReady,
     },
-    { id: "linkedin", name: "LinkedIn", short: "in", homeUrl: "https://www.linkedin.com/", connected: Boolean(process.env.LINKEDIN_ACCESS_TOKEN && process.env.LINKEDIN_AUTHOR_ID) },
+    {
+      id: "linkedin",
+      name: "LinkedIn",
+      short: "in",
+      homeUrl: linkedin?.profileUrl || "https://www.linkedin.com/",
+      connected: linkedinConnected,
+      accountLabel: linkedinConnected ? (linkedin?.accountLabel || "LinkedIn account") : undefined,
+      connectUrl: "/api/integrations/linkedin/connect",
+      disconnectUrl: linkedinConnected ? "/api/integrations/linkedin/disconnect" : undefined,
+      setupReady: linkedinSetup.appConfigured && linkedinSetup.storageReady,
+    },
     { id: "x", name: "X", short: "X", homeUrl: "https://x.com/", connected: Boolean(process.env.X_ACCESS_TOKEN && process.env.X_ACCESS_TOKEN_SECRET) },
     { id: "tiktok", name: "TikTok", short: "TT", homeUrl: "https://www.tiktok.com/", connected: Boolean(process.env.TIKTOK_ACCESS_TOKEN) },
     { id: "youtube", name: "YouTube", short: "YT", homeUrl: "https://www.youtube.com/", connected: Boolean(process.env.YOUTUBE_ACCESS_TOKEN) },
