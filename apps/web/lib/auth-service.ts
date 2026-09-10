@@ -6,6 +6,8 @@ import { getPrisma } from "./prisma";
 
 const PREVIEW_ACCOUNT_COOKIE = "amos_preview_account";
 const PREVIEW_ACCOUNT_TTL = 60 * 60 * 24 * 30;
+const PREVIEW_USER_ID = "preview_user";
+const PREVIEW_WORKSPACE_ID = "preview_workspace";
 
 type PreviewAccount = {
   email: string;
@@ -29,10 +31,25 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+function previewSession(account: Pick<PreviewAccount, "email" | "name" | "role">): AppSession {
+  return {
+    email: account.email,
+    name: account.name,
+    role: account.role,
+    userId: PREVIEW_USER_ID,
+    workspaceId: PREVIEW_WORKSPACE_ID,
+  };
+}
+
 async function writePreviewAccount(account: PreviewAccount) {
   const store = await cookies();
   const payload = Buffer.from(JSON.stringify(account)).toString("base64url");
-  const envelope = createSessionToken({ email: payload, role: "viewer" });
+  const envelope = createSessionToken({
+    email: payload,
+    role: "viewer",
+    userId: PREVIEW_USER_ID,
+    workspaceId: PREVIEW_WORKSPACE_ID,
+  });
   store.set(PREVIEW_ACCOUNT_COOKIE, envelope, {
     httpOnly: true,
     sameSite: "lax",
@@ -68,6 +85,22 @@ async function ensureDefaultWorkspace() {
   });
 }
 
+function sessionFromDatabaseUser(user: {
+  id: string;
+  workspaceId: string;
+  email: string;
+  name: string | null;
+  role: string;
+}): AppSession {
+  return {
+    userId: user.id,
+    workspaceId: user.workspaceId,
+    email: user.email,
+    name: user.name ?? undefined,
+    role: user.role as AppRole,
+  };
+}
+
 export async function registerAccount(input: { name: string; email: string; password: string }): Promise<AppSession> {
   const email = normalizeEmail(input.email);
   const name = input.name.trim();
@@ -76,27 +109,30 @@ export async function registerAccount(input: { name: string; email: string; pass
   if (authMode() === "preview") {
     const account: PreviewAccount = { email, name, passwordHash, role: "admin" };
     await writePreviewAccount(account);
-    return { email, name, role: account.role };
+    return previewSession(account);
   }
 
   const prisma = getPrisma();
-  const duplicate = await prisma.workspaceUser.findFirst({ where: { email } });
+  const duplicate = await prisma.workspaceUser.findUnique({ where: { email } });
   if (duplicate) throw new Error("ACCOUNT_EXISTS");
 
+  const userCount = await prisma.workspaceUser.count();
+  const signupMode = process.env.SIGNUP_MODE ?? "first_user";
+  if (userCount > 0 && signupMode !== "open") throw new Error("SIGNUP_CLOSED");
+
   const workspace = await ensureDefaultWorkspace();
-  const isFirstUser = (await prisma.workspaceUser.count()) === 0;
   const user = await prisma.workspaceUser.create({
     data: {
       workspaceId: workspace.id,
       email,
       name,
       passwordHash,
-      role: isFirstUser ? "admin" : "viewer",
+      role: userCount === 0 ? "admin" : "viewer",
       lastLoginAt: new Date(),
     },
   });
 
-  return { email: user.email, name: user.name ?? undefined, role: user.role as AppRole };
+  return sessionFromDatabaseUser(user);
 }
 
 export async function authenticateAccount(input: { email: string; password: string }): Promise<AppSession> {
@@ -107,16 +143,16 @@ export async function authenticateAccount(input: { email: string; password: stri
     if (!account || account.email !== email || !(await verifyPassword(input.password, account.passwordHash))) {
       throw new Error("INVALID_CREDENTIALS");
     }
-    return { email: account.email, name: account.name, role: account.role };
+    return previewSession(account);
   }
 
   const prisma = getPrisma();
-  const user = await prisma.workspaceUser.findFirst({ where: { email } });
+  const user = await prisma.workspaceUser.findUnique({ where: { email } });
   if (!user?.passwordHash || !(await verifyPassword(input.password, user.passwordHash))) {
     throw new Error("INVALID_CREDENTIALS");
   }
   await prisma.workspaceUser.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-  return { email: user.email, name: user.name ?? undefined, role: user.role as AppRole };
+  return sessionFromDatabaseUser(user);
 }
 
 export async function getAccountProfile(session: AppSession): Promise<AccountProfile> {
@@ -140,7 +176,7 @@ export async function getAccountProfile(session: AppSession): Promise<AccountPro
 
   const prisma = getPrisma();
   const user = await prisma.workspaceUser.findFirst({
-    where: { email: session.email },
+    where: { id: session.userId, workspaceId: session.workspaceId },
     include: { workspace: true },
   });
   if (!user) throw new Error("ACCOUNT_NOT_FOUND");
@@ -164,27 +200,27 @@ export async function updateAccountProfile(
     if (!account || account.email !== session.email) throw new Error("ACCOUNT_NOT_FOUND");
     const updated: PreviewAccount = { ...account, name, email };
     await writePreviewAccount(updated);
-    const nextSession = { email, name, role: updated.role } satisfies AppSession;
+    const nextSession = previewSession(updated);
     await setSession(nextSession);
     return nextSession;
   }
 
   const prisma = getPrisma();
-  const user = await prisma.workspaceUser.findFirst({ where: { email: session.email } });
+  const user = await prisma.workspaceUser.findFirst({
+    where: { id: session.userId, workspaceId: session.workspaceId },
+  });
   if (!user) throw new Error("ACCOUNT_NOT_FOUND");
 
   if (email !== user.email) {
-    const duplicate = await prisma.workspaceUser.findFirst({
-      where: { email, NOT: { id: user.id } },
-    });
-    if (duplicate) throw new Error("ACCOUNT_EXISTS");
+    const duplicate = await prisma.workspaceUser.findUnique({ where: { email } });
+    if (duplicate && duplicate.id !== user.id) throw new Error("ACCOUNT_EXISTS");
   }
 
   const updated = await prisma.workspaceUser.update({
     where: { id: user.id },
     data: { name, email },
   });
-  const nextSession = { email: updated.email, name: updated.name ?? undefined, role: updated.role as AppRole };
+  const nextSession = sessionFromDatabaseUser(updated);
   await setSession(nextSession);
   return nextSession;
 }
@@ -202,7 +238,9 @@ export async function changeAccountPassword(
   }
 
   const prisma = getPrisma();
-  const user = await prisma.workspaceUser.findFirst({ where: { email: session.email } });
+  const user = await prisma.workspaceUser.findFirst({
+    where: { id: session.userId, workspaceId: session.workspaceId },
+  });
   if (!user?.passwordHash) throw new Error("ACCOUNT_NOT_FOUND");
   if (!(await verifyPassword(input.currentPassword, user.passwordHash))) throw new Error("INVALID_PASSWORD");
   await prisma.workspaceUser.update({
