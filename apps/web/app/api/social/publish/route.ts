@@ -36,9 +36,10 @@ export async function POST(request: Request) {
 
   const platformState = getSocialPlatforms();
   const disconnected = input.platforms.filter((id) => !platformState.find((item) => item.id === id)?.connected);
-  const canPublishLive = input.action === "publish" && disconnected.length === 0 && process.env.SOCIAL_LIVE_PUBLISHING === "true";
 
-  const status = input.action === "schedule" ? "scheduled" : canPublishLive ? "published" : "draft";
+  // Live provider adapters are intentionally not faked. Until OAuth-backed provider
+  // publishers are implemented, Publish Now saves a ready draft in the queue.
+  const status = input.action === "schedule" ? "scheduled" : "draft";
 
   try {
     const posts = await createSocialPosts({
@@ -55,23 +56,29 @@ export async function POST(request: Request) {
       altText: input.altText || undefined,
     });
 
-    if (input.action === "publish" && !canPublishLive) {
+    if (input.action === "publish") {
       return NextResponse.json({
         ok: true,
         posts,
         mode: "queue",
         message: disconnected.length
           ? `Saved to the publishing queue. Connect ${disconnected.join(", ")} to publish live from this portal.`
-          : "Saved to the publishing queue. Enable the live publishing adapters after account authorization.",
+          : "Saved as publish-ready. Live provider adapters still need to be enabled before external posting.",
       }, { status: 202 });
     }
 
-    return NextResponse.json({
-      ok: true,
-      posts,
-      mode: canPublishLive ? "live" : "queue",
-      message: input.action === "schedule" ? "Post scheduled for the selected channels." : input.action === "draft" ? "Draft saved for the selected channels." : "Published to the selected channels.",
-    });
+    if (input.action === "schedule") {
+      return NextResponse.json({
+        ok: true,
+        posts,
+        mode: "queue",
+        message: disconnected.length
+          ? `Scheduled in the portal queue. Connect ${disconnected.join(", ")} before the scheduled time for live delivery.`
+          : "Scheduled in the portal queue. Live provider adapters must be enabled for external delivery.",
+      });
+    }
+
+    return NextResponse.json({ ok: true, posts, mode: "queue", message: "Draft saved for the selected channels." });
   } catch (error) {
     console.error("social publish failed", error);
     return NextResponse.json({ error: "Unable to save this post right now." }, { status: 500 });
