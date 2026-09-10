@@ -1,5 +1,6 @@
 .social-page { width: 100%; }
 .social-hero { margin-bottom: 22px; }
+.social-notice { margin: 0 0 18px; }
 .social-hub-grid { display: grid; grid-template-columns: minmax(280px, .72fr) minmax(0, 1.28fr); gap: 20px; align-items: start; margin-top: 20px; }
 .social-connect-card, .social-composer { padding: 24px; }
 .social-connect-card { position: sticky; top: 28px; }
@@ -10,9 +11,13 @@
 .social-platform-mark { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; background: #171817; color: white; font-size: 10px; font-weight: 800; letter-spacing: .02em; }
 .social-platform-copy { min-width: 0; display: grid; gap: 3px; }
 .social-platform-copy strong { font-size: 12px; }
-.social-platform-copy span { color: var(--muted); font-size: 10px; }
-.social-platform a { text-decoration: none; color: var(--ink-soft); font-size: 10px; font-weight: 750; padding: 7px 8px; border-radius: 8px; }
-.social-platform a:hover { background: rgba(24,25,24,.05); }
+.social-platform-copy span { color: var(--muted); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.social-platform-actions { display: flex; align-items: center; justify-content: flex-end; gap: 5px; flex-wrap: wrap; }
+.social-platform-actions a, .social-platform-actions button { appearance: none; border: 0; text-decoration: none; color: var(--ink-soft); background: transparent; font: inherit; font-size: 10px; font-weight: 750; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+.social-platform-actions a:hover, .social-platform-actions button:hover { background: rgba(24,25,24,.05); }
+.social-platform-actions .connect-social { color: #5b51c9; background: rgba(114,103,240,.09); }
+.social-platform-actions form { margin: 0; }
+.social-platform.connected .social-platform-mark { background: linear-gradient(145deg, #7569f0, #4e45ad); box-shadow: 0 8px 18px rgba(94,82,202,.18); }
 .social-help { margin: 16px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .platform-picker { display: flex; flex-wrap: wrap; gap: 8px; margin: 3px 0 18px; }
 .platform-picker button { appearance: none; border: 1px solid var(--border-strong); background: rgba(255,255,255,.7); color: var(--ink-soft); border-radius: 10px; min-height: 38px; padding: 8px 10px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 10px; font-weight: 720; }
@@ -41,4 +46,6 @@
   .social-actions { display: grid; }
   .social-actions .btn { width: 100%; }
   .social-section-head { display: grid; }
+  .social-platform { grid-template-columns: 38px minmax(0,1fr); }
+  .social-platform-actions { grid-column: 1 / -1; justify-content: flex-start; padding-left: 49px; }
 }
