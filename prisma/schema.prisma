@@ -36,7 +36,7 @@ model Brand {
 model WorkspaceUser {
   id           String    @id @default(cuid())
   workspaceId  String
-  email        String
+  email        String    @unique
   name         String?
   passwordHash String?
   role         String
@@ -45,6 +45,7 @@ model WorkspaceUser {
   workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, email])
+  @@index([workspaceId])
 }
 
 model Campaign {
