@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import type { AppRole, AppSession } from "./auth";
-import { createSessionToken, readSessionToken } from "./auth";
+import { createSessionToken, readSessionToken, setSession } from "./auth";
 import { hashPassword, verifyPassword } from "./password";
 import { getPrisma } from "./prisma";
 
@@ -12,6 +12,13 @@ type PreviewAccount = {
   name: string;
   passwordHash: string;
   role: AppRole;
+};
+
+export type AccountProfile = {
+  email: string;
+  name: string;
+  role: AppRole;
+  workspaceName: string;
 };
 
 function authMode() {
@@ -110,6 +117,98 @@ export async function authenticateAccount(input: { email: string; password: stri
   }
   await prisma.workspaceUser.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   return { email: user.email, name: user.name ?? undefined, role: user.role as AppRole };
+}
+
+export async function getAccountProfile(session: AppSession): Promise<AccountProfile> {
+  if (authMode() === "preview") {
+    const account = await readPreviewAccount();
+    if (!account || account.email !== session.email) {
+      return {
+        email: session.email,
+        name: session.name ?? session.email.split("@")[0],
+        role: session.role,
+        workspaceName: process.env.DEFAULT_WORKSPACE_NAME ?? "AI Marketing OS",
+      };
+    }
+    return {
+      email: account.email,
+      name: account.name,
+      role: account.role,
+      workspaceName: process.env.DEFAULT_WORKSPACE_NAME ?? "AI Marketing OS",
+    };
+  }
+
+  const prisma = getPrisma();
+  const user = await prisma.workspaceUser.findFirst({
+    where: { email: session.email },
+    include: { workspace: true },
+  });
+  if (!user) throw new Error("ACCOUNT_NOT_FOUND");
+  return {
+    email: user.email,
+    name: user.name ?? user.email.split("@")[0],
+    role: user.role as AppRole,
+    workspaceName: user.workspace.name,
+  };
+}
+
+export async function updateAccountProfile(
+  session: AppSession,
+  input: { name: string; email: string },
+): Promise<AppSession> {
+  const name = input.name.trim();
+  const email = normalizeEmail(input.email);
+
+  if (authMode() === "preview") {
+    const account = await readPreviewAccount();
+    if (!account || account.email !== session.email) throw new Error("ACCOUNT_NOT_FOUND");
+    const updated: PreviewAccount = { ...account, name, email };
+    await writePreviewAccount(updated);
+    const nextSession = { email, name, role: updated.role } satisfies AppSession;
+    await setSession(nextSession);
+    return nextSession;
+  }
+
+  const prisma = getPrisma();
+  const user = await prisma.workspaceUser.findFirst({ where: { email: session.email } });
+  if (!user) throw new Error("ACCOUNT_NOT_FOUND");
+
+  if (email !== user.email) {
+    const duplicate = await prisma.workspaceUser.findFirst({
+      where: { email, NOT: { id: user.id } },
+    });
+    if (duplicate) throw new Error("ACCOUNT_EXISTS");
+  }
+
+  const updated = await prisma.workspaceUser.update({
+    where: { id: user.id },
+    data: { name, email },
+  });
+  const nextSession = { email: updated.email, name: updated.name ?? undefined, role: updated.role as AppRole };
+  await setSession(nextSession);
+  return nextSession;
+}
+
+export async function changeAccountPassword(
+  session: AppSession,
+  input: { currentPassword: string; newPassword: string },
+) {
+  if (authMode() === "preview") {
+    const account = await readPreviewAccount();
+    if (!account || account.email !== session.email) throw new Error("ACCOUNT_NOT_FOUND");
+    if (!(await verifyPassword(input.currentPassword, account.passwordHash))) throw new Error("INVALID_PASSWORD");
+    await writePreviewAccount({ ...account, passwordHash: await hashPassword(input.newPassword) });
+    return;
+  }
+
+  const prisma = getPrisma();
+  const user = await prisma.workspaceUser.findFirst({ where: { email: session.email } });
+  if (!user?.passwordHash) throw new Error("ACCOUNT_NOT_FOUND");
+  if (!(await verifyPassword(input.currentPassword, user.passwordHash))) throw new Error("INVALID_PASSWORD");
+  await prisma.workspaceUser.update({
+    where: { id: user.id },
+    data: { passwordHash: await hashPassword(input.newPassword) },
+  });
 }
 
 export function getAuthMode() {
