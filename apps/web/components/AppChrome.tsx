@@ -10,7 +10,7 @@ const nav = [
   ["/social", "Social Content"],
   ["/leads", "Leads"],
   ["/approvals", "Approvals"],
-];
+] as const;
 
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -21,13 +21,29 @@ export function AppChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <aside className="sidebar">
-        <div className="brand">AI MARKETING OS</div>
-        <div className="brand-sub">Internal-first · SaaS-ready</div>
+        <div className="brand-wrap">
+          <div className="brand-mark">AI</div>
+          <div className="brand-copy">
+            <div className="brand">MARKETING OS</div>
+            <div className="brand-sub">Intelligence command center</div>
+          </div>
+        </div>
+
+        <div className="nav-label">WORKSPACE</div>
         <nav>
-          {nav.map(([href, label]) => <a href={href} key={href}>{label}</a>)}
+          {nav.map(([href, label], index) => {
+            const active = pathname === href || pathname.startsWith(`${href}/`);
+            return (
+              <a className={active ? "active" : undefined} href={href} key={href} aria-current={active ? "page" : undefined}>
+                <span className="nav-index">{String(index + 1).padStart(2, "0")}</span>
+                <span>{label}</span>
+              </a>
+            );
+          })}
         </nav>
+
         <div className="sidebar-foot sidebar-foot-stack">
-          <div><span className="status-dot" /> Safe automation mode</div>
+          <div className="safe-mode"><span className="status-dot" /> Human-approved automation</div>
           <form action="/api/auth/logout" method="post"><button className="logout-button" type="submit">Sign out</button></form>
         </div>
       </aside>
