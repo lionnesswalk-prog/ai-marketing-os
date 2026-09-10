@@ -22,14 +22,22 @@ export type ApprovalView = {
   decidedBy?: string;
 };
 
+export type SocialPlatform = "instagram" | "facebook" | "linkedin" | "x" | "tiktok" | "youtube" | "pinterest";
+export type SocialContentType = "reel" | "carousel" | "static" | "story" | "video" | "short";
+
 export type SocialPostView = {
   id: string;
-  platform: "instagram" | "facebook" | "linkedin" | "x";
-  contentType: "reel" | "carousel" | "static" | "story";
+  platform: SocialPlatform;
+  contentType: SocialContentType;
   title: string;
   caption: string;
   status: "draft" | "scheduled" | "published";
   scheduledAt?: string;
+  mediaUrl?: string;
+  linkUrl?: string;
+  hashtags?: string;
+  cta?: string;
+  altText?: string;
 };
 
 export type InsightView = {
