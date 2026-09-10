@@ -1,8 +1,10 @@
+import { requireSession } from "../../lib/auth";
 import { dashboardData } from "../../lib/repository";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
 export default async function Dashboard() {
+  await requireSession();
   const data = await dashboardData();
   const metrics = [
     ["Tracked spend", money.format(data.spend)],

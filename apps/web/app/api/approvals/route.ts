@@ -9,12 +9,13 @@ const decisionSchema = z.object({
 });
 
 export async function GET() {
+  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   return NextResponse.json(await listApprovals());
 }
 
 export async function POST(request: Request) {
-  const session = getSession();
-  if (!canDecideApprovals(session.role)) {
+  const session = await getSession();
+  if (!session || !canDecideApprovals(session.role)) {
     return NextResponse.json({ error: "Your role cannot decide spend-impacting approvals." }, { status: 403 });
   }
 

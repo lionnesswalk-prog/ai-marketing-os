@@ -1,6 +1,8 @@
+import { requireSession } from "../../lib/auth";
 import { StrategyBuilder } from "../../components/StrategyBuilder";
 
-export default function Strategy() {
+export default async function Strategy() {
+  await requireSession();
   return (
     <div>
       <p className="eyebrow">AI STRATEGIST</p>

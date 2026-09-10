@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSession } from "../../../lib/auth";
 import { z } from "zod";
 import { buildStrategy } from "../../../../../packages/agents/src/runtime";
 
@@ -11,6 +12,7 @@ const strategyRequest = z.object({
 });
 
 export async function POST(request: Request) {
+  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const parsed = strategyRequest.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid campaign brief.", issues: parsed.error.flatten() }, { status: 400 });

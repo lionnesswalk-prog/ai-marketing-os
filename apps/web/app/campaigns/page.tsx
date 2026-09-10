@@ -1,8 +1,10 @@
+import { requireSession } from "../../lib/auth";
 import { listCampaigns } from "../../lib/repository";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
 export default async function Campaigns() {
+  await requireSession();
   const campaigns = await listCampaigns();
   return (
     <div>

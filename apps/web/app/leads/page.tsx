@@ -1,7 +1,9 @@
+import { requireSession } from "../../lib/auth";
 import { LeadDraftButton } from "../../components/LeadDraftButton";
 import { listLeads } from "../../lib/repository";
 
 export default async function Leads() {
+  await requireSession();
   const leads = await listLeads();
   return (
     <div>

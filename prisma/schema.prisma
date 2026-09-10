@@ -34,12 +34,15 @@ model Brand {
 }
 
 model WorkspaceUser {
-  id          String    @id @default(cuid())
-  workspaceId String
-  email       String
-  role        String
-  createdAt   DateTime  @default(now())
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  workspaceId  String
+  email        String
+  name         String?
+  passwordHash String?
+  role         String
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, email])
 }

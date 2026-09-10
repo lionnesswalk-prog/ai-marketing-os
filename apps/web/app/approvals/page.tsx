@@ -1,7 +1,9 @@
+import { requireSession } from "../../lib/auth";
 import { ApprovalQueue } from "../../components/ApprovalQueue";
 import { listApprovals } from "../../lib/repository";
 
 export default async function ApprovalsPage() {
+  await requireSession();
   const approvals = await listApprovals();
   return (
     <div>

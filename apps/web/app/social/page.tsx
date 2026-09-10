@@ -1,7 +1,9 @@
+import { requireSession } from "../../lib/auth";
 import { SocialPlanner } from "../../components/SocialPlanner";
 import { listSocialPosts } from "../../lib/repository";
 
 export default async function SocialPage() {
+  await requireSession();
   const scheduled = await listSocialPosts();
   return (
     <div>
