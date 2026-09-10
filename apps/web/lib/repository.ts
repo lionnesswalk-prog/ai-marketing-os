@@ -3,9 +3,16 @@ import type { CampaignSnapshot, Lead } from "../../../packages/core/src/types";
 import { memoryStore } from "./memory-store";
 import type { ApprovalView, CampaignView, DashboardView, LeadView, SocialPlatform, SocialContentType, SocialPostView } from "./domain";
 import { getPrisma } from "./prisma";
+import { getSession } from "./auth";
 
 function usePostgres() {
   return process.env.DATA_BACKEND === "postgres";
+}
+
+async function databaseWorkspaceId() {
+  const session = await getSession();
+  if (!session?.workspaceId) throw new Error("WORKSPACE_SESSION_REQUIRED");
+  return session.workspaceId;
 }
 
 function decimalToNumber(value: unknown) {
@@ -21,8 +28,10 @@ export async function listCampaigns(): Promise<CampaignView[]> {
     return memoryStore.campaigns.map((campaign) => ({ ...campaign, diagnosis: diagnoseCampaign(campaign) }));
   }
 
+  const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
   const rows = await prisma.campaign.findMany({
+    where: { brand: { is: { workspaceId } } },
     include: { metrics: { orderBy: { capturedAt: "desc" }, take: 1 } },
     orderBy: { createdAt: "asc" },
   });
@@ -48,8 +57,12 @@ export async function listCampaigns(): Promise<CampaignView[]> {
 
 export async function listLeads(): Promise<LeadView[]> {
   if (!usePostgres()) return memoryStore.leads;
+  const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
-  const rows = await prisma.lead.findMany({ orderBy: { updatedAt: "desc" } });
+  const rows = await prisma.lead.findMany({
+    where: { brand: { is: { workspaceId } } },
+    orderBy: { updatedAt: "desc" },
+  });
   return rows.map((row) => ({
     id: row.externalId ?? row.id,
     source: row.source as Lead["source"],
@@ -63,8 +76,12 @@ export async function listLeads(): Promise<LeadView[]> {
 
 export async function listSocialPosts(): Promise<SocialPostView[]> {
   if (!usePostgres()) return memoryStore.socialPosts;
+  const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
-  const rows = await prisma.socialPost.findMany({ orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }] });
+  const rows = await prisma.socialPost.findMany({
+    where: { brand: { is: { workspaceId } } },
+    orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
+  });
   return rows.map((row) => {
     const meta = row.metadataJson && typeof row.metadataJson === "object" ? row.metadataJson as Record<string, unknown> : {};
     return {
@@ -117,8 +134,9 @@ export async function createSocialPosts(input: {
     return created;
   }
 
+  const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
-  const brand = await prisma.brand.findFirst({ orderBy: { createdAt: "asc" } });
+  const brand = await prisma.brand.findFirst({ where: { workspaceId }, orderBy: { createdAt: "asc" } });
   if (!brand) throw new Error("BRAND_NOT_FOUND");
 
   const rows = await Promise.all(input.platforms.map((platform) => prisma.socialPost.create({
@@ -156,10 +174,25 @@ export async function createSocialPosts(input: {
   }));
 }
 
+export async function markSocialPostPublished(id: string, externalId: string) {
+  if (!usePostgres()) {
+    const post = memoryStore.socialPosts.find((item) => item.id === id);
+    if (post) post.status = "published";
+    return;
+  }
+  const workspaceId = await databaseWorkspaceId();
+  const prisma = getPrisma();
+  const post = await prisma.socialPost.findFirst({ where: { id, brand: { is: { workspaceId } } } });
+  if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
+  await prisma.socialPost.update({ where: { id }, data: { status: "published", externalId } });
+}
+
 export async function listApprovals(): Promise<ApprovalView[]> {
   if (!usePostgres()) return memoryStore.approvals;
+  const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
   const rows = await prisma.approval.findMany({
+    where: { brand: { is: { workspaceId } } },
     include: { action: { include: { campaign: true } } },
     orderBy: { requestedAt: "desc" },
   });
@@ -189,7 +222,11 @@ export async function decideApproval(id: string, decision: "approved" | "rejecte
     return approval;
   }
 
+  const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
+  const existing = await prisma.approval.findFirst({ where: { id, brand: { is: { workspaceId } } } });
+  if (!existing) return null;
+
   const approval = await prisma.approval.update({
     where: { id },
     data: { status: decision, decidedAt: new Date(), decidedBy },
@@ -220,8 +257,13 @@ export async function dashboardData(): Promise<DashboardView> {
 
   let insights = memoryStore.insights;
   if (usePostgres()) {
+    const workspaceId = await databaseWorkspaceId();
     const prisma = getPrisma();
-    const rows = await prisma.marketingInsight.findMany({ where: { resolvedAt: null }, orderBy: { createdAt: "desc" }, take: 5 });
+    const rows = await prisma.marketingInsight.findMany({
+      where: { resolvedAt: null, brand: { is: { workspaceId } } },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    });
     insights = rows.map((row) => ({
       id: row.id,
       kind: row.kind as (typeof memoryStore.insights)[number]["kind"],
