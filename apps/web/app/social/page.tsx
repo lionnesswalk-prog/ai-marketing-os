@@ -4,25 +4,32 @@ import { SocialPublisher } from "../../components/SocialPublisher";
 import { listSocialPosts } from "../../lib/repository";
 import { getSocialPlatforms } from "../../lib/social-platforms";
 
-function metaNotice(code?: string) {
-  if (code === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
-  if (code === "disconnected") return { tone: "success", text: "Meta connection removed." };
-  if (code === "app-required") return { tone: "error", text: "Meta App ID and App Secret still need to be added to the production environment before account authorization can start." };
-  if (code === "storage-required") return { tone: "error", text: "Secure Meta OAuth storage needs PostgreSQL plus AUTH_SECRET or INTEGRATION_ENCRYPTION_KEY before live account connection can be enabled." };
-  if (code === "cancelled") return { tone: "error", text: "Meta connection was cancelled before permissions were approved." };
-  if (code === "invalid-state") return { tone: "error", text: "Meta authorization could not be verified. Please start the connection again from this page." };
-  if (code === "failed") return { tone: "error", text: "Meta authorization failed. Check the Meta app permissions and redirect URL, then connect again." };
+function integrationNotice(meta?: string, linkedin?: string) {
+  if (meta === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
+  if (meta === "disconnected") return { tone: "success", text: "Meta connection removed." };
+  if (meta === "app-required") return { tone: "error", text: "Meta App ID and App Secret still need to be added to the production environment before account authorization can start." };
+  if (meta === "storage-required") return { tone: "error", text: "Secure Meta OAuth storage needs PostgreSQL plus AUTH_SECRET or INTEGRATION_ENCRYPTION_KEY before live account connection can be enabled." };
+  if (meta === "cancelled") return { tone: "error", text: "Meta connection was cancelled before permissions were approved." };
+  if (meta === "invalid-state") return { tone: "error", text: "Meta authorization could not be verified. Please start the connection again from this page." };
+  if (meta === "failed") return { tone: "error", text: "Meta authorization failed. Check the Meta app permissions and redirect URL, then connect again." };
+
+  if (linkedin === "connected") return { tone: "success", text: "LinkedIn connected successfully. Text and article-link posts can now publish directly from the Social Hub." };
+  if (linkedin === "disconnected") return { tone: "success", text: "LinkedIn connection removed." };
+  if (linkedin === "setup-required") return { tone: "error", text: "LinkedIn connection needs PostgreSQL, secure integration encryption, and LinkedIn Client ID/Secret before authorization can start." };
+  if (linkedin === "cancelled") return { tone: "error", text: "LinkedIn connection was cancelled before permissions were approved." };
+  if (linkedin === "invalid-state") return { tone: "error", text: "LinkedIn authorization could not be verified. Start the connection again from this page." };
+  if (linkedin === "failed") return { tone: "error", text: "LinkedIn authorization failed. Check the LinkedIn app products, scopes and redirect URL, then connect again." };
   return null;
 }
 
 export default async function SocialPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ meta?: string }>;
+  searchParams?: Promise<{ meta?: string; linkedin?: string }>;
 }) {
   await requireSession();
   const params = searchParams ? await searchParams : undefined;
-  const notice = metaNotice(params?.meta);
+  const notice = integrationNotice(params?.meta, params?.linkedin);
   const [scheduled, platforms] = await Promise.all([
     listSocialPosts(),
     getSocialPlatforms(),
