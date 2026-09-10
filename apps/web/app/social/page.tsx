@@ -4,11 +4,28 @@ import { SocialPublisher } from "../../components/SocialPublisher";
 import { listSocialPosts } from "../../lib/repository";
 import { getSocialPlatforms } from "../../lib/social-platforms";
 
-export default async function SocialPage() {
+function metaNotice(code?: string) {
+  if (code === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
+  if (code === "disconnected") return { tone: "success", text: "Meta connection removed." };
+  if (code === "app-required") return { tone: "error", text: "Meta App ID and App Secret still need to be added to the production environment before account authorization can start." };
+  if (code === "storage-required") return { tone: "error", text: "Secure Meta OAuth storage needs PostgreSQL plus AUTH_SECRET or INTEGRATION_ENCRYPTION_KEY before live account connection can be enabled." };
+  if (code === "cancelled") return { tone: "error", text: "Meta connection was cancelled before permissions were approved." };
+  if (code === "invalid-state") return { tone: "error", text: "Meta authorization could not be verified. Please start the connection again from this page." };
+  if (code === "failed") return { tone: "error", text: "Meta authorization failed. Check the Meta app permissions and redirect URL, then connect again." };
+  return null;
+}
+
+export default async function SocialPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ meta?: string }>;
+}) {
   await requireSession();
+  const params = searchParams ? await searchParams : undefined;
+  const notice = metaNotice(params?.meta);
   const [scheduled, platforms] = await Promise.all([
     listSocialPosts(),
-    Promise.resolve(getSocialPlatforms()),
+    getSocialPlatforms(),
   ]);
 
   return (
@@ -24,6 +41,8 @@ export default async function SocialPage() {
           <span className="pill">AI-assisted content</span>
         </div>
       </div>
+
+      {notice && <div className={`profile-notice social-notice ${notice.tone}`}>{notice.text}</div>}
 
       <SocialPublisher platforms={platforms} />
 
