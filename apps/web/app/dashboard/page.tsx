@@ -17,20 +17,27 @@ export default async function Dashboard() {
 
   return (
     <div>
-      <div className="page-head">
-        <div>
+      <div className="page-head dashboard-hero">
+        <div className="hero-copy">
           <p className="eyebrow">COMMAND CENTER</p>
           <h1>Marketing overview</h1>
           <p className="muted large">Paid media, social content, leads and approval-gated AI recommendations in one operating view.</p>
         </div>
-        <span className="pill">Memory demo data</span>
+        <div className="hero-badges">
+          <span className="pill accent">AI workspace</span>
+          <span className="pill">Preview data</span>
+        </div>
       </div>
 
       <div className="metric-grid">
-        {metrics.map(([key, value]) => (
+        {metrics.map(([key, value], index) => (
           <div className="card metric-card" key={key}>
-            <div className="muted">{key}</div>
+            <div className="metric-kicker">
+              <div className="muted">{key}</div>
+              <span className="metric-orb" />
+            </div>
             <div className="metric">{value}</div>
+            <div className="metric-index">Metric {String(index + 1).padStart(2, "0")}</div>
           </div>
         ))}
       </div>
