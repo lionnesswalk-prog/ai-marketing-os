@@ -91,7 +91,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
             </article>
           ))}
         </div>
-        <p className="social-help">Meta connection securely authorizes your Facebook Page and linked Instagram professional account. Other channels will be connected in the next integration passes.</p>
+        <p className="social-help">Meta can securely connect Facebook and Instagram; LinkedIn can connect through its OAuth flow. X, TikTok, YouTube and Pinterest remain in queue mode until their adapters are enabled.</p>
       </section>
 
       <form className="card social-composer" onSubmit={preventSubmit}>
