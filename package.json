@@ -11,6 +11,7 @@
     "test:core": "tsx tests/core.test.ts",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx scripts/seed.ts",
     "postinstall": "prisma generate"
