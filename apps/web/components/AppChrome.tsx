@@ -8,7 +8,7 @@ const nav = [
   ["/dashboard", "Dashboard"],
   ["/campaigns", "Campaigns"],
   ["/strategy", "AI Strategy"],
-  ["/social", "Social Content"],
+  ["/social", "Social Hub"],
   ["/leads", "Leads"],
   ["/approvals", "Approvals"],
 ] as const;
