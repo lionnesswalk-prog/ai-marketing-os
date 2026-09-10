@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Workspace {
+  id        String          @id @default(cuid())
+  name      String
+  createdAt DateTime        @default(now())
+  brands    Brand[]
+  users     WorkspaceUser[]
+}
+
+model Brand {
+  id           String                  @id @default(cuid())
+  workspaceId  String
+  name         String
+  voiceJson    Json?
+  createdAt    DateTime                @default(now())
+  workspace    Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaigns    Campaign[]
+  leads        Lead[]
+  approvals    Approval[]
+  socialPosts  SocialPost[]
+  integrations IntegrationConnection[]
+  auditLogs    AuditLog[]
+  insights     MarketingInsight[]
+
+  @@index([workspaceId])
+}
+
+model WorkspaceUser {
+  id          String    @id @default(cuid())
+  workspaceId String
+  email       String
+  role        String
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email])
+}
+
+model Campaign {
+  id          String               @id @default(cuid())
+  brandId     String
+  externalId  String?
+  channel     String
+  name        String
+  status      String
+  dailyBudget Decimal?             @db.Decimal(12, 2)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  brand       Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  metrics     CampaignMetric[]
+  actions     OptimizationAction[]
+
+  @@index([brandId, channel])
+  @@unique([brandId, channel, externalId])
+}
+
+model CampaignMetric {
+  id          String   @id @default(cuid())
+  campaignId  String
+  capturedAt  DateTime @default(now())
+  spend       Decimal  @db.Decimal(12, 2)
+  impressions Int
+  clicks      Int
+  conversions Int
+  revenue     Decimal  @db.Decimal(12, 2)
+  frequency   Decimal? @db.Decimal(8, 3)
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, capturedAt])
+}
+
+model OptimizationAction {
+  id             String    @id @default(cuid())
+  campaignId     String
+  type           String
+  reason         String
+  confidence     Decimal   @db.Decimal(5, 4)
+  spendImpactPct Decimal?  @db.Decimal(6, 2)
+  status         String    @default("proposed")
+  createdAt      DateTime  @default(now())
+  executedAt     DateTime?
+  campaign       Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  approval       Approval?
+
+  @@index([campaignId, status])
+}
+
+model Approval {
+  id          String             @id @default(cuid())
+  brandId     String
+  actionId    String             @unique
+  status      String             @default("pending")
+  requestedAt DateTime           @default(now())
+  decidedAt   DateTime?
+  decidedBy   String?
+  brand       Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  action      OptimizationAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, status])
+}
+
+model Lead {
+  id         String        @id @default(cuid())
+  brandId    String
+  externalId String?
+  source     String
+  name       String?
+  message    String
+  intent     String
+  status     String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  brand      Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  messages   LeadMessage[]
+
+  @@index([brandId, status, intent])
+}
+
+model LeadMessage {
+  id        String   @id @default(cuid())
+  leadId    String
+  direction String
+  body      String
+  createdAt DateTime @default(now())
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+}
+
+model SocialPost {
+  id          String    @id @default(cuid())
+  brandId     String
+  platform    String
+  contentType String
+  title       String
+  caption     String
+  status      String    @default("draft")
+  scheduledAt DateTime?
+  externalId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  brand       Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, status, scheduledAt])
+}
+
+model MarketingInsight {
+  id         String   @id @default(cuid())
+  brandId    String
+  kind       String
+  title      String
+  detail     String
+  severity   String
+  evidence   Json?
+  createdAt  DateTime @default(now())
+  resolvedAt DateTime?
+  brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, resolvedAt, createdAt])
+}
+
+model IntegrationConnection {
+  id                String   @id @default(cuid())
+  brandId           String
+  provider          String
+  externalAccountId String?
+  status            String   @default("disconnected")
+  metadataJson      Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  brand             Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, provider])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  brandId    String
+  actorType  String
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  payload    Json?
+  createdAt  DateTime @default(now())
+  brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, createdAt])
+}
