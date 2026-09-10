@@ -1,4 +1,5 @@
 import { getPrisma } from "../apps/web/lib/prisma";
+import { hashPassword } from "../apps/web/lib/password";
 
 const prisma = getPrisma();
 
@@ -6,7 +7,7 @@ async function main() {
   const workspace = await prisma.workspace.upsert({
     where: { id: "workspace_internal" },
     update: {},
-    create: { id: "workspace_internal", name: "Internal Marketing Workspace" },
+    create: { id: "workspace_internal", name: process.env.DEFAULT_WORKSPACE_NAME ?? "AI Marketing OS" },
   });
 
   const brand = await prisma.brand.upsert({
@@ -15,7 +16,7 @@ async function main() {
     create: {
       id: "brand_lioness_walk",
       workspaceId: workspace.id,
-      name: "Lioness Walk",
+      name: process.env.DEFAULT_BRAND_NAME ?? "Lioness Walk",
       voiceJson: {
         personality: ["composed", "feminine", "intentional", "rare", "quiet luxury"],
         avoid: ["generic hype", "fake urgency", "unsupported claims"],
@@ -23,11 +24,23 @@ async function main() {
     },
   });
 
-  await prisma.workspaceUser.upsert({
-    where: { workspaceId_email: { workspaceId: workspace.id, email: process.env.DEV_USER_EMAIL ?? "owner@example.com" } },
-    update: { role: "admin" },
-    create: { workspaceId: workspace.id, email: process.env.DEV_USER_EMAIL ?? "owner@example.com", role: "admin" },
-  });
+  const adminEmail = process.env.INITIAL_ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+  if (adminEmail && adminPassword) {
+    if (adminPassword.length < 12) throw new Error("INITIAL_ADMIN_PASSWORD must be at least 12 characters");
+    const passwordHash = await hashPassword(adminPassword);
+    await prisma.workspaceUser.upsert({
+      where: { email: adminEmail },
+      update: { workspaceId: workspace.id, role: "admin", passwordHash },
+      create: {
+        workspaceId: workspace.id,
+        email: adminEmail,
+        name: process.env.INITIAL_ADMIN_NAME ?? "Workspace Admin",
+        passwordHash,
+        role: "admin",
+      },
+    });
+  }
 
   const campaign = await prisma.campaign.upsert({
     where: { brandId_channel_externalId: { brandId: brand.id, channel: "meta", externalId: "demo-festive" } },
@@ -64,7 +77,7 @@ async function main() {
     });
   }
 
-  console.log(`Seeded workspace ${workspace.id} and brand ${brand.id}`);
+  console.log(`Seeded workspace ${workspace.id} and brand ${brand.id}${adminEmail ? " with admin account" : ""}`);
 }
 
 main().finally(async () => {
