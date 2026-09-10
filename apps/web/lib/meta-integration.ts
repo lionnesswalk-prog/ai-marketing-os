@@ -1,4 +1,5 @@
 import { getPrisma } from "./prisma";
+import { getSession } from "./auth";
 import { canEncryptIntegrations, decryptIntegrationSecret, encryptIntegrationSecret } from "./integration-crypto";
 
 const graphVersion = process.env.META_GRAPH_VERSION || "v26.0";
@@ -32,6 +33,18 @@ function integrationStorageReady() {
   return usePostgres() && canEncryptIntegrations();
 }
 
+async function currentBrand() {
+  const session = await getSession();
+  if (!session?.workspaceId) throw new Error("WORKSPACE_SESSION_REQUIRED");
+  const prisma = getPrisma();
+  const brand = await prisma.brand.findFirst({
+    where: { workspaceId: session.workspaceId },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!brand) throw new Error("BRAND_NOT_FOUND");
+  return brand;
+}
+
 export function getMetaSetupState() {
   return {
     appConfigured: metaAppConfigured(),
@@ -63,9 +76,9 @@ export function buildMetaOAuthUrl(redirectUri: string, state: string) {
 
 async function graphJson<T>(url: URL | string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, cache: "no-store" });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok || body?.error) {
-    const message = body?.error?.message || `Meta API request failed (${response.status})`;
+  const body = await response.json().catch(() => ({})) as Record<string, unknown> & { error?: { message?: string } };
+  if (!response.ok || body.error) {
+    const message = body.error?.message || `Meta API request failed (${response.status})`;
     throw new Error(message);
   }
   return body as T;
@@ -103,8 +116,7 @@ export async function saveMetaConnection(input: {
 }) {
   if (!integrationStorageReady()) throw new Error("META_STORAGE_NOT_READY");
   const prisma = getPrisma();
-  const brand = await prisma.brand.findFirst({ orderBy: { createdAt: "asc" } });
-  if (!brand) throw new Error("BRAND_NOT_FOUND");
+  const brand = await currentBrand();
 
   const metadataJson = {
     pageId: input.page.id,
@@ -137,14 +149,14 @@ export async function saveMetaConnection(input: {
 export async function disconnectMetaConnection() {
   if (!usePostgres()) return;
   const prisma = getPrisma();
-  const brand = await prisma.brand.findFirst({ orderBy: { createdAt: "asc" } });
-  if (!brand) return;
+  const brand = await currentBrand();
   await prisma.integrationConnection.deleteMany({ where: { brandId: brand.id, provider: "meta" } });
 }
 
 export async function getMetaConnection(): Promise<MetaConnection | null> {
+  const allowSharedEnv = !usePostgres() || process.env.ALLOW_SHARED_ENV_INTEGRATIONS === "true";
   const staticPageToken = process.env.META_PAGE_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN;
-  if (staticPageToken && (process.env.FACEBOOK_PAGE_ID || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID)) {
+  if (allowSharedEnv && staticPageToken && (process.env.FACEBOOK_PAGE_ID || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID)) {
     return {
       source: "env",
       pageId: process.env.FACEBOOK_PAGE_ID,
@@ -157,8 +169,7 @@ export async function getMetaConnection(): Promise<MetaConnection | null> {
 
   if (!integrationStorageReady()) return null;
   const prisma = getPrisma();
-  const brand = await prisma.brand.findFirst({ orderBy: { createdAt: "asc" } });
-  if (!brand) return null;
+  const brand = await currentBrand();
   const row = await prisma.integrationConnection.findUnique({
     where: { brandId_provider: { brandId: brand.id, provider: "meta" } },
   });
