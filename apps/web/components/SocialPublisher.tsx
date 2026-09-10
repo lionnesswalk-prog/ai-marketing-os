@@ -51,8 +51,9 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
         }),
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "Unable to save post.");
+      if (!response.ok && response.status !== 207) throw new Error(body.error ?? "Unable to save post.");
       setMessage(body.message ?? "Post saved.");
+      if (body.warning) setError(body.warning);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save post.");
@@ -76,12 +77,21 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
           {platforms.map((platform) => (
             <article className={`social-platform ${platform.connected ? "connected" : ""}`} key={platform.id}>
               <div className="social-platform-mark">{platform.short}</div>
-              <div className="social-platform-copy"><strong>{platform.name}</strong><span>{platform.connected ? "API connected" : "Connection required"}</span></div>
-              <a href={platform.homeUrl} target="_blank" rel="noreferrer">Open ↗</a>
+              <div className="social-platform-copy">
+                <strong>{platform.name}</strong>
+                <span>{platform.connected ? (platform.accountLabel || "API connected") : platform.setupReady === false && platform.connectUrl ? "Setup required" : "Connection required"}</span>
+              </div>
+              <div className="social-platform-actions">
+                <a href={platform.homeUrl} target="_blank" rel="noreferrer">Open ↗</a>
+                {!platform.connected && platform.connectUrl && <a className="connect-social" href={platform.connectUrl}>Connect</a>}
+                {platform.connected && platform.disconnectUrl && (
+                  <form action={platform.disconnectUrl} method="post"><button type="submit">Disconnect</button></form>
+                )}
+              </div>
             </article>
           ))}
         </div>
-        <p className="social-help">Open links work immediately. Direct publishing becomes live when each business account/API connection is authorized.</p>
+        <p className="social-help">Meta connection securely authorizes your Facebook Page and linked Instagram professional account. Other channels will be connected in the next integration passes.</p>
       </section>
 
       <form className="card social-composer" onSubmit={preventSubmit}>
