@@ -165,7 +165,8 @@ export async function disconnectLinkedInConnection() {
 }
 
 export async function getLinkedInConnection(): Promise<LinkedInConnection | null> {
-  if (process.env.LINKEDIN_ACCESS_TOKEN && (process.env.LINKEDIN_AUTHOR_URN || process.env.LINKEDIN_AUTHOR_ID)) {
+  const allowSharedEnv = !usePostgres() || process.env.ALLOW_SHARED_ENV_INTEGRATIONS === "true";
+  if (allowSharedEnv && process.env.LINKEDIN_ACCESS_TOKEN && (process.env.LINKEDIN_AUTHOR_URN || process.env.LINKEDIN_AUTHOR_ID)) {
     const rawAuthor = process.env.LINKEDIN_AUTHOR_URN || process.env.LINKEDIN_AUTHOR_ID || "";
     const authorUrn = rawAuthor.startsWith("urn:li:") ? rawAuthor : `urn:li:person:${rawAuthor}`;
     return {
