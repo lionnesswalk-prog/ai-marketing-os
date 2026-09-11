@@ -177,8 +177,19 @@ export async function authenticateAccount(input: { email: string; password: stri
   if (!user?.passwordHash || !(await verifyPassword(input.password, user.passwordHash))) {
     throw new Error("INVALID_CREDENTIALS");
   }
+  const access = await prisma.workspaceAccess.findFirst({
+    where: { userId: user.id },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!access) throw new Error("ACCOUNT_ACCESS_NOT_FOUND");
   await prisma.workspaceUser.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-  return sessionFromDatabaseUser(user);
+  return {
+    userId: user.id,
+    workspaceId: access.workspaceId,
+    email: user.email,
+    name: user.name ?? undefined,
+    role: access.role as AppRole,
+  };
 }
 
 export async function getAccountProfile(session: AppSession): Promise<AccountProfile> {
