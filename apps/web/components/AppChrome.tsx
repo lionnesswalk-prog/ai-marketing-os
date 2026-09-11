@@ -15,7 +15,7 @@ const nav = [
   ["/leads", "Leads"],
   ["/approvals", "Approvals"],
   ["/team", "Team"],
-  ["/clients", "Clients"],
+  ["/clients", "Clients"],\n  ["/platform", "Platform Setup"],
 ] as const;
 
 function initials(session: AppSession | null) {
@@ -62,7 +62,7 @@ export function AppChrome({
         <div className="nav-label">WORKSPACE</div>
         <nav>
           {nav.map(([href, label], index) => {
-            if (href === "/clients" && !session?.platformAdmin) return null;
+            if ((href === "/clients" || href === "/platform") && !session?.platformAdmin) return null;
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
               <a className={active ? "active" : undefined} href={href} key={href} aria-current={active ? "page" : undefined}>

@@ -1,0 +1,46 @@
+.platform-page { width: 100%; }
+.platform-hero { margin-bottom: 18px; }
+.platform-model { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-bottom: 24px; }
+.platform-model > div { display: grid; gap: 8px; padding: 13px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,.5); }
+.platform-model strong { font-size: 12px; }
+.platform-model p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
+.platform-step { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 9px; background: rgba(114,103,240,.1); color: #574dc5; font-size: 9px; font-weight: 850; }
+.platform-check-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.platform-check { display: grid; gap: 11px; }
+.platform-check-head { display: grid; grid-template-columns: 8px minmax(0,1fr) auto; align-items: center; gap: 8px; }
+.platform-check-head strong { font-size: 11px; }
+.platform-check p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.platform-status-dot { width: 8px; height: 8px; border-radius: 999px; }
+.platform-status-dot.ready { background: #8cb47f; box-shadow: 0 0 0 4px rgba(140,180,127,.1); }
+.platform-status-dot.missing { background: #bb7467; box-shadow: 0 0 0 4px rgba(187,116,103,.1); }
+.platform-provider-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.platform-provider-card { display: grid; gap: 16px; }
+.platform-provider-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+.platform-provider-identity { display: flex; align-items: center; gap: 11px; }
+.platform-provider-mark { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: #171817; color: white; font-size: 10px; font-weight: 850; }
+.platform-provider-label { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .14em; }
+.platform-provider-head h3 { margin: 4px 0 0; font-size: 14px; }
+.platform-readiness-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.platform-readiness-row > div { display: grid; gap: 5px; padding: 10px 11px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,.52); }
+.platform-readiness-row span, .platform-field > span { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+.platform-readiness-row strong { font-size: 11px; }
+.platform-field { display: grid; gap: 7px; }
+.platform-field > code { display: block; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: 9px; background: rgba(24,25,24,.035); padding: 9px 10px; font-size: 9px; line-height: 1.45; }
+.platform-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.platform-chip-row code { border: 1px solid var(--border); background: rgba(24,25,24,.035); padding: 5px 7px; border-radius: 7px; font-size: 8px; }
+.platform-capabilities { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+.platform-capabilities span { color: var(--ink-soft); font-size: 9px; padding: 8px 9px; border-radius: 9px; background: rgba(114,103,240,.055); }
+.platform-provider-note { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.55; border-top: 1px solid var(--border); padding-top: 12px; }
+.platform-safety-card { display: grid; grid-template-columns: minmax(220px,.7fr) minmax(300px,1.2fr) auto; align-items: center; gap: 18px; }
+.platform-safety-card h2 { margin: 4px 0 0; }
+.platform-safety-card p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.platform-safety-card .btn { text-decoration: none; white-space: nowrap; }
+@media (max-width: 1050px) {
+  .platform-model, .platform-check-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .platform-provider-grid { grid-template-columns: 1fr; }
+  .platform-safety-card { grid-template-columns: 1fr; justify-items: start; }
+}
+@media (max-width: 680px) {
+  .platform-model, .platform-check-grid { grid-template-columns: 1fr; }
+  .platform-readiness-row, .platform-capabilities { grid-template-columns: 1fr; }
+}
