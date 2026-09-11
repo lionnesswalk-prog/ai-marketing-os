@@ -9,11 +9,16 @@ function errorMessage(code?: string) {
   return "";
 }
 
+function safeNext(value: string) {
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/dashboard";
+}
+
 async function loginAction(formData: FormData) {
   "use server";
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const next = safeNext(String(formData.get("next") ?? "/dashboard"));
   const invite = String(formData.get("invite") ?? "").trim();
 
   if (!email.includes("@") || password.length < 8) {
@@ -41,6 +46,7 @@ export default async function LoginPage({
   const mode = getAuthMode();
   const params = searchParams ? await searchParams : undefined;
   const message = errorMessage(params?.error);
+  const next = safeNext(params?.next ?? "/dashboard");
 
   return (
     <div className="auth-card">
@@ -50,6 +56,7 @@ export default async function LoginPage({
       <p className="muted large">Sign in to your marketing command center.</p>
       {mode === "preview" && <div className="preview-note">Preview mode · use the same browser and credentials you used on signup.</div>}
       <form className="auth-form" action={loginAction}>
+        <input type="hidden" name="next" value={next} />
         {params?.invite && <input type="hidden" name="invite" value={params.invite} />}
         <label>Email address<input name="email" type="email" autoComplete="email" required placeholder="you@company.com" /></label>
         <label>Password<input name="password" type="password" autoComplete="current-password" minLength={8} required placeholder="Minimum 8 characters" /></label>
