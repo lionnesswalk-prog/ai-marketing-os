@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "../../lib/auth";
+import { listWorkspaceTeam } from "../../lib/workspace-invites";
+import { ClientTeamManager } from "../../components/ClientTeamManager";
 import {
   createClientWorkspace,
   listAccessibleWorkspaces,
@@ -52,7 +54,7 @@ export default async function ClientsPage({
   searchParams?: Promise<{ status?: string }>;
 }) {
   const session = await requireSession();
-  const workspaces = await listAccessibleWorkspaces(session);
+  const [workspaces, team] = await Promise.all([listAccessibleWorkspaces(session), listWorkspaceTeam(session)]);
   const params = searchParams ? await searchParams : undefined;
   const message = notice(params?.status);
 
@@ -111,6 +113,12 @@ export default async function ClientsPage({
           </div>
         </section>
       </div>
+
+      <ClientTeamManager
+        members={team.members}
+        invites={team.invites}
+        canManage={session.role === "admin"}
+      />
     </div>
   );
 }
