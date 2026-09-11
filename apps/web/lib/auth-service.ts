@@ -81,7 +81,7 @@ async function ensureDefaultWorkspace() {
   return prisma.workspace.create({
     data: {
       name: process.env.DEFAULT_WORKSPACE_NAME ?? "AI Marketing OS",
-      brands: { create: { name: process.env.DEFAULT_BRAND_NAME ?? "Lioness Walk" } },
+      brands: { create: { name: process.env.DEFAULT_BRAND_NAME ?? "Default Brand" } },
     },
   });
 }
