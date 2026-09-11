@@ -373,6 +373,7 @@ export async function verifyStripeProductionConfiguration() {
 
   if(!setup.stripeConfigured){
     return {
+      deferred:false,
       accountReachable:false,
       accountReady:false,
       mode:setup.stripeMode,
@@ -475,6 +476,7 @@ export async function verifyStripeProductionConfiguration() {
 
   const allPricesReady=prices.every((item)=>item.ready);
   return {
+    deferred:false,
     accountReachable,
     accountReady,
     accountDetail,
