@@ -101,9 +101,10 @@ function sessionFromDatabaseUser(user: {
   };
 }
 
-export async function registerAccount(input: { name: string; email: string; password: string }): Promise<AppSession> {
+export async function registerAccount(input: { name: string; email: string; password: string; brandName?: string }): Promise<AppSession> {
   const email = normalizeEmail(input.email);
   const name = input.name.trim();
+  const brandName = input.brandName?.trim() || name;
   const passwordHash = await hashPassword(input.password);
 
   if (authMode() === "preview") {
@@ -116,23 +117,48 @@ export async function registerAccount(input: { name: string; email: string; pass
   const duplicate = await prisma.workspaceUser.findUnique({ where: { email } });
   if (duplicate) throw new Error("ACCOUNT_EXISTS");
 
-  const userCount = await prisma.workspaceUser.count();
-  const signupMode = process.env.SIGNUP_MODE ?? "first_user";
-  if (userCount > 0 && signupMode !== "open") throw new Error("SIGNUP_CLOSED");
+  const signupMode = process.env.SIGNUP_MODE ?? "open";
+  if (signupMode === "closed") throw new Error("SIGNUP_CLOSED");
 
-  const workspace = await ensureDefaultWorkspace();
-  const user = await prisma.workspaceUser.create({
-    data: {
-      workspaceId: workspace.id,
-      email,
-      name,
-      passwordHash,
-      role: userCount === 0 ? "admin" : "viewer",
-      lastLoginAt: new Date(),
-    },
+  const created = await prisma.$transaction(async (tx) => {
+    const workspace = await tx.workspace.create({
+      data: {
+        name: `${brandName} Workspace`,
+        brands: {
+          create: {
+            name: brandName,
+            voiceJson: {
+              personality: ["intentional", "clear", "brand-specific"],
+              avoid: ["unsupported claims", "fake urgency"],
+            },
+          },
+        },
+      },
+    });
+
+    const user = await tx.workspaceUser.create({
+      data: {
+        workspaceId: workspace.id,
+        email,
+        name,
+        passwordHash,
+        role: "admin",
+        lastLoginAt: new Date(),
+      },
+    });
+
+    await tx.workspaceAccess.create({
+      data: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        role: "admin",
+      },
+    });
+
+    return user;
   });
 
-  return sessionFromDatabaseUser(user);
+  return sessionFromDatabaseUser(created);
 }
 
 export async function authenticateAccount(input: { email: string; password: string }): Promise<AppSession> {
@@ -175,16 +201,19 @@ export async function getAccountProfile(session: AppSession): Promise<AccountPro
   }
 
   const prisma = getPrisma();
-  const user = await prisma.workspaceUser.findFirst({
-    where: { id: session.userId, workspaceId: session.workspaceId },
-    include: { workspace: true },
-  });
-  if (!user) throw new Error("ACCOUNT_NOT_FOUND");
+  const [user, workspace, access] = await Promise.all([
+    prisma.workspaceUser.findUnique({ where: { id: session.userId } }),
+    prisma.workspace.findUnique({ where: { id: session.workspaceId } }),
+    prisma.workspaceAccess.findUnique({
+      where: { userId_workspaceId: { userId: session.userId, workspaceId: session.workspaceId } },
+    }),
+  ]);
+  if (!user || !workspace || !access) throw new Error("ACCOUNT_NOT_FOUND");
   return {
     email: user.email,
     name: user.name ?? user.email.split("@")[0],
-    role: user.role as AppRole,
-    workspaceName: user.workspace.name,
+    role: access.role as AppRole,
+    workspaceName: workspace.name,
   };
 }
 
@@ -206,8 +235,8 @@ export async function updateAccountProfile(
   }
 
   const prisma = getPrisma();
-  const user = await prisma.workspaceUser.findFirst({
-    where: { id: session.userId, workspaceId: session.workspaceId },
+  const user = await prisma.workspaceUser.findUnique({
+    where: { id: session.userId },
   });
   if (!user) throw new Error("ACCOUNT_NOT_FOUND");
 
@@ -220,7 +249,11 @@ export async function updateAccountProfile(
     where: { id: user.id },
     data: { name, email },
   });
-  const nextSession = sessionFromDatabaseUser(updated);
+  const nextSession: AppSession = {
+    ...session,
+    email: updated.email,
+    name: updated.name ?? undefined,
+  };
   await setSession(nextSession);
   return nextSession;
 }
@@ -238,8 +271,8 @@ export async function changeAccountPassword(
   }
 
   const prisma = getPrisma();
-  const user = await prisma.workspaceUser.findFirst({
-    where: { id: session.userId, workspaceId: session.workspaceId },
+  const user = await prisma.workspaceUser.findUnique({
+    where: { id: session.userId },
   });
   if (!user?.passwordHash) throw new Error("ACCOUNT_NOT_FOUND");
   if (!(await verifyPassword(input.currentPassword, user.passwordHash))) throw new Error("INVALID_PASSWORD");
