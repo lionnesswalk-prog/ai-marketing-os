@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { canManageIntegrations, getSession } from "../../../../../lib/auth";
+import { canManageIntegrations, getSession } from "../../../../../lib/auth";\nimport { assertBillingConnectionCapacity } from "../../../../../lib/billing";
 import { buildTikTokOAuthUrl, getTikTokSetupState } from "../../../../../lib/tiktok-integration";
 
 const STATE_COOKIE = "amos_tiktok_oauth_state";
@@ -10,7 +10,7 @@ const WORKSPACE_COOKIE = "amos_tiktok_oauth_workspace";
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.redirect(new URL("/login", request.url));
-  if (!canManageIntegrations(session.role)) return NextResponse.redirect(new URL("/social?access=forbidden", request.url));
+  if (!canManageIntegrations(session.role)) return NextResponse.redirect(new URL("/social?access=forbidden", request.url));\n  try {\n    await assertBillingConnectionCapacity(session.workspaceId, "tiktok");\n  } catch (error) {\n    if (error instanceof Error && error.message === "BILLING_CONNECTION_LIMIT") {\n      return NextResponse.redirect(new URL("/social?access=plan-limit", request.url));\n    }\n    throw error;\n  }
 
   const setup = getTikTokSetupState();
   if (!setup.appConfigured || !setup.storageReady) {
