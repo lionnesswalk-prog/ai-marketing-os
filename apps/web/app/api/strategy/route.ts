@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { canManageMarketing, getSession } from "../../../lib/auth";
+import { buildBrandAIContext, getCurrentBrandProfile } from "../../../lib/brand-profile";
 import { z } from "zod";
 import { buildStrategy } from "../../../../../packages/agents/src/runtime";
 
 const strategyRequest = z.object({
-  brandName: z.string().min(1).default("Lioness Walk"),
   budget: z.coerce.number().positive().max(100000000),
   objective: z.string().min(3).max(300),
   product: z.string().max(300).optional(),
@@ -14,14 +14,22 @@ const strategyRequest = z.object({
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!canManageMarketing(session.role)) return NextResponse.json({ error: "Your role cannot generate or modify marketing strategy." }, { status: 403 });
-  const parsed = strategyRequest.safeParse(await request.json());
+  if (!canManageMarketing(session.role)) {
+    return NextResponse.json({ error: "Your role cannot generate or modify marketing strategy." }, { status: 403 });
+  }
+
+  const parsed = strategyRequest.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid campaign brief.", issues: parsed.error.flatten() }, { status: 400 });
   }
 
   try {
-    const plan = await buildStrategy(parsed.data);
+    const profile = await getCurrentBrandProfile(session);
+    const plan = await buildStrategy({
+      ...parsed.data,
+      brandName: profile.name,
+      brandContext: buildBrandAIContext(profile),
+    });
     return NextResponse.json({ mode: process.env.AI_MODE === "live" ? "live" : "mock", plan });
   } catch (error) {
     console.error(error);

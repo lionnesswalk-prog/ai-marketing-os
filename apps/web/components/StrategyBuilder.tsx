@@ -13,23 +13,35 @@ type StrategyPlan = {
   assumptions: string[];
 };
 
-export function StrategyBuilder() {
+export function StrategyBuilder({
+  brandName,
+  disabled = false,
+}: {
+  brandName: string;
+  disabled?: boolean;
+}) {
   const [budget, setBudget] = useState(100000);
-  const [objective, setObjective] = useState("Increase qualified sales for the next collection");
-  const [product, setProduct] = useState("One-of-one womenswear collection");
+  const [objective, setObjective] = useState("Increase qualified demand over the next 30 days");
+  const [product, setProduct] = useState("");
+  const [notes, setNotes] = useState("");
   const [plan, setPlan] = useState<StrategyPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (disabled) {
+      setError("Your workspace role has read-only strategy access.");
+      return;
+    }
+
     setBusy(true);
     setError("");
     try {
       const response = await fetch("/api/strategy", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ brandName: "Lioness Walk", budget, objective, product }),
+        body: JSON.stringify({ budget, objective, product, notes }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Could not build strategy");
@@ -44,18 +56,13 @@ export function StrategyBuilder() {
   return (
     <div className="two-col">
       <form className="card form-card" onSubmit={submit}>
-        <h2>Campaign brief</h2>
-        <label>Monthly budget (INR)
-          <input type="number" min={1000} value={budget} onChange={(e) => setBudget(Number(e.target.value))} />
-        </label>
-        <label>Objective
-          <textarea value={objective} onChange={(e) => setObjective(e.target.value)} rows={3} />
-        </label>
-        <label>Product / offer
-          <textarea value={product} onChange={(e) => setProduct(e.target.value)} rows={3} />
-        </label>
-        <button className="btn" disabled={busy}>{busy ? "Building…" : "Generate 30-day plan"}</button>
-        <p className="muted">Mock mode works without API credentials. Set AI_MODE=live + OPENAI_API_KEY for live agent output.</p>
+        <h2>{brandName} campaign brief</h2>
+        <label>Monthly budget (INR)<input disabled={disabled} type="number" min={1000} value={budget} onChange={(e) => setBudget(Number(e.target.value))} /></label>
+        <label>Objective<textarea disabled={disabled} value={objective} onChange={(e) => setObjective(e.target.value)} rows={3} /></label>
+        <label>Product / service / offer<textarea disabled={disabled} value={product} onChange={(e) => setProduct(e.target.value)} rows={3} placeholder="What are we promoting?" /></label>
+        <label>Additional campaign notes<textarea disabled={disabled} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Launch date, geography, constraints, offer details..." /></label>
+        <button className="btn" disabled={disabled || busy}>{busy ? "Building…" : "Generate 30-day plan"}</button>
+        <p className="muted">Brand Profile context is added server-side. Mock mode works without API credentials.</p>
         {error && <div className="error-box">{error}</div>}
       </form>
 
