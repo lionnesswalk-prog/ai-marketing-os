@@ -1,6 +1,7 @@
 import type { SocialPlatform } from "./domain";
 import { getMetaConnection, getMetaSetupState } from "./meta-integration";
 import { getLinkedInConnection, getLinkedInSetupState } from "./linkedin-integration";
+import { getXConnection, getXSetupState } from "./x-integration";
 
 export type SocialPlatformConfig = {
   id: SocialPlatform;
@@ -15,15 +16,18 @@ export type SocialPlatformConfig = {
 };
 
 export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
-  const [meta, linkedin] = await Promise.all([
+  const [meta, linkedin, x] = await Promise.all([
     getMetaConnection().catch(() => null),
     getLinkedInConnection().catch(() => null),
+    getXConnection().catch(() => null),
   ]);
   const metaSetup = getMetaSetupState();
   const linkedinSetup = getLinkedInSetupState();
+  const xSetup = getXSetupState();
   const instagramConnected = Boolean(meta?.instagramBusinessAccountId && meta.pageAccessToken);
   const facebookConnected = Boolean(meta?.pageId && meta.pageAccessToken);
   const linkedinConnected = Boolean(linkedin?.accessToken && linkedin.authorUrn);
+  const xConnected = Boolean(x?.accessToken);
 
   return [
     {
@@ -59,7 +63,17 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       disconnectUrl: linkedinConnected ? "/api/integrations/linkedin/disconnect" : undefined,
       setupReady: linkedinSetup.appConfigured && linkedinSetup.storageReady,
     },
-    { id: "x", name: "X", short: "X", homeUrl: "https://x.com/", connected: Boolean(process.env.X_ACCESS_TOKEN && process.env.X_ACCESS_TOKEN_SECRET) },
+    {
+      id: "x",
+      name: "X",
+      short: "X",
+      homeUrl: x?.username ? `https://x.com/${x.username}` : "https://x.com/",
+      connected: xConnected,
+      accountLabel: xConnected ? `@${x?.username || x?.name || "X account"}` : undefined,
+      connectUrl: "/api/integrations/x/connect",
+      disconnectUrl: xConnected ? "/api/integrations/x/disconnect" : undefined,
+      setupReady: xSetup.appConfigured && xSetup.storageReady,
+    },
     { id: "tiktok", name: "TikTok", short: "TT", homeUrl: "https://www.tiktok.com/", connected: Boolean(process.env.TIKTOK_ACCESS_TOKEN) },
     { id: "youtube", name: "YouTube", short: "YT", homeUrl: "https://www.youtube.com/", connected: Boolean(process.env.YOUTUBE_ACCESS_TOKEN) },
     { id: "pinterest", name: "Pinterest", short: "P", homeUrl: "https://www.pinterest.com/", connected: Boolean(process.env.PINTEREST_ACCESS_TOKEN) },
