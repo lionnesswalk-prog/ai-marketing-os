@@ -97,8 +97,7 @@ export async function POST(request: Request) {
 
       if (channel === "facebook") {
         try {
-          const result = await publishFacebook(common);
-          externalId = ("post_id" in result ? result.post_id : undefined) || result.id;
+          await publishFacebook(common);
           status = "published";
           published.push("Facebook");
         } catch (error) {
@@ -107,8 +106,7 @@ export async function POST(request: Request) {
         }
       } else if (channel === "instagram") {
         try {
-          const result = await publishInstagram(common);
-          externalId = result.id;
+          await publishInstagram(common);
           status = "published";
           published.push("Instagram");
         } catch (error) {
@@ -117,8 +115,7 @@ export async function POST(request: Request) {
         }
       } else if (channel === "linkedin") {
         try {
-          const result = await publishLinkedIn(common);
-          externalId = result.id;
+          await publishLinkedIn(common);
           status = "published";
           published.push("LinkedIn");
         } catch (error) {
@@ -127,8 +124,7 @@ export async function POST(request: Request) {
         }
       } else if (channel === "x") {
         try {
-          const result = await publishX(common);
-          externalId = result.id;
+          await publishX(common);
           status = "published";
           published.push("X");
         } catch (error) {
