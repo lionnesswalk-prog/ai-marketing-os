@@ -179,17 +179,56 @@ export async function createSocialPosts(input: {
   }));
 }
 
-export async function markSocialPostPublished(id: string, externalId: string) {
+export async function getSocialPostById(id: string): Promise<SocialPostView | null> {
+  if (!usePostgres()) return memoryStore.socialPosts.find((item) => item.id === id) ?? null;
+
+  const workspaceId = await databaseWorkspaceId();
+  const prisma = getPrisma();
+  const row = await prisma.socialPost.findFirst({ where: { id, brand: { is: { workspaceId } } } });
+  if (!row) return null;
+  const meta = row.metadataJson && typeof row.metadataJson === "object" ? row.metadataJson as Record<string, unknown> : {};
+  return {
+    id: row.id,
+    platform: row.platform as SocialPlatform,
+    contentType: row.contentType as SocialContentType,
+    title: row.title,
+    caption: row.caption,
+    status: row.status as SocialPostView["status"],
+    scheduledAt: row.scheduledAt?.toISOString(),
+    externalId: row.externalId ?? undefined,
+    mediaUrl: typeof meta.mediaUrl === "string" ? meta.mediaUrl : undefined,
+    linkUrl: typeof meta.linkUrl === "string" ? meta.linkUrl : undefined,
+    hashtags: typeof meta.hashtags === "string" ? meta.hashtags : undefined,
+    cta: typeof meta.cta === "string" ? meta.cta : undefined,
+    altText: typeof meta.altText === "string" ? meta.altText : undefined,
+  };
+}
+
+export async function updateSocialPostDelivery(
+  id: string,
+  status: SocialPostView["status"],
+  externalId?: string,
+) {
   if (!usePostgres()) {
     const post = memoryStore.socialPosts.find((item) => item.id === id);
-    if (post) post.status = "published";
-    return;
+    if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
+    post.status = status;
+    if (externalId) post.externalId = externalId;
+    return post;
   }
+
   const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
   const post = await prisma.socialPost.findFirst({ where: { id, brand: { is: { workspaceId } } } });
   if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
-  await prisma.socialPost.update({ where: { id }, data: { status: "published", externalId } });
+  await prisma.socialPost.update({
+    where: { id },
+    data: { status, ...(externalId ? { externalId } : {}) },
+  });
+}
+
+export async function markSocialPostPublished(id: string, externalId: string) {
+  return updateSocialPostDelivery(id, "published", externalId);
 }
 
 export async function listApprovals(): Promise<ApprovalView[]> {
