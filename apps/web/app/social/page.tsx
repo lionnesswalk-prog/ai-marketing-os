@@ -10,43 +10,43 @@ import { SocialQueueActions } from "../../components/SocialQueueActions";
 function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?: string, youtube?: string, pinterest?: string) {
   if (meta === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
   if (meta === "disconnected") return { tone: "success", text: "Meta connection removed." };
-  if (meta === "app-required") return { tone: "error", text: "Meta App ID and App Secret still need to be added to the production environment before account authorization can start." };
-  if (meta === "storage-required") return { tone: "error", text: "Secure Meta OAuth storage needs PostgreSQL plus AUTH_SECRET or INTEGRATION_ENCRYPTION_KEY before live account connection can be enabled." };
+  if (meta === "app-required") return { tone: "error", text: "Meta connection is not enabled by the platform administrator yet." };
+  if (meta === "storage-required") return { tone: "error", text: "Secure Meta connection storage is not enabled by the platform administrator yet." };
   if (meta === "cancelled") return { tone: "error", text: "Meta connection was cancelled before permissions were approved." };
   if (meta === "invalid-state") return { tone: "error", text: "Meta authorization could not be verified. Please start the connection again from this page." };
   if (meta === "failed") return { tone: "error", text: "Meta authorization failed. Check the Meta app permissions and redirect URL, then connect again." };
 
   if (linkedin === "connected") return { tone: "success", text: "LinkedIn connected successfully. Text and article-link posts can now publish directly from the Social Hub." };
   if (linkedin === "disconnected") return { tone: "success", text: "LinkedIn connection removed." };
-  if (linkedin === "setup-required") return { tone: "error", text: "LinkedIn connection needs PostgreSQL, secure integration encryption, and LinkedIn Client ID/Secret before authorization can start." };
+  if (linkedin === "setup-required") return { tone: "error", text: "LinkedIn connection is not enabled by the platform administrator yet." };
   if (linkedin === "cancelled") return { tone: "error", text: "LinkedIn connection was cancelled before permissions were approved." };
   if (linkedin === "invalid-state") return { tone: "error", text: "LinkedIn authorization could not be verified. Start the connection again from this page." };
   if (linkedin === "failed") return { tone: "error", text: "LinkedIn authorization failed. Check the LinkedIn app products, scopes and redirect URL, then connect again." };
 
   if (x === "connected") return { tone: "success", text: "X connected successfully. Text and link posts can now publish directly from the Social Hub." };
   if (x === "disconnected") return { tone: "success", text: "X connection removed." };
-  if (x === "setup-required") return { tone: "error", text: "X connection needs PostgreSQL, secure integration encryption, and an X Client ID before authorization can start." };
+  if (x === "setup-required") return { tone: "error", text: "X connection is not enabled by the platform administrator yet." };
   if (x === "cancelled") return { tone: "error", text: "X connection was cancelled before permissions were approved." };
   if (x === "invalid-state") return { tone: "error", text: "X authorization could not be verified. Start the connection again from this page." };
   if (x === "failed") return { tone: "error", text: "X authorization failed. Check the X app OAuth settings, scopes and callback URL, then connect again." };
 
   if (tiktok === "connected") return { tone: "success", text: "TikTok connected successfully. Video posts can be submitted directly after choosing the creator privacy setting." };
   if (tiktok === "disconnected") return { tone: "success", text: "TikTok connection removed." };
-  if (tiktok === "setup-required") return { tone: "error", text: "TikTok connection needs PostgreSQL, secure integration encryption, and TikTok Client Key/Secret before authorization can start." };
+  if (tiktok === "setup-required") return { tone: "error", text: "TikTok connection is not enabled by the platform administrator yet." };
   if (tiktok === "cancelled") return { tone: "error", text: "TikTok connection was cancelled before permissions were approved." };
   if (tiktok === "invalid-state") return { tone: "error", text: "TikTok authorization could not be verified. Start the connection again from this page." };
   if (tiktok === "failed") return { tone: "error", text: "TikTok authorization failed. Check the Content Posting API product, video.publish scope and redirect URL." };
 
   if (youtube === "connected") return { tone: "success", text: "YouTube connected successfully. Videos and Shorts can now be uploaded directly from the Social Hub." };
   if (youtube === "disconnected") return { tone: "success", text: "YouTube connection removed." };
-  if (youtube === "setup-required") return { tone: "error", text: "YouTube connection needs PostgreSQL, secure integration encryption, and Google OAuth Client ID/Secret before authorization can start." };
+  if (youtube === "setup-required") return { tone: "error", text: "YouTube connection is not enabled by the platform administrator yet." };
   if (youtube === "cancelled") return { tone: "error", text: "YouTube connection was cancelled before permissions were approved." };
   if (youtube === "invalid-state") return { tone: "error", text: "YouTube authorization could not be verified. Start the connection again from this page." };
   if (youtube === "failed") return { tone: "error", text: "YouTube authorization failed. Check the Google OAuth consent screen, YouTube Data API, scopes and redirect URL." };
 
   if (pinterest === "connected") return { tone: "success", text: "Pinterest connected successfully. Image Pins can now publish directly to a selected board." };
   if (pinterest === "disconnected") return { tone: "success", text: "Pinterest connection removed." };
-  if (pinterest === "setup-required") return { tone: "error", text: "Pinterest connection needs PostgreSQL, secure integration encryption, and Pinterest App ID/Secret before authorization can start." };
+  if (pinterest === "setup-required") return { tone: "error", text: "Pinterest connection is not enabled by the platform administrator yet." };
   if (pinterest === "cancelled") return { tone: "error", text: "Pinterest connection was cancelled before permissions were approved." };
   if (pinterest === "invalid-state") return { tone: "error", text: "Pinterest authorization could not be verified. Start the connection again from this page." };
   if (pinterest === "failed") return { tone: "error", text: "Pinterest authorization failed. Check app access, requested scopes and redirect URL." };
