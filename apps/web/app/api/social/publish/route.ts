@@ -87,6 +87,10 @@ export async function POST(request: Request) {
         ...common,
         platforms: input.platforms,
         status: input.action === "schedule" ? "scheduled" : "draft",
+        tiktokPrivacyLevel: input.tiktokPrivacyLevel,
+        youtubePrivacyStatus: input.youtubePrivacyStatus,
+        youtubeMadeForKids: input.youtubeMadeForKids,
+        pinterestBoardId: input.pinterestBoardId,
       });
       return NextResponse.json({
         ok: true,
@@ -182,7 +186,7 @@ export async function POST(request: Request) {
         queued.push(label);
       }
 
-      const [created] = await createSocialPosts({ ...common, platforms: [channel], status, externalId });
+      const [created] = await createSocialPosts({ ...common, platforms: [channel], status, externalId, tiktokPrivacyLevel: input.tiktokPrivacyLevel, youtubePrivacyStatus: input.youtubePrivacyStatus, youtubeMadeForKids: input.youtubeMadeForKids, pinterestBoardId: input.pinterestBoardId });
       posts.push(created);
     }
 
