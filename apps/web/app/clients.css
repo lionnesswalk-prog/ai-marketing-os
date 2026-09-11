@@ -19,3 +19,42 @@
 @media (max-width: 760px) {
   .client-grid { grid-template-columns: 1fr; }
 }
+
+.team-card { margin-top: 20px; display: grid; gap: 18px; }
+.team-head { margin-bottom: 0; }
+.team-invite-form { display: grid; grid-template-columns: minmax(0,1fr) 220px auto; gap: 10px; align-items: end; }
+.team-invite-form label { display: grid; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 760; }
+.team-invite-form input,
+.team-invite-form select,
+.team-member-actions select,
+.team-invite-link input {
+  width: 100%;
+  border: 1px solid rgba(24,25,24,.12);
+  background: rgba(255,255,255,.88);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 10px 11px;
+  outline: none;
+  font: inherit;
+  font-size: 10px;
+}
+.team-invite-link { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; padding: 11px; border: 1px solid rgba(114,103,240,.18); background: rgba(114,103,240,.055); border-radius: 12px; }
+.team-message { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.team-member-list,
+.pending-invites { display: grid; gap: 8px; }
+.pending-invites { padding-top: 7px; border-top: 1px solid var(--border); }
+.team-member { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 13px; border: 1px solid var(--border); border-radius: 11px; background: rgba(255,255,255,.55); }
+.team-member.pending { background: rgba(255,255,255,.36); }
+.team-member-copy { display: grid; gap: 4px; min-width: 0; }
+.team-member-copy strong { font-size: 11px; color: var(--ink); }
+.team-member-copy small { font-size: 9px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-member-actions { display: flex; align-items: center; gap: 8px; }
+.team-member-actions select { min-width: 150px; }
+.invite-card strong { text-transform: capitalize; color: var(--ink); }
+
+@media (max-width: 850px) {
+  .team-invite-form { grid-template-columns: 1fr; }
+  .team-invite-link { grid-template-columns: 1fr; }
+  .team-member { align-items: flex-start; flex-direction: column; }
+  .team-member-actions { width: 100%; display: grid; grid-template-columns: 1fr auto; }
+}
