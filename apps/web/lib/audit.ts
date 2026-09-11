@@ -54,6 +54,9 @@ function eventLabel(action: string) {
     member_role_updated: "Member role changed",
     member_access_revoked: "Member access revoked",
     brand_profile_updated: "Brand profile updated",
+    billing_checkout_started: "Billing checkout started",
+    billing_portal_opened: "Billing portal opened",
+    billing_subscription_synced: "Subscription status updated",
   };
   return labels[action] || action.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
@@ -82,6 +85,16 @@ function eventDetail(action: string, rawPayload: unknown) {
   if (action === "member_access_revoked") return email ? "Access revoked for " + email : "Workspace access revoked";
   if (action === "enter_workspace") return workspaceName ? "Entered " + workspaceName + " from agency control" : "Agency workspace opened";
   if (action === "brand_profile_updated") return brandName ? brandName + " AI context updated" : "Brand AI context updated";
+  if (action === "billing_checkout_started") {
+    const planKey = typeof payload.planKey === "string" ? payload.planKey : "selected";
+    return "Stripe Checkout started for " + planKey + " plan";
+  }
+  if (action === "billing_portal_opened") return "Stripe Customer Portal opened";
+  if (action === "billing_subscription_synced") {
+    const planKey = typeof payload.planKey === "string" ? payload.planKey : undefined;
+    const status = typeof payload.status === "string" ? payload.status : undefined;
+    return [planKey, status].filter(Boolean).join(" · ") || "Stripe subscription synchronized";
+  }
   return "Security-relevant workspace activity";
 }
 
