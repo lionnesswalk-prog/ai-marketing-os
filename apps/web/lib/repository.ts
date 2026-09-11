@@ -92,6 +92,7 @@ export async function listSocialPosts(): Promise<SocialPostView[]> {
       caption: row.caption,
       status: row.status as SocialPostView["status"],
       scheduledAt: row.scheduledAt?.toISOString(),
+      externalId: row.externalId ?? undefined,
       mediaUrl: typeof meta.mediaUrl === "string" ? meta.mediaUrl : undefined,
       linkUrl: typeof meta.linkUrl === "string" ? meta.linkUrl : undefined,
       hashtags: typeof meta.hashtags === "string" ? meta.hashtags : undefined,
@@ -106,8 +107,9 @@ export async function createSocialPosts(input: {
   contentType: SocialContentType;
   title: string;
   caption: string;
-  status: "draft" | "scheduled" | "published";
+  status: "draft" | "scheduled" | "publishing" | "published" | "failed";
   scheduledAt?: string;
+  externalId?: string;
   mediaUrl?: string;
   linkUrl?: string;
   hashtags?: string;
@@ -122,6 +124,7 @@ export async function createSocialPosts(input: {
     caption: input.caption,
     status: input.status,
     scheduledAt: input.scheduledAt,
+    externalId: input.externalId,
     mediaUrl: input.mediaUrl,
     linkUrl: input.linkUrl,
     hashtags: input.hashtags,
@@ -148,6 +151,7 @@ export async function createSocialPosts(input: {
       caption: input.caption,
       status: input.status,
       scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+      externalId: input.externalId || null,
       metadataJson: {
         mediaUrl: input.mediaUrl || null,
         linkUrl: input.linkUrl || null,
@@ -166,6 +170,7 @@ export async function createSocialPosts(input: {
     caption: row.caption,
     status: row.status as SocialPostView["status"],
     scheduledAt: row.scheduledAt?.toISOString(),
+    externalId: row.externalId ?? undefined,
     mediaUrl: input.mediaUrl,
     linkUrl: input.linkUrl,
     hashtags: input.hashtags,
