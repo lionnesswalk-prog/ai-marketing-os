@@ -7,7 +7,8 @@ import { TikTokStatusButton } from "../../components/TikTokStatusButton";
 import { YouTubeStatusButton } from "../../components/YouTubeStatusButton";
 import { SocialQueueActions } from "../../components/SocialQueueActions";
 
-function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?: string, youtube?: string, pinterest?: string) {
+function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?: string, youtube?: string, pinterest?: string, access?: string) {
+  if (access === "forbidden") return { tone: "error", text: "Your workspace role cannot connect, disconnect, publish, or modify social accounts." };
   if (meta === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
   if (meta === "disconnected") return { tone: "success", text: "Meta connection removed." };
   if (meta === "app-required") return { tone: "error", text: "Meta connection is not enabled by the platform administrator yet." };
@@ -56,11 +57,11 @@ function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?
 export default async function SocialPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ meta?: string; linkedin?: string; x?: string; tiktok?: string; youtube?: string; pinterest?: string }>;
+  searchParams?: Promise<{ meta?: string; linkedin?: string; x?: string; tiktok?: string; youtube?: string; pinterest?: string; access?: string }>;
 }) {
   await requireSession();
   const params = searchParams ? await searchParams : undefined;
-  const notice = integrationNotice(params?.meta, params?.linkedin, params?.x, params?.tiktok, params?.youtube, params?.pinterest);
+  const notice = integrationNotice(params?.meta, params?.linkedin, params?.x, params?.tiktok, params?.youtube, params?.pinterest, params?.access);
   const [scheduled, platforms] = await Promise.all([
     listSocialPosts(),
     getSocialPlatforms(),
