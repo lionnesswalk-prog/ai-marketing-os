@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSession } from "../../../../lib/auth";
+import { canManageMarketing, getSession } from "../../../../lib/auth";
 import { createSocialPosts } from "../../../../lib/repository";
 import { publishFacebook, publishInstagram } from "../../../../lib/meta-integration";
 import { publishLinkedIn } from "../../../../lib/linkedin-integration";
@@ -57,7 +57,9 @@ function friendlyPublishError(error: unknown, platformName: string) {
 }
 
 export async function POST(request: Request) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!canManageMarketing(session.role)) return NextResponse.json({ error: "Your role cannot publish or schedule social content." }, { status: 403 });
 
   const parsed = publishRequest.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
