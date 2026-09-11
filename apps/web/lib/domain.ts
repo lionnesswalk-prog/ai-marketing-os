@@ -31,8 +31,9 @@ export type SocialPostView = {
   contentType: SocialContentType;
   title: string;
   caption: string;
-  status: "draft" | "scheduled" | "published";
+  status: "draft" | "scheduled" | "publishing" | "published" | "failed";
   scheduledAt?: string;
+  externalId?: string;
   mediaUrl?: string;
   linkUrl?: string;
   hashtags?: string;
