@@ -54,7 +54,9 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
 
     {message&&<div className={"profile-notice "+message.tone}>{message.text}</div>}
     {billingStateNotice&&<div className={"profile-notice "+billingStateNotice.tone}>{billingStateNotice.text}</div>}
-    {!setup.webhookConfigured&&<div className="profile-notice error">Stripe webhook secret is not configured yet. Automatic subscription synchronization is not production-ready.</div>}
+    {!setup.paymentsEnabled
+      ? <div className="profile-notice">Payment gateway is deferred for now. Usage, plan definitions and feature entitlements remain active; checkout is intentionally disabled.</div>
+      : !setup.webhookConfigured&&<div className="profile-notice error">Payment webhook secret is not configured yet. Automatic subscription synchronization is not production-ready.</div>}
 
     <section>
       <div className="section-head">
@@ -91,7 +93,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
             <div className="billing-features">{plan.features.map((feature)=><span key={feature}>✓ {feature}</span>)}</div>
             {!active&&<BillingActions
               planKey={plan.key}
-              checkoutEnabled={Boolean(plan.priceId&&setup.checkoutConfigured&&!manageExistingSubscription)}
+              checkoutEnabled={Boolean(setup.paymentsEnabled&&plan.priceId&&setup.checkoutConfigured&&!manageExistingSubscription)}
               canManage={canManage}
               showPortal={manageExistingSubscription&&Boolean(billing.subscription?.customerId)}
               portalLabel="Change plan in Stripe"
