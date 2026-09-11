@@ -52,10 +52,15 @@ function allowSharedEnv() {
   return process.env.ALLOW_SHARED_ENV_INTEGRATIONS === "true" || !usePostgres();
 }
 
-async function currentBrand() {
+async function currentBrand(brandId?: string) {
+  const prisma = getPrisma();
+  if (brandId) {
+    const brand = await prisma.brand.findUnique({ where: { id: brandId } });
+    if (!brand) throw new Error("BRAND_NOT_FOUND");
+    return brand;
+  }
   const session = await getSession();
   if (!session?.workspaceId) throw new Error("WORKSPACE_SESSION_REQUIRED");
-  const prisma = getPrisma();
   const brand = await prisma.brand.findFirst({
     where: { workspaceId: session.workspaceId },
     orderBy: { createdAt: "asc" },
@@ -227,7 +232,7 @@ async function refreshDatabaseToken(connectionId: string, refreshToken: string) 
   };
 }
 
-export async function getYouTubeConnection(): Promise<YouTubeConnection | null> {
+export async function getYouTubeConnection(brandId?: string): Promise<YouTubeConnection | null> {
   if (allowSharedEnv() && process.env.YOUTUBE_ACCESS_TOKEN) {
     return {
       source: "env",
@@ -240,7 +245,7 @@ export async function getYouTubeConnection(): Promise<YouTubeConnection | null> 
 
   if (!storageReady()) return null;
   const prisma = getPrisma();
-  const brand = await currentBrand();
+  const brand = await currentBrand(brandId);
   const row = await prisma.integrationConnection.findUnique({
     where: { brandId_provider: { brandId: brand.id, provider: "youtube" } },
   });
@@ -301,8 +306,8 @@ export async function publishYouTube(input: {
   contentType: string;
   privacyStatus?: YouTubePrivacyStatus;
   madeForKids?: boolean;
-}) {
-  const connection = await getYouTubeConnection();
+}, brandId?: string) {
+  const connection = await getYouTubeConnection(brandId);
   if (!connection) throw new Error("YOUTUBE_NOT_CONNECTED");
   if (!input.mediaUrl) throw new Error("YOUTUBE_MEDIA_REQUIRED");
   if (!["video", "short", "reel"].includes(input.contentType)) throw new Error("YOUTUBE_FORMAT_NOT_READY");
