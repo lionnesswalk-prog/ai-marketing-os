@@ -1,9 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { SocialPlatform, SocialContentType } from "../lib/domain";
 import type { SocialPlatformConfig } from "../lib/social-platforms";
+
+type TikTokCreatorInfo = {
+  creatorUsername?: string;
+  creatorNickname?: string;
+  privacyLevelOptions: string[];
+};
+
+const privacyLabels: Record<string, string> = {
+  PUBLIC_TO_EVERYONE: "Public",
+  MUTUAL_FOLLOW_FRIENDS: "Friends",
+  FOLLOWER_OF_CREATOR: "Followers",
+  SELF_ONLY: "Only me",
+};
 
 export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig[] }) {
   const router = useRouter();
@@ -20,15 +33,55 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [tiktokCreator, setTikTokCreator] = useState<TikTokCreatorInfo | null>(null);
+  const [tiktokPrivacyLevel, setTikTokPrivacyLevel] = useState("");
+  const [tiktokLoading, setTikTokLoading] = useState(false);
 
   const selectedConfigs = useMemo(() => platforms.filter((item) => selected.includes(item.id)), [platforms, selected]);
   const allConnected = selectedConfigs.length > 0 && selectedConfigs.every((item) => item.connected);
+  const tiktokConnected = Boolean(platforms.find((item) => item.id === "tiktok")?.connected);
+  const tiktokSelected = selected.includes("tiktok");
+
+  useEffect(() => {
+    if (!tiktokSelected || !tiktokConnected) {
+      setTikTokCreator(null);
+      setTikTokPrivacyLevel("");
+      return;
+    }
+
+    const controller = new AbortController();
+    setTikTokLoading(true);
+    fetch("/api/integrations/tiktok/creator-info", { signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "Unable to load TikTok creator settings.");
+        return body.creator as TikTokCreatorInfo;
+      })
+      .then((creator) => {
+        setTikTokCreator(creator);
+        setTikTokPrivacyLevel((current) => creator.privacyLevelOptions.includes(current) ? current : "");
+      })
+      .catch((err) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setTikTokCreator(null);
+        setTikTokPrivacyLevel("");
+        setError(err instanceof Error ? err.message : "Unable to load TikTok creator settings.");
+      })
+      .finally(() => setTikTokLoading(false));
+
+    return () => controller.abort();
+  }, [tiktokConnected, tiktokSelected]);
 
   function togglePlatform(platform: SocialPlatform) {
     setSelected((current) => current.includes(platform) ? current.filter((item) => item !== platform) : [...current, platform]);
   }
 
   async function submit(action: "draft" | "schedule" | "publish") {
+    if (action === "publish" && tiktokSelected && tiktokConnected && !tiktokPrivacyLevel) {
+      setError("Choose a TikTok privacy level before publishing.");
+      return;
+    }
+
     setBusy(action);
     setMessage("");
     setError("");
@@ -46,6 +99,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
           linkUrl,
           altText,
           contentType,
+          tiktokPrivacyLevel: tiktokPrivacyLevel || undefined,
           scheduledAt: scheduledAt || undefined,
           action,
         }),
@@ -91,7 +145,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
             </article>
           ))}
         </div>
-        <p className="social-help">Meta can securely connect Facebook and Instagram; LinkedIn can connect through its OAuth flow. X, TikTok, YouTube and Pinterest remain in queue mode until their adapters are enabled.</p>
+        <p className="social-help">Meta, LinkedIn, X and TikTok have secure OAuth connection flows. YouTube and Pinterest remain in queue mode until their adapters are enabled.</p>
       </section>
 
       <form className="card social-composer" onSubmit={preventSubmit}>
@@ -123,6 +177,23 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
           <label>Media URL<input type="url" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} placeholder="https://... image or video" /></label>
           <label>Destination link<input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://lionesswalk.com/..." /></label>
         </div>
+
+        {tiktokSelected && tiktokConnected && (
+          <div className="social-form-grid">
+            <label>
+              TikTok privacy
+              <select value={tiktokPrivacyLevel} onChange={(e) => setTikTokPrivacyLevel(e.target.value)} disabled={tiktokLoading}>
+                <option value="">{tiktokLoading ? "Loading creator settings..." : "Choose privacy"}</option>
+                {(tiktokCreator?.privacyLevelOptions ?? []).map((level) => <option key={level} value={level}>{privacyLabels[level] ?? level}</option>)}
+              </select>
+            </label>
+            <label>
+              TikTok creator
+              <input value={tiktokCreator?.creatorNickname || tiktokCreator?.creatorUsername || "Connected creator"} readOnly aria-readonly="true" />
+            </label>
+          </div>
+        )}
+
         <label>Alt text<input value={altText} onChange={(e) => setAltText(e.target.value)} placeholder="Describe the image for accessibility" /></label>
         <label>Schedule time<input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} /></label>
 
@@ -132,7 +203,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
         <div className="social-actions">
           <button className="btn secondary" type="button" disabled={busy !== null || selected.length === 0} onClick={() => submit("draft")}>{busy === "draft" ? "Saving…" : "Save draft"}</button>
           <button className="btn secondary" type="button" disabled={busy !== null || selected.length === 0 || !scheduledAt} onClick={() => submit("schedule")}>{busy === "schedule" ? "Scheduling…" : "Schedule"}</button>
-          <button className="btn" type="button" disabled={busy !== null || selected.length === 0} onClick={() => submit("publish")}>{busy === "publish" ? "Publishing…" : "Publish now"}</button>
+          <button className="btn" type="button" disabled={busy !== null || selected.length === 0 || (tiktokSelected && tiktokConnected && (tiktokLoading || !tiktokPrivacyLevel))} onClick={() => submit("publish")}>{busy === "publish" ? "Publishing…" : "Publish now"}</button>
         </div>
       </form>
     </div>
