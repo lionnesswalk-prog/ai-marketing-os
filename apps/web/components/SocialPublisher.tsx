@@ -148,7 +148,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
           youtubePrivacyStatus: youtubePrivacyStatus,
           youtubeMadeForKids,
           pinterestBoardId: pinterestBoardId || undefined,
-          scheduledAt: scheduledAt || undefined,
+          scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
           action,
         }),
       });
