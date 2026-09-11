@@ -109,7 +109,7 @@ export async function recordAuditEvent(input: {
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId,
-      payload: input.payload,
+      payload: input.payload as any,
     },
   });
 }
