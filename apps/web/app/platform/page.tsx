@@ -55,9 +55,7 @@ export default async function PlatformPage() {
             {data.summary.runtimeReady ? "Production ready" : data.summary.blockers + " setup items"}
           </span>
         </div>
-        {data.stripe.deferred && <div className="profile-notice">Payment gateway setup is intentionally deferred. Plans, usage and entitlements remain available without blocking core SaaS production readiness.</div>}
-
-        {!data.stripe.deferred && <div className="platform-check-grid">
+        <div className="platform-check-grid">
           {data.checks.map((check) => (
             <article className="card platform-check" key={check.key}>
               <div className="platform-check-head">
@@ -68,7 +66,9 @@ export default async function PlatformPage() {
               <p>{check.detail}</p>
             </article>
           ))}
-        </div>}
+        </div>
+          </>
+        )}
       </section>
 
       <section>
@@ -79,6 +79,10 @@ export default async function PlatformPage() {
           </span>
         </div>
 
+        {data.stripe.deferred ? (
+          <div className="profile-notice">Payment gateway setup is intentionally deferred. Plans, usage and entitlements remain available without blocking core SaaS production readiness.</div>
+        ) : (
+          <>
         <div className="platform-check-grid">
           <article className="card platform-check">
             <div className="platform-check-head">
@@ -104,9 +108,9 @@ export default async function PlatformPage() {
             </div>
             <p>Signed Stripe lifecycle events keep subscription state synchronized and idempotent.</p>
           </article>
-        </div>}
+        </div>
 
-        {!data.stripe.deferred && <div className="billing-plan-grid">
+        <div className="billing-plan-grid">
           {data.stripe.prices.map((price) => (
             <article className={"card billing-plan " + (price.ready ? "active" : "")} key={price.planKey}>
               <div className="billing-plan-head">
