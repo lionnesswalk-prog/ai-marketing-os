@@ -420,3 +420,75 @@ export async function getTikTokPublishStatus(publishId: string): Promise<TikTokP
     downloadedBytes: body.data.downloaded_bytes,
   };
 }
+
+
+export async function fetchTikTokAnalytics() {
+  const connection = await getTikTokConnection();
+  if (!connection) throw new Error("TIKTOK_NOT_CONNECTED");
+
+  const profileUrl = new URL("https://open.tiktokapis.com/v2/user/info/");
+  profileUrl.searchParams.set("fields", "display_name,follower_count,following_count,likes_count,video_count");
+  const profileResponse = await fetch(profileUrl, {
+    headers: { Authorization: `Bearer ${connection.accessToken}` },
+    cache: "no-store",
+  });
+  const profileBody = await profileResponse.json().catch(() => ({})) as {
+    data?: { user?: {
+      display_name?: string;
+      follower_count?: number;
+      following_count?: number;
+      likes_count?: number;
+      video_count?: number;
+    } };
+    error?: { code?: string; message?: string };
+  };
+  if (!profileResponse.ok || profileBody.error?.code && profileBody.error.code !== "ok") {
+    const message = profileBody.error?.message || `TikTok analytics failed (${profileResponse.status})`;
+    throw new Error(message.includes("scope") ? "TIKTOK_ANALYTICS_PERMISSION_REQUIRED" : message);
+  }
+
+  const fields = "id,title,video_description,create_time,share_url,view_count,like_count,comment_count,share_count";
+  const videosResponse = await fetch(`https://open.tiktokapis.com/v2/video/list/?fields=${encodeURIComponent(fields)}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${connection.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ max_count: 12 }),
+    cache: "no-store",
+  });
+  const videosBody = await videosResponse.json().catch(() => ({})) as {
+    data?: { videos?: Array<{
+      id: string;
+      title?: string;
+      video_description?: string;
+      share_url?: string;
+      view_count?: number;
+      like_count?: number;
+      comment_count?: number;
+      share_count?: number;
+    }> };
+    error?: { code?: string; message?: string };
+  };
+  if (!videosResponse.ok || videosBody.error?.code && videosBody.error.code !== "ok") {
+    const message = videosBody.error?.message || `TikTok video analytics failed (${videosResponse.status})`;
+    throw new Error(message.includes("scope") ? "TIKTOK_ANALYTICS_PERMISSION_REQUIRED" : message);
+  }
+
+  const user = profileBody.data?.user || {};
+  return {
+    accountLabel: user.display_name || connection.displayName || "TikTok",
+    followers: Number(user.follower_count || 0),
+    likes: Number(user.likes_count || 0),
+    posts: Number(user.video_count || 0),
+    videos: (videosBody.data?.videos || []).map((video) => ({
+      id: video.id,
+      title: video.title || video.video_description || "TikTok video",
+      url: video.share_url,
+      views: Number(video.view_count || 0),
+      likes: Number(video.like_count || 0),
+      comments: Number(video.comment_count || 0),
+      shares: Number(video.share_count || 0),
+    })),
+  };
+}
