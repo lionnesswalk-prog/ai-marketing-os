@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { billingEntitlementsEnforced, billingLimitsEnforced, getBillingPlans, getBillingSetupState, getStripeCredentialMode, shouldManageSubscriptionInPortal, verifyStripeWebhook } from "../apps/web/lib/billing";
 
 const previous = {
+  paymentsEnabled: process.env.PAYMENTS_ENABLED,
   enforce: process.env.BILLING_ENFORCE_LIMITS,
   enforceEntitlements: process.env.BILLING_ENFORCE_ENTITLEMENTS,
   stripeSecret: process.env.STRIPE_SECRET_KEY,
@@ -16,6 +17,11 @@ const previous = {
 };
 
 try {
+  process.env.PAYMENTS_ENABLED = "false";
+  assert.equal(getBillingSetupState().paymentsEnabled, false);
+  process.env.PAYMENTS_ENABLED = "true";
+  assert.equal(getBillingSetupState().paymentsEnabled, true);
+
   process.env.BILLING_ENFORCE_LIMITS = "false";
   assert.equal(billingLimitsEnforced(), false);
   process.env.BILLING_ENFORCE_LIMITS = "true";
@@ -69,6 +75,7 @@ try {
 
   console.log("billing tests passed");
 } finally {
+  if (previous.paymentsEnabled === undefined) delete process.env.PAYMENTS_ENABLED; else process.env.PAYMENTS_ENABLED = previous.paymentsEnabled;
   if (previous.enforce === undefined) delete process.env.BILLING_ENFORCE_LIMITS; else process.env.BILLING_ENFORCE_LIMITS = previous.enforce;
   if (previous.enforceEntitlements === undefined) delete process.env.BILLING_ENFORCE_ENTITLEMENTS; else process.env.BILLING_ENFORCE_ENTITLEMENTS = previous.enforceEntitlements;
   if (previous.stripeSecret === undefined) delete process.env.STRIPE_SECRET_KEY; else process.env.STRIPE_SECRET_KEY = previous.stripeSecret;
