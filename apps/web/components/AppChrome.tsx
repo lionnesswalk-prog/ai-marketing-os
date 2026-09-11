@@ -62,7 +62,7 @@ export function AppChrome({
         <div className="nav-label">WORKSPACE</div>
         <nav>
           {nav.map(([href, label], index) => {
-            if (href === "/clients" && session?.role !== "admin") return null;
+            if (href === "/clients" && !session?.platformAdmin) return null;
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
               <a className={active ? "active" : undefined} href={href} key={href} aria-current={active ? "page" : undefined}>
