@@ -370,3 +370,48 @@ export async function publishTikTok(input: {
   }
   return { publishId: body.data.publish_id };
 }
+
+
+export type TikTokPublishStatus = {
+  status: "PROCESSING_UPLOAD" | "PROCESSING_DOWNLOAD" | "SEND_TO_USER_INBOX" | "PUBLISH_COMPLETE" | "FAILED" | string;
+  failReason?: string;
+  publiclyAvailablePostIds: string[];
+  uploadedBytes?: number;
+  downloadedBytes?: number;
+};
+
+export async function getTikTokPublishStatus(publishId: string): Promise<TikTokPublishStatus> {
+  const connection = await getTikTokConnection();
+  if (!connection) throw new Error("TIKTOK_NOT_CONNECTED");
+
+  const response = await fetch("https://open.tiktokapis.com/v2/post/publish/status/fetch/", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${connection.accessToken}`,
+      "Content-Type": "application/json; charset=UTF-8",
+    },
+    body: JSON.stringify({ publish_id: publishId }),
+    cache: "no-store",
+  });
+  const body = await response.json().catch(() => ({})) as {
+    data?: {
+      status?: string;
+      fail_reason?: string;
+      publicaly_available_post_id?: Array<string | number>;
+      uploaded_bytes?: number;
+      downloaded_bytes?: number;
+    };
+    error?: { code?: string; message?: string; log_id?: string };
+  };
+  if (!response.ok || body.error?.code && body.error.code !== "ok" || !body.data?.status) {
+    throw new Error(body.error?.message || body.error?.code || `TikTok status fetch failed (${response.status})`);
+  }
+
+  return {
+    status: body.data.status,
+    failReason: body.data.fail_reason,
+    publiclyAvailablePostIds: (body.data.publicaly_available_post_id || []).map(String),
+    uploadedBytes: body.data.uploaded_bytes,
+    downloadedBytes: body.data.downloaded_bytes,
+  };
+}
