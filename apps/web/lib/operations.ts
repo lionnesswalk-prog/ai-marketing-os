@@ -4,6 +4,7 @@ import { memoryStore } from "./memory-store";
 import { getPrisma } from "./prisma";
 import { getSocialPlatforms } from "./social-platforms";
 import { classifyQueueHealth } from "./operations-health";
+import { schedulerAuthReady, schedulerCadenceLabel, schedulerExternalEnabled } from "./scheduler-config";
 
 function metadata(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -47,6 +48,7 @@ export type OperationsOverview = {
   scheduler: {
     authenticated: boolean;
     cadence: string;
+    externalEnabled: boolean;
     manualRunAvailable: boolean;
   };
   providers: Array<{
@@ -124,8 +126,9 @@ export async function getOperationsOverview(session: AppSession): Promise<Operat
       nextScheduledAt: future[0]?.scheduledAt,
       oldestOverdueAt: overdue.sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())[0]?.scheduledAt,
       scheduler: {
-        authenticated: Boolean(process.env.CRON_SECRET),
-        cadence: "Daily cron · manual workspace run available",
+        authenticated: schedulerAuthReady(),
+        cadence: schedulerCadenceLabel(),
+        externalEnabled: schedulerExternalEnabled(),
         manualRunAvailable: true,
       },
       providers,
@@ -204,8 +207,9 @@ export async function getOperationsOverview(session: AppSession): Promise<Operat
     nextScheduledAt: iso(nextScheduled?.scheduledAt),
     oldestOverdueAt: iso(oldestOverdue?.scheduledAt),
     scheduler: {
-      authenticated: Boolean(process.env.CRON_SECRET),
-      cadence: "Daily cron · manual workspace run available",
+      authenticated: schedulerAuthReady(),
+      cadence: schedulerCadenceLabel(),
+      externalEnabled: schedulerExternalEnabled(),
       manualRunAvailable: true,
     },
     providers,

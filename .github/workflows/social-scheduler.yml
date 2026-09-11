@@ -1,0 +1,41 @@
+name: Social Scheduler
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-scheduler
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check scheduler configuration
+        id: config
+        env:
+          APP_URL: ${{ vars.SCHEDULER_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "Scheduler is inactive until SCHEDULER_APP_URL variable and CRON_SECRET secret are configured."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run social publisher
+        if: steps.config.outputs.ready == 'true'
+        env:
+          APP_URL: ${{ vars.SCHEDULER_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          base="${APP_URL%/}"
+          curl --fail-with-body --silent --show-error             --retry 2             --retry-all-errors             --max-time 55             -X POST             -H "Authorization: Bearer $CRON_SECRET"             -H "X-Scheduler-Source: github-actions"             "$base/api/scheduler/publish-social"

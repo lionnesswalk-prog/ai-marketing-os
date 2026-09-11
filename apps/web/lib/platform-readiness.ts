@@ -6,6 +6,7 @@ import { getTikTokSetupState } from "./tiktok-integration";
 import { getYouTubeSetupState } from "./youtube-integration";
 import { getPinterestSetupState } from "./pinterest-integration";
 import { getBillingSetupState, verifyStripeProductionConfiguration } from "./billing";
+import { schedulerAuthReady, schedulerCadenceLabel } from "./scheduler-config";
 
 export type PlatformCheck = {
   key: string;
@@ -98,10 +99,10 @@ export async function getPlatformReadiness() {
     {
       key: "scheduler-auth",
       label: "Scheduler authentication",
-      ready: Boolean(process.env.CRON_SECRET),
-      detail: process.env.CRON_SECRET
-        ? "CRON_SECRET protects scheduled publishing invocations. Current Vercel cron cadence remains daily until a higher-frequency scheduler is connected."
-        : "Set CRON_SECRET before enabling production scheduled publishing.",
+      ready: schedulerAuthReady(),
+      detail: schedulerAuthReady()
+        ? "CRON_SECRET protects scheduler invocations. " + schedulerCadenceLabel() + "."
+        : "Set CRON_SECRET before enabling Vercel or external scheduled publishing.",
     },
   ];
 
