@@ -23,15 +23,19 @@ async function createClientAction(formData: FormData) {
 
   if (workspaceName.length < 2 || brandName.length < 2) redirect("/clients?status=invalid");
 
+  let createdId = "";
   try {
     const created = await createClientWorkspace(session, { workspaceName, brandName });
+    createdId = created.id;
     await switchWorkspace(session, created.id);
-    redirect("/dashboard");
   } catch (error) {
     if (error instanceof Error && error.message === "DATABASE_MODE_REQUIRED") redirect("/clients?status=database");
     if (error instanceof Error && error.message === "WORKSPACE_CREATE_FORBIDDEN") redirect("/clients?status=forbidden");
     redirect("/clients?status=failed");
   }
+
+  if (createdId) redirect("/dashboard");
+  redirect("/clients?status=failed");
 }
 
 async function openClientAction(formData: FormData) {
