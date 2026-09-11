@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { runScheduledPublisher } from "../../../../lib/scheduled-publisher";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
@@ -18,6 +18,7 @@ export async function GET(request: Request) {
   }
 
   try {
+    const { runScheduledPublisher } = await import("../../../../lib/scheduled-publisher");
     const result = await runScheduledPublisher(3);
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
