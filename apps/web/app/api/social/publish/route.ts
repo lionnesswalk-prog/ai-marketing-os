@@ -5,6 +5,7 @@ import { createSocialPosts } from "../../../../lib/repository";
 import { publishFacebook, publishInstagram } from "../../../../lib/meta-integration";
 import { publishLinkedIn } from "../../../../lib/linkedin-integration";
 import { publishX } from "../../../../lib/x-integration";
+import { publishTikTok } from "../../../../lib/tiktok-integration";
 
 const platform = z.enum(["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest"]);
 const contentType = z.enum(["reel", "carousel", "static", "story", "video", "short"]);
@@ -19,19 +20,25 @@ const publishRequest = z.object({
   mediaUrl: z.string().url().optional().or(z.literal("")),
   linkUrl: z.string().url().optional().or(z.literal("")),
   altText: z.string().max(1000).optional(),
+  tiktokPrivacyLevel: z.enum(["PUBLIC_TO_EVERYONE", "MUTUAL_FOLLOW_FRIENDS", "FOLLOWER_OF_CREATOR", "SELF_ONLY"]).optional(),
   scheduledAt: z.string().optional(),
   action: z.enum(["draft", "schedule", "publish"]),
 });
 
 function friendlyPublishError(error: unknown, platformName: string) {
   const message = error instanceof Error ? error.message : "Unknown publishing error";
-  if (["FACEBOOK_NOT_CONNECTED", "INSTAGRAM_NOT_CONNECTED", "LINKEDIN_NOT_CONNECTED", "X_NOT_CONNECTED"].includes(message)) {
+  if (["FACEBOOK_NOT_CONNECTED", "INSTAGRAM_NOT_CONNECTED", "LINKEDIN_NOT_CONNECTED", "X_NOT_CONNECTED", "TIKTOK_NOT_CONNECTED"].includes(message)) {
     return `${platformName} is not connected yet.`;
   }
   if (message === "INSTAGRAM_MEDIA_REQUIRED") return "Instagram needs a public image or video URL before it can publish.";
   if (message === "LINKEDIN_MEDIA_UPLOAD_NOT_READY") return "LinkedIn media upload is not enabled yet; the post stayed safely in the queue.";
   if (message === "X_MEDIA_UPLOAD_NOT_READY") return "X media upload is not enabled yet; the post stayed safely in the queue.";
   if (message === "X_TEXT_REQUIRED") return "X needs post text before publishing.";
+  if (message === "TIKTOK_MEDIA_REQUIRED") return "TikTok needs a public video URL before publishing.";
+  if (message === "TIKTOK_PRIVACY_REQUIRED") return "Choose a TikTok privacy level before publishing.";
+  if (message === "TIKTOK_PRIVACY_NOT_ALLOWED") return "The selected TikTok privacy level is not currently allowed for this creator.";
+  if (message.includes("url_ownership_unverified")) return "TikTok requires the media URL domain or URL prefix to be verified in the TikTok developer app.";
+  if (message.includes("unaudited_client")) return "TikTok app audit is required for broader public posting; unaudited clients are restricted.";
   if (message.endsWith("FORMAT_NOT_READY")) return `${platformName} publishing for this format is still queued.`;
   if (message === "INSTAGRAM_MEDIA_STILL_PROCESSING") return "Instagram is still processing the video. The post was kept in the queue so it can be retried safely.";
   return `${platformName}: ${message}`;
@@ -121,6 +128,15 @@ export async function POST(request: Request) {
         } catch (error) {
           queued.push("X");
           warnings.push(friendlyPublishError(error, "X"));
+        }
+      } else if (channel === "tiktok") {
+        try {
+          await publishTikTok({ ...common, privacyLevel: input.tiktokPrivacyLevel });
+          status = "published";
+          published.push("TikTok");
+        } catch (error) {
+          queued.push("TikTok");
+          warnings.push(friendlyPublishError(error, "TikTok"));
         }
       } else {
         queued.push(label);
