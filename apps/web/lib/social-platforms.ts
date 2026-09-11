@@ -3,6 +3,7 @@ import { getMetaConnection, getMetaSetupState } from "./meta-integration";
 import { getLinkedInConnection, getLinkedInSetupState } from "./linkedin-integration";
 import { getXConnection, getXSetupState } from "./x-integration";
 import { getTikTokConnection, getTikTokSetupState } from "./tiktok-integration";
+import { getYouTubeConnection, getYouTubeSetupState } from "./youtube-integration";
 
 export type SocialPlatformConfig = {
   id: SocialPlatform;
@@ -17,21 +18,24 @@ export type SocialPlatformConfig = {
 };
 
 export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
-  const [meta, linkedin, x, tiktok] = await Promise.all([
+  const [meta, linkedin, x, tiktok, youtube] = await Promise.all([
     getMetaConnection().catch(() => null),
     getLinkedInConnection().catch(() => null),
     getXConnection().catch(() => null),
     getTikTokConnection().catch(() => null),
+    getYouTubeConnection().catch(() => null),
   ]);
   const metaSetup = getMetaSetupState();
   const linkedinSetup = getLinkedInSetupState();
   const xSetup = getXSetupState();
   const tiktokSetup = getTikTokSetupState();
+  const youtubeSetup = getYouTubeSetupState();
   const instagramConnected = Boolean(meta?.instagramBusinessAccountId && meta.pageAccessToken);
   const facebookConnected = Boolean(meta?.pageId && meta.pageAccessToken);
   const linkedinConnected = Boolean(linkedin?.accessToken && linkedin.authorUrn);
   const xConnected = Boolean(x?.accessToken);
   const tiktokConnected = Boolean(tiktok?.accessToken);
+  const youtubeConnected = Boolean(youtube?.accessToken);
 
   return [
     {
@@ -89,7 +93,17 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       disconnectUrl: tiktokConnected ? "/api/integrations/tiktok/disconnect" : undefined,
       setupReady: tiktokSetup.appConfigured && tiktokSetup.storageReady,
     },
-    { id: "youtube", name: "YouTube", short: "YT", homeUrl: "https://www.youtube.com/", connected: Boolean(process.env.YOUTUBE_ACCESS_TOKEN) },
+    {
+      id: "youtube",
+      name: "YouTube",
+      short: "YT",
+      homeUrl: youtube?.channelId ? `https://www.youtube.com/channel/${youtube.channelId}` : "https://www.youtube.com/",
+      connected: youtubeConnected,
+      accountLabel: youtubeConnected ? (youtube?.channelTitle || "YouTube channel") : undefined,
+      connectUrl: "/api/integrations/youtube/connect",
+      disconnectUrl: youtubeConnected ? "/api/integrations/youtube/disconnect" : undefined,
+      setupReady: youtubeSetup.appConfigured && youtubeSetup.storageReady,
+    },
     { id: "pinterest", name: "Pinterest", short: "P", homeUrl: "https://www.pinterest.com/", connected: Boolean(process.env.PINTEREST_ACCESS_TOKEN) },
   ];
 }
