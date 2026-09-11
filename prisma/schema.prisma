@@ -13,6 +13,7 @@ model Workspace {
   createdAt DateTime        @default(now())
   brands    Brand[]
   users     WorkspaceUser[]
+  accesses  WorkspaceAccess[]
 }
 
 model Brand {
@@ -43,8 +44,22 @@ model WorkspaceUser {
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  accesses     WorkspaceAccess[]
 
   @@unique([workspaceId, email])
+  @@index([workspaceId])
+}
+
+model WorkspaceAccess {
+  id          String        @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        String
+  createdAt   DateTime      @default(now())
+  user        WorkspaceUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
   @@index([workspaceId])
 }
 
