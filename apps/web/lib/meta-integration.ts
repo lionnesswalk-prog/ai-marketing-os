@@ -283,3 +283,74 @@ export async function publishInstagram(input: {
     access_token: connection.pageAccessToken,
   });
 }
+
+
+export async function fetchMetaAnalytics() {
+  const connection = await getMetaConnection();
+  if (!connection?.pageAccessToken) throw new Error("META_NOT_CONNECTED");
+
+  let facebook: {
+    accountLabel?: string;
+    followers?: number;
+    likes?: number;
+  } | null = null;
+
+  let instagram: {
+    accountLabel?: string;
+    followers?: number;
+    posts?: number;
+    media: Array<{
+      id: string;
+      title: string;
+      url?: string;
+      likes: number;
+      comments: number;
+    }>;
+  } | null = null;
+
+  if (connection.pageId) {
+    const pageUrl = new URL(`${graphBase}/${connection.pageId}`);
+    pageUrl.searchParams.set("fields", "name,followers_count,fan_count");
+    pageUrl.searchParams.set("access_token", connection.pageAccessToken);
+    const page = await graphJson<{ name?: string; followers_count?: number; fan_count?: number }>(pageUrl);
+    facebook = {
+      accountLabel: page.name || connection.pageName || "Facebook Page",
+      followers: Number(page.followers_count || 0),
+      likes: Number(page.fan_count || 0),
+    };
+  }
+
+  if (connection.instagramBusinessAccountId) {
+    const igUrl = new URL(`${graphBase}/${connection.instagramBusinessAccountId}`);
+    igUrl.searchParams.set("fields", "username,followers_count,media_count");
+    igUrl.searchParams.set("access_token", connection.pageAccessToken);
+    const profile = await graphJson<{ username?: string; followers_count?: number; media_count?: number }>(igUrl);
+
+    const mediaUrl = new URL(`${graphBase}/${connection.instagramBusinessAccountId}/media`);
+    mediaUrl.searchParams.set("fields", "id,caption,permalink,like_count,comments_count,timestamp,media_type");
+    mediaUrl.searchParams.set("limit", "12");
+    mediaUrl.searchParams.set("access_token", connection.pageAccessToken);
+    const media = await graphJson<{ data?: Array<{
+      id: string;
+      caption?: string;
+      permalink?: string;
+      like_count?: number;
+      comments_count?: number;
+    }> }>(mediaUrl);
+
+    instagram = {
+      accountLabel: profile.username ? `@${profile.username}` : connection.instagramUsername || "Instagram",
+      followers: Number(profile.followers_count || 0),
+      posts: Number(profile.media_count || 0),
+      media: (media.data || []).map((item) => ({
+        id: item.id,
+        title: item.caption?.trim().slice(0, 90) || "Instagram post",
+        url: item.permalink,
+        likes: Number(item.like_count || 0),
+        comments: Number(item.comments_count || 0),
+      })),
+    };
+  }
+
+  return { facebook, instagram };
+}
