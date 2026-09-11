@@ -14,6 +14,7 @@ model Workspace {
   brands    Brand[]
   users     WorkspaceUser[]
   accesses  WorkspaceAccess[]
+  invites   WorkspaceInvite[]
 }
 
 model Brand {
@@ -61,6 +62,22 @@ model WorkspaceAccess {
 
   @@unique([userId, workspaceId])
   @@index([workspaceId])
+}
+
+model WorkspaceInvite {
+  id          String    @id @default(cuid())
+  workspaceId String
+  email       String
+  role        String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, email, expiresAt])
 }
 
 model Campaign {
