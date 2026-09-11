@@ -47,3 +47,11 @@
   .team-member-actions { width: 100%; }
   .team-member-actions select { min-width: 0; flex: 1; }
 }
+
+.invite-card { max-width: 620px; }
+.invite-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 18px 0; }
+.invite-summary > div { display: grid; gap: 5px; padding: 11px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,.56); }
+.invite-summary span { color: var(--muted); font-size: 8px; letter-spacing: .08em; text-transform: uppercase; }
+.invite-summary strong { font-size: 10px; overflow-wrap: anywhere; text-transform: capitalize; }
+.invite-button-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; margin-top: 12px; }
+@media (max-width: 620px) { .invite-summary { grid-template-columns: 1fr; } }
