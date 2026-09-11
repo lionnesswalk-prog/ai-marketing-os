@@ -87,7 +87,7 @@ export function buildTikTokOAuthUrl(redirectUri: string, state: string) {
   if (!process.env.TIKTOK_CLIENT_KEY) throw new Error("TIKTOK_CLIENT_KEY_REQUIRED");
   const url = new URL("https://www.tiktok.com/v2/auth/authorize/");
   url.searchParams.set("client_key", process.env.TIKTOK_CLIENT_KEY);
-  url.searchParams.set("scope", "user.info.basic,video.publish");
+  url.searchParams.set("scope", "user.info.basic,user.info.stats,video.list,video.publish");
   url.searchParams.set("response_type", "code");
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("state", state);
