@@ -179,17 +179,20 @@ async function refreshDatabaseToken(connectionId: string, refreshToken: string) 
   const row = await prisma.integrationConnection.findUnique({ where: { id: connectionId } });
   if (!row?.metadataJson || typeof row.metadataJson !== "object") throw new Error("X_CONNECTION_NOT_FOUND");
   const current = row.metadataJson as Record<string, unknown>;
+  const nextMetadata = {
+    accessToken: encryptIntegrationSecret(token.access_token),
+    refreshToken: encryptIntegrationSecret(token.refresh_token || refreshToken),
+    expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null,
+    scope: token.scope || (typeof current.scope === "string" ? current.scope : null),
+    userId: typeof current.userId === "string" ? current.userId : null,
+    username: typeof current.username === "string" ? current.username : null,
+    name: typeof current.name === "string" ? current.name : null,
+    connectedAt: typeof current.connectedAt === "string" ? current.connectedAt : new Date().toISOString(),
+    refreshedAt: new Date().toISOString(),
+  };
   await prisma.integrationConnection.update({
     where: { id: connectionId },
-    data: {
-      metadataJson: {
-        ...current,
-        accessToken: encryptIntegrationSecret(token.access_token),
-        refreshToken: encryptIntegrationSecret(token.refresh_token || refreshToken),
-        expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000).toISOString() : null,
-        scope: token.scope || current.scope || null,
-      },
-    },
+    data: { metadataJson: nextMetadata },
   });
   return token.access_token;
 }
