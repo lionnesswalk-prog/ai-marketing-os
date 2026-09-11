@@ -1,10 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "../../lib/auth";
-import {
-  createClientWorkspace,
-  listAccessibleWorkspaces,
-  switchWorkspace,
-} from "../../lib/workspaces";
+import { createClientWorkspace, switchWorkspace } from "../../lib/workspaces";
+import { enterAgencyWorkspace, listAgencyClients } from "../../lib/agency";
 
 function notice(status?: string) {
   if (status === "created") return { tone: "success", text: "Client workspace created and opened." };
@@ -42,7 +39,7 @@ async function openClientAction(formData: FormData) {
   "use server";
   const session = await requireSession();
   const workspaceId = String(formData.get("workspaceId") ?? "");
-  await switchWorkspace(session, workspaceId);
+  await enterAgencyWorkspace(session, workspaceId);
   redirect("/dashboard");
 }
 
@@ -53,7 +50,7 @@ export default async function ClientsPage({
 }) {
   const session = await requireSession();
   if (!session.platformAdmin) redirect("/dashboard");
-  const workspaces = await listAccessibleWorkspaces(session);
+  const clients = await listAgencyClients(session);
   const params = searchParams ? await searchParams : undefined;
   const message = notice(params?.status);
 
@@ -66,7 +63,7 @@ export default async function ClientsPage({
           <p className="muted large">Each client gets an isolated brand workspace with its own social connections, content, analytics, leads and campaigns.</p>
         </div>
         <div className="hero-badges">
-          <span className="pill accent">{workspaces.length} workspaces</span>
+          <span className="pill accent">{clients.length} workspaces</span>
           <span className="pill">Tenant isolated</span>
         </div>
       </div>
@@ -88,25 +85,42 @@ export default async function ClientsPage({
 
         <section>
           <div className="section-head client-list-head">
-            <div><p className="eyebrow">YOUR CLIENTS</p><h2>Available workspaces</h2></div>
+            <div><p className="eyebrow">AGENCY OVERVIEW</p><h2>All client workspaces</h2></div>
           </div>
-          <div className="client-grid">
-            {workspaces.map((workspace) => (
-              <article className={`card client-card ${workspace.current ? "current" : ""}`} key={workspace.id}>
+          <div className="client-grid agency-client-grid">
+            {clients.map((client) => (
+              <article className={`card client-card agency-client-card ${client.current ? "current" : ""}`} key={client.workspaceId}>
                 <div className="client-card-head">
                   <div>
-                    <span className="client-brand-label">{workspace.brandName || "Brand"}</span>
-                    <h3>{workspace.name}</h3>
+                    <span className="client-brand-label">{client.brandName || "Brand"}</span>
+                    <h3>{client.workspaceName}</h3>
                   </div>
-                  <span className={workspace.current ? "pill accent" : "pill"}>{workspace.current ? "Active" : workspace.role}</span>
+                  <span className={client.current ? "pill accent" : "pill"}>{client.current ? "Active" : `${client.members} members`}</span>
                 </div>
-                <p className="muted">Social accounts, publishing, analytics and campaign data are isolated inside this workspace.</p>
-                {!workspace.current && (
-                  <form action={openClientAction}>
-                    <input type="hidden" name="workspaceId" value={workspace.id} />
-                    <button className="btn secondary" type="submit">Open client</button>
-                  </form>
-                )}
+
+                <div className="agency-client-stats">
+                  <div><span>Connected</span><strong>{client.connectedProviders.length}</strong></div>
+                  <div><span>Scheduled</span><strong>{client.scheduledPosts}</strong></div>
+                  <div><span>Failed</span><strong>{client.failedPosts}</strong></div>
+                  <div><span>Leads</span><strong>{client.leads}</strong></div>
+                  <div><span>Campaigns</span><strong>{client.campaigns}</strong></div>
+                </div>
+
+                <div className="agency-provider-row">
+                  {client.connectedProviders.length ? client.connectedProviders.map((provider) => (
+                    <span className="pill" key={provider}>{provider}</span>
+                  )) : <span className="muted">No social accounts connected yet.</span>}
+                </div>
+
+                <div className="agency-client-footer">
+                  <small>{client.lastActivityAt ? `Last social activity · ${new Date(client.lastActivityAt).toLocaleString("en-IN")}` : "No social activity yet"}</small>
+                  {!client.current && (
+                    <form action={openClientAction}>
+                      <input type="hidden" name="workspaceId" value={client.workspaceId} />
+                      <button className="btn secondary" type="submit">Open client</button>
+                    </form>
+                  )}
+                </div>
               </article>
             ))}
           </div>
