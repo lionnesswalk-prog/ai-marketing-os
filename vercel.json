@@ -7,7 +7,7 @@
   "crons": [
     {
       "path": "/api/scheduler/publish-social",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
