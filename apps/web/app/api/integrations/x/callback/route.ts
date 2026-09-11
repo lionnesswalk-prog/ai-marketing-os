@@ -5,12 +5,15 @@ import { exchangeXCode, saveXConnection } from "../../../../../lib/x-integration
 
 const STATE_COOKIE = "amos_x_oauth_state";
 const VERIFIER_COOKIE = "amos_x_oauth_verifier";
+const WORKSPACE_COOKIE = "amos_x_oauth_workspace";
 
 export async function GET(request: NextRequest) {
-  if (!(await getSession())) return NextResponse.redirect(new URL("/login", request.url));
+  const session = await getSession();
+  if (!session) return NextResponse.redirect(new URL("/login", request.url));
 
   const store = await cookies();
   const expectedState = store.get(STATE_COOKIE)?.value;
+  const expectedWorkspace = store.get(WORKSPACE_COOKIE)?.value;
   const verifier = store.get(VERIFIER_COOKIE)?.value;
   const returnedState = request.nextUrl.searchParams.get("state");
   const code = request.nextUrl.searchParams.get("code");
@@ -18,9 +21,10 @@ export async function GET(request: NextRequest) {
 
   store.set(STATE_COOKIE, "", { path: "/", maxAge: 0 });
   store.set(VERIFIER_COOKIE, "", { path: "/", maxAge: 0 });
+  store.set(WORKSPACE_COOKIE, "", { path: "/", maxAge: 0 });
 
   if (oauthError) return NextResponse.redirect(new URL("/social?x=cancelled", request.url));
-  if (!code || !verifier || !expectedState || !returnedState || returnedState !== expectedState) {
+  if (!code || !verifier || !expectedState || !expectedWorkspace || session.workspaceId !== expectedWorkspace || !returnedState || returnedState !== expectedState) {
     return NextResponse.redirect(new URL("/social?x=invalid-state", request.url));
   }
 
