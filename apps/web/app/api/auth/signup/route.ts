@@ -5,6 +5,7 @@ import { setSession } from "../../../../lib/auth";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
+  brandName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(200),
   password: z.string().min(8).max(200),
 });
@@ -12,7 +13,7 @@ const schema = z.object({
 export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Please enter a valid name, email and password of at least 8 characters." }, { status: 400 });
+    return NextResponse.json({ error: "Please enter a valid name, brand, email and password of at least 8 characters." }, { status: 400 });
   }
 
   try {
