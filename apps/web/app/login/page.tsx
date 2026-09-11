@@ -25,7 +25,7 @@ async function loginAction(formData: FormData) {
     redirect("/login?error=invalid");
   }
 
-  let destination = invite ? "/invite/" + encodeURIComponent(invite) : "/dashboard";
+  let destination = invite ? "/invite/" + encodeURIComponent(invite) : next;
   try {
     const session = await authenticateAccount({ email, password });
     await setSession(session);
@@ -41,7 +41,7 @@ async function loginAction(formData: FormData) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string; invite?: string }>;
+  searchParams?: Promise<{ error?: string; invite?: string; next?: string }>;
 }) {
   const mode = getAuthMode();
   const params = searchParams ? await searchParams : undefined;
