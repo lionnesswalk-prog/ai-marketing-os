@@ -116,15 +116,19 @@ export async function deliverSocialPost(post: any): Promise<DeliveryStatus> {
   }
 }
 
-export async function runScheduledPublisher(limit = 3) {
+export async function runScheduledPublisher(limit = 3, options?: { workspaceId?: string }) {
   if (process.env.DATA_BACKEND !== "postgres") {
     return { claimed: 0, published: 0, processing: 0, failed: 0, skipped: "postgres-required" };
   }
 
   const prisma = getPrisma();
+  const workspaceFilter = options?.workspaceId
+    ? { brand: { is: { workspaceId: options.workspaceId } } }
+    : {};
   const staleBefore = new Date(Date.now() - 15 * 60_000);
   const stale = await prisma.socialPost.findMany({
     where: {
+      ...workspaceFilter,
       status: "publishing",
       externalId: null,
       updatedAt: { lte: staleBefore },
@@ -152,6 +156,7 @@ export async function runScheduledPublisher(limit = 3) {
 
   const due = await prisma.socialPost.findMany({
     where: {
+      ...workspaceFilter,
       status: "scheduled",
       scheduledAt: { lte: new Date() },
     },

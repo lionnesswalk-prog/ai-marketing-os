@@ -12,6 +12,7 @@ const nav = [
   ["/campaigns", "Campaigns"],
   ["/strategy", "AI Strategy"],
   ["/social", "Social Hub"],
+  ["/operations", "Operations"],
   ["/analytics", "Analytics"],
   ["/leads", "Leads"],
   ["/approvals", "Approvals"],
@@ -67,6 +68,7 @@ export function AppChrome({
         <nav>
           {nav.map(([href, label], index) => {
             if ((href === "/clients" || href === "/platform") && !session?.platformAdmin) return null;
+            if (href === "/operations" && session?.role !== "admin" && session?.role !== "marketing_manager") return null;
             if (href === "/security" && !session?.platformAdmin && session?.role !== "admin") return null;
             const active = pathname === href || pathname.startsWith(`${href}/`);
 

@@ -58,6 +58,7 @@ function eventLabel(action: string) {
     billing_checkout_started: "Billing checkout started",
     billing_portal_opened: "Billing portal opened",
     billing_subscription_synced: "Subscription status updated",
+    scheduler_manual_run: "Manual publishing run",
   };
   return labels[action] || action.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
@@ -96,6 +97,13 @@ function eventDetail(action: string, rawPayload: unknown) {
     const planKey = typeof payload.planKey === "string" ? payload.planKey : undefined;
     const status = typeof payload.status === "string" ? payload.status : undefined;
     return [planKey, status].filter(Boolean).join(" · ") || "Stripe subscription synchronized";
+  }
+  if (action === "scheduler_manual_run") {
+    const claimed = typeof payload.claimed === "number" ? payload.claimed : 0;
+    const published = typeof payload.published === "number" ? payload.published : 0;
+    const failed = typeof payload.failed === "number" ? payload.failed : 0;
+    const recovered = typeof payload.recovered === "number" ? payload.recovered : 0;
+    return claimed + " claimed · " + published + " published · " + failed + " failed · " + recovered + " stale recovered";
   }
   return "Security-relevant workspace activity";
 }
