@@ -5,6 +5,7 @@ import { listSocialPosts } from "../../lib/repository";
 import { getSocialPlatforms } from "../../lib/social-platforms";
 import { TikTokStatusButton } from "../../components/TikTokStatusButton";
 import { YouTubeStatusButton } from "../../components/YouTubeStatusButton";
+import { SocialQueueActions } from "../../components/SocialQueueActions";
 
 function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?: string, youtube?: string, pinterest?: string) {
   if (meta === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
@@ -104,6 +105,13 @@ export default async function SocialPage({
               <h3>{post.title}</h3>
               <p className="muted large">{post.caption || "No caption added yet."}</p>
               {post.hashtags && <p className="social-hashtags">{post.hashtags}</p>}
+              {post.status === "failed" && post.lastDeliveryError && (
+                <div className="queue-error">
+                  <strong>Last delivery error</strong>
+                  <span>{post.lastDeliveryError}</span>
+                  {post.lastDeliveryAttemptAt && <small>{new Date(post.lastDeliveryAttemptAt).toLocaleString("en-IN")}</small>}
+                </div>
+              )}
               <div className="social-queue-meta">
                 {post.cta && <span>CTA · {post.cta}</span>}
                 {post.scheduledAt && <span>Scheduled · {new Date(post.scheduledAt).toLocaleString("en-IN")}</span>}
@@ -111,6 +119,7 @@ export default async function SocialPage({
                 {post.linkUrl && <a href={post.linkUrl} target="_blank" rel="noreferrer">Open destination ↗</a>}
                 {post.platform === "tiktok" && post.status === "publishing" && post.externalId && <TikTokStatusButton postId={post.id} />}
                 {post.platform === "youtube" && post.status === "publishing" && post.externalId && <YouTubeStatusButton postId={post.id} />}
+                <SocialQueueActions postId={post.id} status={post.status} scheduledAt={post.scheduledAt} />
               </div>
             </article>
           ))}
