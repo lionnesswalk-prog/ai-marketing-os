@@ -3,6 +3,7 @@ import { canManageLeads, getSession } from "../../../../lib/auth";
 import { buildBrandAIContext, getCurrentBrandProfile } from "../../../../lib/brand-profile";
 import { z } from "zod";
 import { draftInquiryReply } from "../../../../../../packages/agents/src/runtime";
+import { assertBillingFeature } from "../../../../lib/billing";
 
 const inquiryRequest = z.object({
   message: z.string().min(1).max(4000),
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    await assertBillingFeature(session.workspaceId, "leadWorkspace");
     const profile = await getCurrentBrandProfile(session);
     const draft = await draftInquiryReply({
       ...parsed.data,
@@ -30,6 +32,9 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ mode: process.env.AI_MODE === "live" ? "live" : "mock", draft });
   } catch (error) {
+    if (error instanceof Error && error.message === "BILLING_FEATURE_NOT_ENTITLED") {
+      return NextResponse.json({ error: "Lead workspace is not included in the current plan." }, { status: 403 });
+    }
     console.error(error);
     return NextResponse.json({ error: "Inquiry drafting failed." }, { status: 500 });
   }
