@@ -42,6 +42,7 @@ model WorkspaceUser {
   name         String?
   passwordHash String?
   role         String
+  isPlatformAdmin Boolean @default(false)
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
