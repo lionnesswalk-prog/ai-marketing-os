@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev apps/web",
     "build": "next build apps/web",
@@ -14,7 +17,9 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx scripts/seed.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test:billing": "tsx tests/billing.test.ts",
+    "test": "npm run test:core && npm run test:billing"
   },
   "dependencies": {
     "@openai/agents": "latest",
