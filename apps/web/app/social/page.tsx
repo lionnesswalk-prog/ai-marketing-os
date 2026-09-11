@@ -6,7 +6,7 @@ import { getSocialPlatforms } from "../../lib/social-platforms";
 import { TikTokStatusButton } from "../../components/TikTokStatusButton";
 import { YouTubeStatusButton } from "../../components/YouTubeStatusButton";
 
-function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?: string, youtube?: string) {
+function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?: string, youtube?: string, pinterest?: string) {
   if (meta === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
   if (meta === "disconnected") return { tone: "success", text: "Meta connection removed." };
   if (meta === "app-required") return { tone: "error", text: "Meta App ID and App Secret still need to be added to the production environment before account authorization can start." };
@@ -42,17 +42,24 @@ function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?
   if (youtube === "cancelled") return { tone: "error", text: "YouTube connection was cancelled before permissions were approved." };
   if (youtube === "invalid-state") return { tone: "error", text: "YouTube authorization could not be verified. Start the connection again from this page." };
   if (youtube === "failed") return { tone: "error", text: "YouTube authorization failed. Check the Google OAuth consent screen, YouTube Data API, scopes and redirect URL." };
+
+  if (pinterest === "connected") return { tone: "success", text: "Pinterest connected successfully. Image Pins can now publish directly to a selected board." };
+  if (pinterest === "disconnected") return { tone: "success", text: "Pinterest connection removed." };
+  if (pinterest === "setup-required") return { tone: "error", text: "Pinterest connection needs PostgreSQL, secure integration encryption, and Pinterest App ID/Secret before authorization can start." };
+  if (pinterest === "cancelled") return { tone: "error", text: "Pinterest connection was cancelled before permissions were approved." };
+  if (pinterest === "invalid-state") return { tone: "error", text: "Pinterest authorization could not be verified. Start the connection again from this page." };
+  if (pinterest === "failed") return { tone: "error", text: "Pinterest authorization failed. Check app access, requested scopes and redirect URL." };
   return null;
 }
 
 export default async function SocialPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ meta?: string; linkedin?: string; x?: string; tiktok?: string; youtube?: string }>;
+  searchParams?: Promise<{ meta?: string; linkedin?: string; x?: string; tiktok?: string; youtube?: string; pinterest?: string }>;
 }) {
   await requireSession();
   const params = searchParams ? await searchParams : undefined;
-  const notice = integrationNotice(params?.meta, params?.linkedin, params?.x, params?.tiktok, params?.youtube);
+  const notice = integrationNotice(params?.meta, params?.linkedin, params?.x, params?.tiktok, params?.youtube, params?.pinterest);
   const [scheduled, platforms] = await Promise.all([
     listSocialPosts(),
     getSocialPlatforms(),
