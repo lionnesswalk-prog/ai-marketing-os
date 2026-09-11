@@ -146,3 +146,16 @@ export async function requireSession(): Promise<AppSession> {
 export function canDecideApprovals(role: AppRole) {
   return role === "admin" || role === "marketing_manager";
 }
+
+
+export function canManageMarketing(role: AppRole) {
+  return role === "admin" || role === "marketing_manager";
+}
+
+export function canManageLeads(role: AppRole) {
+  return role === "admin" || role === "marketing_manager" || role === "sales";
+}
+
+export function canManageIntegrations(role: AppRole) {
+  return role === "admin" || role === "marketing_manager";
+}
