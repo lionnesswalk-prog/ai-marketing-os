@@ -107,6 +107,24 @@ export async function createClientWorkspace(
       },
     });
 
+    const brand = workspace.brands[0];
+    if (brand) {
+      await tx.auditLog.create({
+        data: {
+          brandId: brand.id,
+          actorType: "platform_admin",
+          actorId: session.userId,
+          action: "client_workspace_created",
+          entityType: "Workspace",
+          entityId: workspace.id,
+          payload: {
+            workspaceName: workspace.name,
+            brandName: brand.name,
+          },
+        },
+      });
+    }
+
     return workspace;
   });
 

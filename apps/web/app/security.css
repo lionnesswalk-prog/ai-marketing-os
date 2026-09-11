@@ -1,0 +1,43 @@
+.security-page { width: 100%; }
+.security-hero { margin-bottom: 18px; }
+.security-metrics {
+  display: grid;
+  grid-template-columns: repeat(5,minmax(0,1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.security-metrics article { display: grid; gap: 9px; min-height: 105px; align-content: center; }
+.security-metrics span { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
+.security-metrics strong { font-size: 30px; letter-spacing: -.05em; }
+.security-posture-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.security-posture-card { display: grid; gap: 11px; }
+.security-posture-head { display: grid; grid-template-columns: 9px minmax(0,1fr) auto; align-items: center; gap: 9px; }
+.security-posture-head strong { font-size: 12px; }
+.security-posture-card p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
+.security-light { width: 9px; height: 9px; border-radius: 999px; }
+.security-light.ready { background: #8cb47f; box-shadow: 0 0 0 5px rgba(140,180,127,.10); }
+.security-light.missing { background: #bb7467; box-shadow: 0 0 0 5px rgba(187,116,103,.10); }
+.security-audit-list { display: grid; gap: 10px; }
+.security-event {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+}
+.security-event-main { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.security-event-main h3 { margin: 0; font-size: 13px; }
+.security-event-main p { margin: 5px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
+.security-event-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; }
+.security-event-meta span { color: var(--muted); font-size: 9px; }
+.security-event-time { display: grid; justify-items: end; gap: 5px; flex: 0 0 auto; }
+.security-event-time strong { font-size: 9px; color: var(--ink-soft); }
+.security-event-time span { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+@media (max-width: 1050px) {
+  .security-metrics { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media (max-width: 760px) {
+  .security-metrics, .security-posture-grid { grid-template-columns: 1fr; }
+  .security-event { flex-direction: column; }
+  .security-event-time { justify-items: start; }
+}

@@ -15,6 +15,7 @@ const nav = [
   ["/leads", "Leads"],
   ["/approvals", "Approvals"],
   ["/team", "Team"],
+  ["/security", "Security"],
   ["/clients", "Clients"],
   ["/platform", "Platform Setup"],
 ] as const;
@@ -64,6 +65,7 @@ export function AppChrome({
         <nav>
           {nav.map(([href, label], index) => {
             if ((href === "/clients" || href === "/platform") && !session?.platformAdmin) return null;
+            if (href === "/security" && !session?.platformAdmin && session?.role !== "admin") return null;
             const active = pathname === href || pathname.startsWith(`${href}/`);
 
             return (

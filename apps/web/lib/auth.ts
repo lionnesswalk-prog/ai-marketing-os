@@ -126,11 +126,23 @@ export async function getSession(): Promise<AppSession | null> {
             workspaceId: session.workspaceId,
           },
         },
+        include: {
+          user: {
+            select: {
+              email: true,
+              name: true,
+              isPlatformAdmin: true,
+            },
+          },
+        },
       });
       if (!access) return null;
       return {
         ...session,
+        email: access.user.email,
+        name: access.user.name ?? undefined,
         role: access.role as AppRole,
+        platformAdmin: access.user.isPlatformAdmin,
       };
     } catch {
       return null;

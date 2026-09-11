@@ -3,6 +3,7 @@ import type { AppRole, AppSession } from "./auth";
 import { setSession } from "./auth";
 import { hashPassword } from "./password";
 import { getPrisma } from "./prisma";
+import { recordAuditEvent } from "./audit";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const ROLES: AppRole[] = ["admin", "marketing_manager", "sales", "viewer"];
@@ -176,6 +177,20 @@ export async function createWorkspaceInvite(
     },
   });
 
+  await recordAuditEvent({
+    workspaceId: session.workspaceId,
+    actorType: session.platformAdmin ? "platform_admin" : "workspace_user",
+    actorId: session.userId,
+    action: "workspace_invite_created",
+    entityType: "WorkspaceInvite",
+    entityId: invite.id,
+    payload: {
+      email,
+      role: inviteRole,
+      expiresAt: invite.expiresAt.toISOString(),
+    },
+  });
+
   return {
     id: invite.id,
     token,
@@ -195,6 +210,15 @@ export async function revokeWorkspaceInvite(session: AppSession, inviteId: strin
   await prisma.workspaceInvite.update({
     where: { id: invite.id },
     data: { revokedAt: new Date() },
+  });
+  await recordAuditEvent({
+    workspaceId: session.workspaceId,
+    actorType: session.platformAdmin ? "platform_admin" : "workspace_user",
+    actorId: session.userId,
+    action: "workspace_invite_revoked",
+    entityType: "WorkspaceInvite",
+    entityId: invite.id,
+    payload: { email: invite.email, role: invite.role },
   });
 }
 
@@ -260,6 +284,16 @@ export async function acceptWorkspaceInvite(session: AppSession, token: string):
     }),
   ]);
 
+  await recordAuditEvent({
+    workspaceId: invite.workspaceId,
+    actorType: session.platformAdmin ? "platform_admin" : "workspace_user",
+    actorId: session.userId,
+    action: "workspace_invite_accepted",
+    entityType: "WorkspaceInvite",
+    entityId: invite.id,
+    payload: { email: invite.email, role: acceptedRole },
+  });
+
   const next: AppSession = {
     ...session,
     workspaceId: invite.workspaceId,
@@ -317,6 +351,16 @@ export async function registerFromWorkspaceInvite(input: {
     return user;
   });
 
+  await recordAuditEvent({
+    workspaceId: invite.workspaceId,
+    actorType: "workspace_user",
+    actorId: created.id,
+    action: "invite_account_created",
+    entityType: "WorkspaceUser",
+    entityId: created.id,
+    payload: { email: created.email, role: acceptedRole },
+  });
+
   const session: AppSession = {
     userId: created.id,
     workspaceId: invite.workspaceId,
@@ -343,6 +387,7 @@ export async function updateWorkspaceMemberRole(
         workspaceId: session.workspaceId,
       },
     },
+    include: { user: true },
   });
   if (!access) throw new Error("MEMBER_NOT_FOUND");
 
@@ -353,6 +398,19 @@ export async function updateWorkspaceMemberRole(
   await prisma.workspaceAccess.update({
     where: { id: access.id },
     data: { role: nextRole },
+  });
+  await recordAuditEvent({
+    workspaceId: session.workspaceId,
+    actorType: session.platformAdmin ? "platform_admin" : "workspace_user",
+    actorId: session.userId,
+    action: "member_role_updated",
+    entityType: "WorkspaceAccess",
+    entityId: access.id,
+    payload: {
+      email: access.user.email,
+      previousRole: access.role,
+      nextRole,
+    },
   });
 
   if (userId === session.userId) {
@@ -372,6 +430,7 @@ export async function removeWorkspaceMember(session: AppSession, userId: string)
         workspaceId: session.workspaceId,
       },
     },
+    include: { user: true },
   });
   if (!access) throw new Error("MEMBER_NOT_FOUND");
   if (access.role === "admin" && await activeAdminCount(session.workspaceId) <= 1) {
@@ -379,4 +438,13 @@ export async function removeWorkspaceMember(session: AppSession, userId: string)
   }
 
   await prisma.workspaceAccess.delete({ where: { id: access.id } });
+  await recordAuditEvent({
+    workspaceId: session.workspaceId,
+    actorType: session.platformAdmin ? "platform_admin" : "workspace_user",
+    actorId: session.userId,
+    action: "member_access_revoked",
+    entityType: "WorkspaceAccess",
+    entityId: access.id,
+    payload: { email: access.user.email, role: access.role },
+  });
 }
