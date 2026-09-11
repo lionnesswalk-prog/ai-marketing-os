@@ -115,6 +115,10 @@ export async function createSocialPosts(input: {
   hashtags?: string;
   cta?: string;
   altText?: string;
+  tiktokPrivacyLevel?: string;
+  youtubePrivacyStatus?: string;
+  youtubeMadeForKids?: boolean;
+  pinterestBoardId?: string;
 }): Promise<SocialPostView[]> {
   const created = input.platforms.map((platform, index) => ({
     id: `sp_${Date.now()}_${index}`,
@@ -158,6 +162,10 @@ export async function createSocialPosts(input: {
         hashtags: input.hashtags || null,
         cta: input.cta || null,
         altText: input.altText || null,
+        tiktokPrivacyLevel: input.tiktokPrivacyLevel || null,
+        youtubePrivacyStatus: input.youtubePrivacyStatus || null,
+        youtubeMadeForKids: input.youtubeMadeForKids ?? null,
+        pinterestBoardId: input.pinterestBoardId || null,
       },
     },
   })));
