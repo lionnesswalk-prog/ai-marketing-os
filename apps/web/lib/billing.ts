@@ -211,11 +211,19 @@ export async function assertBillingConnectionCapacity(workspaceId: string, provi
   }
 }
 
+export function getStripeCredentialMode() {
+  const secret=process.env.STRIPE_SECRET_KEY || "";
+  if(secret.startsWith("sk_live_")) return "live" as const;
+  if(secret.startsWith("sk_test_")) return "test" as const;
+  return secret ? "unknown" as const : "missing" as const;
+}
+
 export function getBillingSetupState() {
   const plans=getBillingPlans();
   const configuredPlans=plans.filter((item)=>Boolean(item.priceId)).map((item)=>item.key);
   return {
     stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+    stripeMode: getStripeCredentialMode(),
     checkoutConfigured: Boolean(process.env.STRIPE_SECRET_KEY && configuredPlans.length > 0),
     portalConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
     webhookConfigured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
@@ -312,6 +320,142 @@ async function stripeGet<T>(path:string):Promise<T> {
   const body=await response.json().catch(()=>({})) as T & {error?:{message?:string}};
   if(!response.ok) throw new Error(body.error?.message || "Stripe request failed.");
   return body;
+}
+
+type StripePriceVerification = {
+  planKey: BillingPlanKey;
+  planName: string;
+  configured: boolean;
+  reachable: boolean;
+  ready: boolean;
+  active?: boolean;
+  livemode?: boolean;
+  currency?: string;
+  unitAmount?: number | null;
+  recurringInterval?: string;
+  detail: string;
+};
+
+export async function verifyStripeProductionConfiguration() {
+  const setup=getBillingSetupState();
+  const expectedLive=process.env.VERCEL_ENV==="production" || process.env.NODE_ENV==="production";
+  const modeReady=!expectedLive || setup.stripeMode==="live";
+  const plans=getBillingPlans();
+
+  if(!setup.stripeConfigured){
+    return {
+      accountReachable:false,
+      accountReady:false,
+      mode:setup.stripeMode,
+      modeReady:false,
+      webhookReady:setup.webhookConfigured,
+      prices:plans.map((plan):StripePriceVerification=>({
+        planKey:plan.key,
+        planName:plan.name,
+        configured:Boolean(plan.priceId),
+        reachable:false,
+        ready:false,
+        detail:plan.priceId ? "Stripe secret key is missing, so this Price cannot be verified." : "Price ID is not configured.",
+      })),
+      allPricesReady:false,
+      ready:false,
+      accountDetail:"Stripe secret key is not configured.",
+    };
+  }
+
+  let accountReachable=false;
+  let accountReady=false;
+  let accountDetail="Unable to verify the Stripe account.";
+  try{
+    const account=await stripeGet<{
+      id:string;
+      charges_enabled?:boolean;
+      details_submitted?:boolean;
+      country?:string;
+      default_currency?:string;
+    }>("/v1/account");
+    accountReachable=true;
+    accountReady=Boolean(account.charges_enabled && account.details_submitted);
+    accountDetail=[
+      account.country ? "Country "+account.country : undefined,
+      account.default_currency ? "Default currency "+account.default_currency.toUpperCase() : undefined,
+      accountReady ? "charges enabled" : "account onboarding incomplete",
+    ].filter(Boolean).join(" · ");
+  }catch(error){
+    accountDetail=error instanceof Error ? error.message : "Stripe account verification failed.";
+  }
+
+  const prices=await Promise.all(plans.map(async (plan):Promise<StripePriceVerification>=>{
+    if(!plan.priceId){
+      return {
+        planKey:plan.key,
+        planName:plan.name,
+        configured:false,
+        reachable:false,
+        ready:false,
+        detail:"Price ID is not configured.",
+      };
+    }
+    try{
+      const price=await stripeGet<{
+        id:string;
+        active?:boolean;
+        livemode?:boolean;
+        currency?:string;
+        unit_amount?:number|null;
+        type?:string;
+        recurring?:{interval?:string}|null;
+      }>("/v1/prices/"+encodeURIComponent(plan.priceId));
+      const recurringInterval=price.recurring?.interval;
+      const ready=Boolean(
+        price.active &&
+        price.type==="recurring" &&
+        recurringInterval==="month" &&
+        (!expectedLive || price.livemode===true)
+      );
+      return {
+        planKey:plan.key,
+        planName:plan.name,
+        configured:true,
+        reachable:true,
+        ready,
+        active:Boolean(price.active),
+        livemode:Boolean(price.livemode),
+        currency:price.currency?.toUpperCase(),
+        unitAmount:price.unit_amount,
+        recurringInterval,
+        detail:[
+          price.active ? "active" : "inactive",
+          price.livemode ? "live" : "test",
+          price.currency ? price.currency.toUpperCase() : undefined,
+          price.type==="recurring" ? "recurring" : price.type,
+          recurringInterval ? recurringInterval+"ly" : undefined,
+        ].filter(Boolean).join(" · "),
+      };
+    }catch(error){
+      return {
+        planKey:plan.key,
+        planName:plan.name,
+        configured:true,
+        reachable:false,
+        ready:false,
+        detail:error instanceof Error ? error.message : "Unable to verify Stripe Price.",
+      };
+    }
+  }));
+
+  const allPricesReady=prices.every((item)=>item.ready);
+  return {
+    accountReachable,
+    accountReady,
+    accountDetail,
+    mode:setup.stripeMode,
+    modeReady,
+    webhookReady:setup.webhookConfigured,
+    prices,
+    allPricesReady,
+    ready:accountReachable && accountReady && modeReady && setup.webhookConfigured && allPricesReady,
+  };
 }
 
 export async function getWorkspaceBilling(session:AppSession) {

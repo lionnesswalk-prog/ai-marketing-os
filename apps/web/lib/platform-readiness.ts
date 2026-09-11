@@ -5,7 +5,7 @@ import { getXSetupState } from "./x-integration";
 import { getTikTokSetupState } from "./tiktok-integration";
 import { getYouTubeSetupState } from "./youtube-integration";
 import { getPinterestSetupState } from "./pinterest-integration";
-import { getBillingSetupState } from "./billing";
+import { getBillingSetupState, verifyStripeProductionConfiguration } from "./billing";
 
 export type PlatformCheck = {
   key: string;
@@ -40,7 +40,7 @@ function callback(path: string) {
   return publicOrigin() + path;
 }
 
-export function getPlatformReadiness() {
+export async function getPlatformReadiness() {
   const meta = getMetaSetupState();
   const linkedin = getLinkedInSetupState();
   const x = getXSetupState();
@@ -48,6 +48,7 @@ export function getPlatformReadiness() {
   const youtube = getYouTubeSetupState();
   const pinterest = getPinterestSetupState();
   const billing = getBillingSetupState();
+  const stripe = await verifyStripeProductionConfiguration();
 
   const checks: PlatformCheck[] = [
     {
@@ -91,6 +92,22 @@ export function getPlatformReadiness() {
       label: "Stripe Checkout",
       ready: billing.checkoutConfigured,
       detail: "Stripe secret key plus at least one plan Price ID are required before a workspace can start paid checkout.",
+    },
+    {
+      key: "billing-api",
+      label: "Stripe account verification",
+      ready: stripe.accountReachable && stripe.accountReady,
+      detail: stripe.accountDetail,
+    },
+    {
+      key: "billing-live-mode",
+      label: "Stripe production mode",
+      ready: stripe.modeReady,
+      detail: stripe.mode === "live"
+        ? "Live Stripe secret key is configured for production."
+        : stripe.mode === "test"
+          ? "Test-mode Stripe key detected. Replace it with a live key before accepting production payments."
+          : "Stripe key mode cannot be verified.",
     },
     {
       key: "billing-plan-prices",
@@ -198,6 +215,7 @@ export function getPlatformReadiness() {
     origin: publicOrigin(),
     checks,
     providers,
+    stripe,
     summary: {
       runtimeReady: readyChecks === checks.length,
       readyChecks,

@@ -10,7 +10,7 @@ export default async function PlatformPage() {
   const session = await requireSession();
   if (!session.platformAdmin) redirect("/dashboard");
 
-  const data = getPlatformReadiness();
+  const data = await getPlatformReadiness();
 
   return (
     <div className="platform-page">
@@ -65,6 +65,59 @@ export default async function PlatformPage() {
                 <span className={"health " + (check.ready ? "healthy" : "needs_action")}>{stateLabel(check.ready)}</span>
               </div>
               <p>{check.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="section-head">
+          <div><p className="eyebrow">STRIPE LIVE PREFLIGHT</p><h2>Payment configuration verification</h2></div>
+          <span className={"health " + (data.stripe.ready ? "healthy" : "needs_action")}>
+            {data.stripe.ready ? "Live payments ready" : "Setup required"}
+          </span>
+        </div>
+
+        <div className="platform-check-grid">
+          <article className="card platform-check">
+            <div className="platform-check-head">
+              <span className={"platform-status-dot " + (data.stripe.accountReady ? "ready" : "missing")} />
+              <strong>Stripe account</strong>
+              <span className={"health " + (data.stripe.accountReady ? "healthy" : "needs_action")}>{data.stripe.accountReady ? "Verified" : "Needs action"}</span>
+            </div>
+            <p>{data.stripe.accountDetail}</p>
+          </article>
+          <article className="card platform-check">
+            <div className="platform-check-head">
+              <span className={"platform-status-dot " + (data.stripe.modeReady ? "ready" : "missing")} />
+              <strong>Payment mode</strong>
+              <span className={"health " + (data.stripe.modeReady ? "healthy" : "needs_action")}>{data.stripe.mode}</span>
+            </div>
+            <p>Production should use Stripe live-mode credentials. Test-mode credentials remain useful only for non-production validation.</p>
+          </article>
+          <article className="card platform-check">
+            <div className="platform-check-head">
+              <span className={"platform-status-dot " + (data.stripe.webhookReady ? "ready" : "missing")} />
+              <strong>Webhook signing</strong>
+              <span className={"health " + (data.stripe.webhookReady ? "healthy" : "needs_action")}>{data.stripe.webhookReady ? "Configured" : "Missing"}</span>
+            </div>
+            <p>Signed Stripe lifecycle events keep subscription state synchronized and idempotent.</p>
+          </article>
+        </div>
+
+        <div className="billing-plan-grid">
+          {data.stripe.prices.map((price) => (
+            <article className={"card billing-plan " + (price.ready ? "active" : "")} key={price.planKey}>
+              <div className="billing-plan-head">
+                <div><p className="eyebrow">{price.planKey.toUpperCase()}</p><h3>{price.planName}</h3></div>
+                <span className={"health " + (price.ready ? "healthy" : "needs_action")}>{price.ready ? "Verified" : "Needs setup"}</span>
+              </div>
+              <p className="muted">{price.detail}</p>
+              <div className="billing-limit-grid">
+                <div><span>Reachable</span><strong>{price.reachable ? "Yes" : "No"}</strong></div>
+                <div><span>Currency</span><strong>{price.currency || "—"}</strong></div>
+                <div><span>Interval</span><strong>{price.recurringInterval || "—"}</strong></div>
+              </div>
             </article>
           ))}
         </div>

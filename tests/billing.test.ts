@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { billingEntitlementsEnforced, billingLimitsEnforced, getBillingPlans, getBillingSetupState, shouldManageSubscriptionInPortal, verifyStripeWebhook } from "../apps/web/lib/billing";
+import { billingEntitlementsEnforced, billingLimitsEnforced, getBillingPlans, getBillingSetupState, getStripeCredentialMode, shouldManageSubscriptionInPortal, verifyStripeWebhook } from "../apps/web/lib/billing";
 
 const previous = {
   enforce: process.env.BILLING_ENFORCE_LIMITS,
@@ -37,6 +37,7 @@ try {
   assert.equal(starter?.entitlements.includes("campaignDrafts"), false);
 
   process.env.STRIPE_SECRET_KEY = "sk_test_only";
+  assert.equal(getStripeCredentialMode(), "test");
   process.env.STRIPE_PRICE_GROWTH_MONTHLY = "price_test_growth";
   process.env.STRIPE_PRICE_SCALE_MONTHLY = "price_test_scale";
   const growth = getBillingPlans().find((plan) => plan.key === "growth");
@@ -46,6 +47,9 @@ try {
   assert.equal(setup.portalConfigured, true);
   assert.equal(setup.configuredPlanCount, 3);
   assert.equal(setup.allPlanPricesConfigured, true);
+  process.env.STRIPE_SECRET_KEY = "sk_live_only";
+  assert.equal(getStripeCredentialMode(), "live");
+  process.env.STRIPE_SECRET_KEY = "sk_test_only";
 
   assert.equal(shouldManageSubscriptionInPortal("active", "sub_test"), true);
   assert.equal(shouldManageSubscriptionInPortal("past_due", "sub_test"), true);
