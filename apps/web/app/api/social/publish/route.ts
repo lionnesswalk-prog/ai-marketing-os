@@ -8,7 +8,7 @@ import { publishX } from "../../../../lib/x-integration";
 import { publishTikTok } from "../../../../lib/tiktok-integration";
 import { publishYouTube } from "../../../../lib/youtube-integration";
 import { publishPinterest } from "../../../../lib/pinterest-integration";
-import { assertBillingSocialPostCapacity } from "../../../../lib/billing";
+import { assertBillingFeature, assertBillingSocialPostCapacity } from "../../../../lib/billing";
 
 const platform = z.enum(["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest"]);
 const contentType = z.enum(["reel", "carousel", "static", "story", "video", "short"]);
@@ -73,8 +73,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    await assertBillingFeature(session.workspaceId, "socialPublishing");
     await assertBillingSocialPostCapacity(session.workspaceId, input.platforms.length);
   } catch (error) {
+    if (error instanceof Error && error.message === "BILLING_FEATURE_NOT_ENTITLED") {
+      return NextResponse.json({
+        error: "Social publishing is not included in the current plan.",
+      }, { status: 403 });
+    }
     if (error instanceof Error && error.message === "BILLING_SOCIAL_POST_LIMIT") {
       return NextResponse.json({
         error: "This workspace has reached its monthly social-post plan limit. Upgrade the plan before creating more posts.",
