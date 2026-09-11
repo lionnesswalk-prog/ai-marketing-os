@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "../../lib/auth";
-import { listWorkspaceTeam } from "../../lib/workspace-invites";
-import { ClientTeamManager } from "../../components/ClientTeamManager";
 import {
   createClientWorkspace,
   listAccessibleWorkspaces,
@@ -12,7 +10,7 @@ function notice(status?: string) {
   if (status === "created") return { tone: "success", text: "Client workspace created and opened." };
   if (status === "invalid") return { tone: "error", text: "Enter a valid client and brand name." };
   if (status === "database") return { tone: "error", text: "Client workspaces require production database mode." };
-  if (status === "forbidden") return { tone: "error", text: "Only workspace admins can create client workspaces." };
+  if (status === "forbidden") return { tone: "error", text: "Only platform administrators can create client workspaces." };
   if (status === "failed") return { tone: "error", text: "Unable to create the client workspace." };
   return null;
 }
@@ -54,7 +52,8 @@ export default async function ClientsPage({
   searchParams?: Promise<{ status?: string }>;
 }) {
   const session = await requireSession();
-  const [workspaces, team] = await Promise.all([listAccessibleWorkspaces(session), listWorkspaceTeam(session)]);
+  if (!session.platformAdmin) redirect("/dashboard");
+  const workspaces = await listAccessibleWorkspaces(session);
   const params = searchParams ? await searchParams : undefined;
   const message = notice(params?.status);
 
@@ -82,9 +81,9 @@ export default async function ClientsPage({
           <form action={createClientAction}>
             <label>Client / workspace name<input name="workspaceName" minLength={2} required placeholder="Acme Fashion" /></label>
             <label>Brand name<input name="brandName" minLength={2} required placeholder="Acme" /></label>
-            <button className="btn" type="submit" disabled={session.role !== "admin"}>Create client workspace</button>
+            <button className="btn" type="submit" disabled={!session.platformAdmin}>Create client workspace</button>
           </form>
-          {session.role !== "admin" && <p className="muted">Only admins can add client workspaces.</p>}
+          {!session.platformAdmin && <p className="muted">Only platform administrators can add client workspaces.</p>}
         </section>
 
         <section>
@@ -114,11 +113,6 @@ export default async function ClientsPage({
         </section>
       </div>
 
-      <ClientTeamManager
-        members={team.members}
-        invites={team.invites}
-        canManage={session.role === "admin"}
-      />
     </div>
   );
 }
