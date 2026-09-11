@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { canManageMarketing, getSession } from "../../../lib/auth";
 import { createCampaignDraft, listCampaigns } from "../../../lib/repository";
+import { assertBillingFeature } from "../../../lib/billing";
 
 const campaignDraft = z.object({
   name: z.string().trim().min(2).max(120),
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    await assertBillingFeature(session.workspaceId, "campaignDrafts");
     const campaign = await createCampaignDraft(parsed.data);
     return NextResponse.json({
       ok: true,
@@ -34,6 +36,10 @@ export async function POST(request: Request) {
       message: "Campaign draft saved. No provider campaign was launched.",
     }, { status: 201 });
   } catch (error) {
+    const code = error instanceof Error ? error.message : "UNKNOWN";
+    if (code === "BILLING_FEATURE_NOT_ENTITLED") {
+      return NextResponse.json({ error: "Campaign drafts are not included in the current plan." }, { status: 403 });
+    }
     console.error(error);
     return NextResponse.json({ error: "Unable to create campaign draft." }, { status: 500 });
   }

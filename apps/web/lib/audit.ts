@@ -100,6 +100,50 @@ function eventDetail(action: string, rawPayload: unknown) {
   return "Security-relevant workspace activity";
 }
 
+export async function getBillingAuditEvents(session: AppSession, take = 20): Promise<AuditEventView[]> {
+  if (!databaseReady()) return [];
+  const prisma = getPrisma();
+  const rows = await prisma.auditLog.findMany({
+    where: {
+      brand: { workspaceId: session.workspaceId },
+      action: { startsWith: "billing_" },
+    },
+    include: {
+      brand: {
+        include: {
+          workspace: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take,
+  });
+
+  const actorIds = Array.from(new Set(rows.map((row) => row.actorId).filter((value): value is string => Boolean(value))));
+  const actors = actorIds.length
+    ? await prisma.workspaceUser.findMany({
+        where: { id: { in: actorIds } },
+        select: { id: true, email: true, name: true },
+      })
+    : [];
+  const actorMap = new Map(actors.map((actor) => [actor.id, actor.name || actor.email]));
+
+  return rows.map((row) => ({
+    id: row.id,
+    action: row.action,
+    label: eventLabel(row.action),
+    detail: eventDetail(row.action, row.payload),
+    severity: eventSeverity(row.action),
+    actor: row.actorId ? actorMap.get(row.actorId) : undefined,
+    actorType: row.actorType,
+    workspaceName: row.brand.workspace.name,
+    brandName: row.brand.name,
+    entityType: row.entityType,
+    entityId: row.entityId ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
 export async function recordAuditEvent(input: {
   workspaceId: string;
   actorType: string;

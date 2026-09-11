@@ -14,6 +14,10 @@ export type AgencyClientView = {
   leads: number;
   campaigns: number;
   lastActivityAt?: string;
+  billingPlan?: "starter" | "growth" | "scale";
+  billingStatus?: string;
+  billingPeriodEnd?: string;
+  billingCancelAtPeriodEnd?: boolean;
   current: boolean;
 };
 
@@ -32,6 +36,7 @@ export async function listAgencyClients(session: AppSession): Promise<AgencyClie
   const workspaces = await prisma.workspace.findMany({
     include: {
       brands: { orderBy: { createdAt: "asc" }, take: 1 },
+      subscription: true,
       _count: { select: { accesses: true } },
     },
     orderBy: { createdAt: "asc" },
@@ -49,6 +54,10 @@ export async function listAgencyClients(session: AppSession): Promise<AgencyClie
         failedPosts: 0,
         leads: 0,
         campaigns: 0,
+        billingPlan: workspace.subscription?.planKey === "growth" || workspace.subscription?.planKey === "scale" ? workspace.subscription.planKey : workspace.subscription ? "starter" : undefined,
+        billingStatus: workspace.subscription?.status,
+        billingPeriodEnd: workspace.subscription?.currentPeriodEnd?.toISOString(),
+        billingCancelAtPeriodEnd: workspace.subscription?.cancelAtPeriodEnd,
         current: workspace.id === session.workspaceId,
       };
     }
@@ -81,6 +90,10 @@ export async function listAgencyClients(session: AppSession): Promise<AgencyClie
       leads,
       campaigns,
       lastActivityAt: latestPost?.updatedAt.toISOString(),
+      billingPlan: workspace.subscription?.planKey === "growth" || workspace.subscription?.planKey === "scale" ? workspace.subscription.planKey : workspace.subscription ? "starter" : undefined,
+      billingStatus: workspace.subscription?.status,
+      billingPeriodEnd: workspace.subscription?.currentPeriodEnd?.toISOString(),
+      billingCancelAtPeriodEnd: workspace.subscription?.cancelAtPeriodEnd,
       current: workspace.id === session.workspaceId,
     };
   }));

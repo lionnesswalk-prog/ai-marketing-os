@@ -5,13 +5,25 @@ import { recordAuditEvent } from "./audit";
 
 export type BillingPlanKey = "starter" | "growth" | "scale";
 
+export type BillingFeatureKey =
+  | "aiStrategy"
+  | "socialPublishing"
+  | "leadWorkspace"
+  | "coreAnalytics"
+  | "campaignDrafts"
+  | "advancedWorkflows"
+  | "priorityOperations"
+  | "agencyScale";
+
 export type BillingPlan = {
   key: BillingPlanKey;
   name: string;
   description: string;
   displayPrice: string;
   priceId?: string;
+  monthlyAmountInr?: number;
   features: string[];
+  entitlements: BillingFeatureKey[];
   limits: {
     members?: number;
     socialConnections?: number;
@@ -29,6 +41,12 @@ function positiveInt(value: string | undefined) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+function positiveMoney(value: string | undefined) {
+  if (!value) return undefined;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
 function planKey(value: string | undefined): BillingPlanKey {
   return value === "growth" || value === "scale" ? value : "starter";
 }
@@ -41,7 +59,9 @@ export function getBillingPlans(): BillingPlan[] {
       description: "Core workspace operations for a growing brand.",
       displayPrice: process.env.BILLING_STARTER_DISPLAY_PRICE || "Pricing not configured",
       priceId: process.env.STRIPE_PRICE_STARTER_MONTHLY || undefined,
+      monthlyAmountInr: positiveMoney(process.env.BILLING_STARTER_MONTHLY_AMOUNT_INR),
       features: ["AI strategy", "Social publishing", "Lead workspace", "Core analytics"],
+      entitlements: ["aiStrategy", "socialPublishing", "leadWorkspace", "coreAnalytics"],
       limits: {
         members: positiveInt(process.env.BILLING_STARTER_MEMBER_LIMIT),
         socialConnections: positiveInt(process.env.BILLING_STARTER_SOCIAL_CONNECTION_LIMIT),
@@ -54,7 +74,9 @@ export function getBillingPlans(): BillingPlan[] {
       description: "More team capacity and automation for active brands.",
       displayPrice: process.env.BILLING_GROWTH_DISPLAY_PRICE || "Pricing not configured",
       priceId: process.env.STRIPE_PRICE_GROWTH_MONTHLY || undefined,
-      features: ["Everything in Starter", "Expanded team access", "Higher automation capacity", "Advanced workflows"],
+      monthlyAmountInr: positiveMoney(process.env.BILLING_GROWTH_MONTHLY_AMOUNT_INR),
+      features: ["Everything in Starter", "Expanded team access", "Campaign drafts", "Advanced workflows"],
+      entitlements: ["aiStrategy", "socialPublishing", "leadWorkspace", "coreAnalytics", "campaignDrafts", "advancedWorkflows"],
       limits: {
         members: positiveInt(process.env.BILLING_GROWTH_MEMBER_LIMIT),
         socialConnections: positiveInt(process.env.BILLING_GROWTH_SOCIAL_CONNECTION_LIMIT),
@@ -67,7 +89,9 @@ export function getBillingPlans(): BillingPlan[] {
       description: "Agency-grade capacity for high-volume workspaces.",
       displayPrice: process.env.BILLING_SCALE_DISPLAY_PRICE || "Pricing not configured",
       priceId: process.env.STRIPE_PRICE_SCALE_MONTHLY || undefined,
-      features: ["Everything in Growth", "Scale-ready limits", "Priority operations", "Enterprise-ready controls"],
+      monthlyAmountInr: positiveMoney(process.env.BILLING_SCALE_MONTHLY_AMOUNT_INR),
+      features: ["Everything in Growth", "Scale-ready limits", "Priority operations", "Agency-scale controls"],
+      entitlements: ["aiStrategy", "socialPublishing", "leadWorkspace", "coreAnalytics", "campaignDrafts", "advancedWorkflows", "priorityOperations", "agencyScale"],
       limits: {
         members: positiveInt(process.env.BILLING_SCALE_MEMBER_LIMIT),
         socialConnections: positiveInt(process.env.BILLING_SCALE_SOCIAL_CONNECTION_LIMIT),
@@ -82,6 +106,10 @@ export function billingLimitsEnforced() {
   return process.env.BILLING_ENFORCE_LIMITS === "true";
 }
 
+export function billingEntitlementsEnforced() {
+  return process.env.BILLING_ENFORCE_ENTITLEMENTS === "true";
+}
+
 async function planForWorkspace(workspaceId: string) {
   const prisma = getPrisma();
   const subscription = await prisma.workspaceSubscription.findUnique({
@@ -90,6 +118,19 @@ async function planForWorkspace(workspaceId: string) {
   });
   const selected = planKey(subscription?.planKey);
   return getBillingPlans().find((item) => item.key === selected) || getBillingPlans()[0];
+}
+
+export async function workspaceHasBillingFeature(workspaceId: string, feature: BillingFeatureKey) {
+  if (!usePostgres()) return true;
+  const plan = await planForWorkspace(workspaceId);
+  return plan.entitlements.includes(feature);
+}
+
+export async function assertBillingFeature(workspaceId: string, feature: BillingFeatureKey) {
+  if (!billingEntitlementsEnforced() || !usePostgres()) return;
+  if (!(await workspaceHasBillingFeature(workspaceId, feature))) {
+    throw new Error("BILLING_FEATURE_NOT_ENTITLED");
+  }
 }
 
 export async function assertBillingMemberCapacity(workspaceId: string, additional = 1) {
@@ -188,6 +229,55 @@ export function getBillingSetupState() {
 export function shouldManageSubscriptionInPortal(status:string|undefined, subscriptionId?:string) {
   if(!subscriptionId) return false;
   return status !== "canceled" && status !== "incomplete_expired";
+}
+
+export async function getAgencyBillingOverview(session:AppSession) {
+  if(!session.platformAdmin) throw new Error("PLATFORM_ADMIN_REQUIRED");
+  if(!usePostgres()) {
+    return {
+      totalWorkspaces:1,
+      subscribedWorkspaces:0,
+      active:0,
+      trialing:0,
+      pastDue:0,
+      canceled:0,
+      noSubscription:1,
+      byPlan:{starter:0,growth:0,scale:0} as Record<BillingPlanKey,number>,
+      mrrInr:undefined as number|undefined,
+      revenueConfigured:false,
+    };
+  }
+
+  const prisma=getPrisma();
+  const [totalWorkspaces,subscriptions]=await Promise.all([
+    prisma.workspace.count(),
+    prisma.workspaceSubscription.findMany({
+      select:{planKey:true,status:true},
+    }),
+  ]);
+
+  const byPlan:Record<BillingPlanKey,number>={starter:0,growth:0,scale:0};
+  for(const subscription of subscriptions) byPlan[planKey(subscription.planKey)] += 1;
+
+  const recurring=subscriptions.filter((item)=>item.status==="active"||item.status==="trialing");
+  const plans=new Map(getBillingPlans().map((plan)=>[plan.key,plan] as const));
+  const revenueConfigured=recurring.length>0 && recurring.every((item)=>plans.get(planKey(item.planKey))?.monthlyAmountInr !== undefined);
+  const mrrInr=revenueConfigured
+    ? recurring.reduce((total,item)=>total+(plans.get(planKey(item.planKey))?.monthlyAmountInr||0),0)
+    : undefined;
+
+  return {
+    totalWorkspaces,
+    subscribedWorkspaces:subscriptions.length,
+    active:subscriptions.filter((item)=>item.status==="active").length,
+    trialing:subscriptions.filter((item)=>item.status==="trialing").length,
+    pastDue:subscriptions.filter((item)=>item.status==="past_due"||item.status==="unpaid").length,
+    canceled:subscriptions.filter((item)=>item.status==="canceled").length,
+    noSubscription:Math.max(0,totalWorkspaces-subscriptions.length),
+    byPlan,
+    mrrInr,
+    revenueConfigured,
+  };
 }
 
 function requireBillingAdmin(session: AppSession) {

@@ -2,6 +2,15 @@ import { redirect } from "next/navigation";
 import { requireSession } from "../../lib/auth";
 import { enterAgencyWorkspace, listAgencyClients } from "../../lib/agency";
 import { ClientOnboardingForm } from "../../components/ClientOnboardingForm";
+import { getAgencyBillingOverview } from "../../lib/billing";
+
+const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+
+function billingTone(status?: string) {
+  if (status === "active" || status === "trialing") return "health healthy";
+  if (status === "past_due" || status === "unpaid" || status === "incomplete") return "health needs_action";
+  return "pill";
+}
 
 async function openClientAction(formData: FormData) {
   "use server";
@@ -15,7 +24,10 @@ export default async function ClientsPage() {
   const session = await requireSession();
   if (!session.platformAdmin) redirect("/dashboard");
 
-  const clients = await listAgencyClients(session);
+  const [clients, billing] = await Promise.all([
+    listAgencyClients(session),
+    getAgencyBillingOverview(session),
+  ]);
 
   return (
     <div className="clients-page">
@@ -32,6 +44,25 @@ export default async function ClientsPage() {
           <span className="pill">Tenant isolated</span>
         </div>
       </div>
+
+      <section>
+        <div className="section-head">
+          <div><p className="eyebrow">AGENCY BILLING</p><h2>Subscription portfolio</h2></div>
+          <span className="pill">{billing.subscribedWorkspaces}/{billing.totalWorkspaces} subscribed</span>
+        </div>
+        <div className="security-metrics">
+          <article className="card"><span>Active</span><strong>{billing.active + billing.trialing}</strong></article>
+          <article className="card"><span>Past due / unpaid</span><strong>{billing.pastDue}</strong></article>
+          <article className="card"><span>No subscription</span><strong>{billing.noSubscription}</strong></article>
+          <article className="card"><span>Configured MRR</span><strong>{billing.mrrInr === undefined ? "—" : money.format(billing.mrrInr)}</strong></article>
+          <article className="card"><span>Plan mix</span><strong>{billing.byPlan.starter}/{billing.byPlan.growth}/{billing.byPlan.scale}</strong><small>Starter · Growth · Scale</small></article>
+        </div>
+        {!billing.revenueConfigured && billing.active + billing.trialing > 0 && (
+          <div className="profile-notice">
+            MRR stays hidden until monthly INR amounts are configured for every active/trialing plan. No revenue is estimated from display-price text.
+          </div>
+        )}
+      </section>
 
       <div className="clients-layout">
         <ClientOnboardingForm />
@@ -55,9 +86,14 @@ export default async function ClientsPage() {
                     <span className="client-brand-label">{client.brandName || "Brand"}</span>
                     <h3>{client.workspaceName}</h3>
                   </div>
-                  <span className={client.current ? "pill accent" : "pill"}>
-                    {client.current ? "Active" : `${client.members} members`}
-                  </span>
+                  <div className="meta-row">
+                    <span className={billingTone(client.billingStatus)}>
+                      {client.billingStatus || "Not subscribed"}
+                    </span>
+                    <span className={client.current ? "pill accent" : "pill"}>
+                      {client.current ? "Open now" : `${client.members} members`}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="agency-client-stats">
@@ -66,6 +102,8 @@ export default async function ClientsPage() {
                   <div><span>Failed</span><strong>{client.failedPosts}</strong></div>
                   <div><span>Leads</span><strong>{client.leads}</strong></div>
                   <div><span>Campaigns</span><strong>{client.campaigns}</strong></div>
+                  <div><span>Plan</span><strong>{client.billingPlan ? client.billingPlan.charAt(0).toUpperCase() + client.billingPlan.slice(1) : "—"}</strong></div>
+                  <div><span>Renewal</span><strong>{client.billingPeriodEnd ? new Date(client.billingPeriodEnd).toLocaleDateString("en-IN") : "—"}</strong></div>
                 </div>
 
                 <div className="agency-provider-row">

@@ -1,6 +1,7 @@
 import { requireSession } from "../../lib/auth";
 import { BillingActions } from "../../components/BillingActions";
-import { billingLimitsEnforced, getBillingPlans, getBillingSetupState, getWorkspaceBilling, shouldManageSubscriptionInPortal } from "../../lib/billing";
+import { billingEntitlementsEnforced, billingLimitsEnforced, getBillingPlans, getBillingSetupState, getWorkspaceBilling, shouldManageSubscriptionInPortal } from "../../lib/billing";
+import { getBillingAuditEvents } from "../../lib/audit";
 
 function limit(value?:number){return value?String(value):"Not enforced";}
 function notice(status?:string){
@@ -20,7 +21,10 @@ function subscriptionNotice(status?:string){
 
 export default async function BillingPage({searchParams}:{searchParams?:Promise<{status?:string}>}){
   const session=await requireSession();
-  const billing=await getWorkspaceBilling(session);
+  const [billing,auditEvents]=await Promise.all([
+    getWorkspaceBilling(session),
+    getBillingAuditEvents(session,12),
+  ]);
   const plans=getBillingPlans();
   const setup=getBillingSetupState();
   const params=searchParams?await searchParams:undefined;
@@ -29,6 +33,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
   const currentPlan=billing.subscription?.planKey;
   const canManage=session.role==="admin";
   const limitsEnforced=billingLimitsEnforced();
+  const entitlementsEnforced=billingEntitlementsEnforced();
   const manageExistingSubscription=shouldManageSubscriptionInPortal(
     billing.subscription?.status,
     billing.subscription?.subscriptionId,
@@ -70,7 +75,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
     </section>
 
     <section>
-      <div className="section-head"><div><p className="eyebrow">PLANS</p><h2>Choose workspace capacity</h2></div><span className={limitsEnforced ? "pill accent" : "pill"}>{limitsEnforced ? "Plan limits enforced" : "Limits informational · enforcement off"}</span></div>
+      <div className="section-head"><div><p className="eyebrow">PLANS</p><h2>Choose workspace capacity</h2></div><div className="meta-row"><span className={limitsEnforced ? "pill accent" : "pill"}>{limitsEnforced ? "Plan limits enforced" : "Limits informational · enforcement off"}</span><span className={entitlementsEnforced ? "pill accent" : "pill"}>{entitlementsEnforced ? "Feature entitlements enforced" : "Entitlements informational · enforcement off"}</span></div></div>
       <div className="billing-plan-grid">
         {plans.map((plan)=>{
           const active=currentPlan===plan.key&&Boolean(billing.subscription);
@@ -94,6 +99,38 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
           </article>;
         })}
       </div>
+    </section>
+
+    <section>
+      <div className="section-head">
+        <div><p className="eyebrow">BILLING AUDIT</p><h2>Recent subscription activity</h2></div>
+        <span className="pill">{auditEvents.length} events</span>
+      </div>
+      {auditEvents.length ? (
+        <div className="security-audit-list">
+          {auditEvents.map((event)=>(
+            <article className="card security-event" key={event.id}>
+              <div className="security-event-main">
+                <span className={"severity "+event.severity}>{event.severity}</span>
+                <div>
+                  <h3>{event.label}</h3>
+                  <p>{event.detail}</p>
+                  <div className="security-event-meta">
+                    <span>{event.actor || event.actorType.replaceAll("_"," ")}</span>
+                    <span>{event.entityType}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="security-event-time">
+                <strong>{new Date(event.createdAt).toLocaleString("en-IN")}</strong>
+                <span>{event.brandName}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="card empty"><h3>No billing events yet</h3><p className="muted">Checkout, portal and Stripe subscription synchronization events will appear here.</p></div>
+      )}
     </section>
 
     {!canManage&&<div className="card billing-readonly"><strong>Billing is read-only for your role.</strong><p>Ask a workspace Admin to start, change or manage the subscription.</p></div>}
