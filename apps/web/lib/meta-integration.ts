@@ -33,10 +33,15 @@ function integrationStorageReady() {
   return usePostgres() && canEncryptIntegrations();
 }
 
-async function currentBrand() {
+async function currentBrand(brandId?: string) {
+  const prisma = getPrisma();
+  if (brandId) {
+    const brand = await prisma.brand.findUnique({ where: { id: brandId } });
+    if (!brand) throw new Error("BRAND_NOT_FOUND");
+    return brand;
+  }
   const session = await getSession();
   if (!session?.workspaceId) throw new Error("WORKSPACE_SESSION_REQUIRED");
-  const prisma = getPrisma();
   const brand = await prisma.brand.findFirst({
     where: { workspaceId: session.workspaceId },
     orderBy: { createdAt: "asc" },
@@ -153,7 +158,7 @@ export async function disconnectMetaConnection() {
   await prisma.integrationConnection.deleteMany({ where: { brandId: brand.id, provider: "meta" } });
 }
 
-export async function getMetaConnection(): Promise<MetaConnection | null> {
+export async function getMetaConnection(brandId?: string): Promise<MetaConnection | null> {
   const allowSharedEnv = !usePostgres() || process.env.ALLOW_SHARED_ENV_INTEGRATIONS === "true";
   const staticPageToken = process.env.META_PAGE_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN;
   if (allowSharedEnv && staticPageToken && (process.env.FACEBOOK_PAGE_ID || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID)) {
@@ -169,7 +174,7 @@ export async function getMetaConnection(): Promise<MetaConnection | null> {
 
   if (!integrationStorageReady()) return null;
   const prisma = getPrisma();
-  const brand = await currentBrand();
+  const brand = await currentBrand(brandId);
   const row = await prisma.integrationConnection.findUnique({
     where: { brandId_provider: { brandId: brand.id, provider: "meta" } },
   });
@@ -208,8 +213,8 @@ export async function publishFacebook(input: {
   mediaUrl?: string;
   linkUrl?: string;
   contentType: string;
-}) {
-  const connection = await getMetaConnection();
+}, brandId?: string) {
+  const connection = await getMetaConnection(brandId);
   if (!connection?.pageId || !connection.pageAccessToken) throw new Error("FACEBOOK_NOT_CONNECTED");
   if (["reel", "video", "short", "carousel", "story"].includes(input.contentType)) {
     throw new Error("FACEBOOK_FORMAT_NOT_READY");
@@ -252,8 +257,8 @@ export async function publishInstagram(input: {
   cta?: string;
   mediaUrl?: string;
   contentType: string;
-}) {
-  const connection = await getMetaConnection();
+}, brandId?: string) {
+  const connection = await getMetaConnection(brandId);
   if (!connection?.instagramBusinessAccountId || !connection.pageAccessToken) throw new Error("INSTAGRAM_NOT_CONNECTED");
   if (!input.mediaUrl) throw new Error("INSTAGRAM_MEDIA_REQUIRED");
   if (["carousel", "story"].includes(input.contentType)) throw new Error("INSTAGRAM_FORMAT_NOT_READY");
