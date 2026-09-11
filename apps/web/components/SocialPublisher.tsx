@@ -190,7 +190,8 @@ export function SocialPublisher({ platforms, canManage = true }: { platforms: So
               </div>
               <div className="social-platform-actions">
                 <a href={platform.homeUrl} target="_blank" rel="noreferrer">Open ↗</a>
-                {canManage && !platform.connected && platform.connectUrl && <a className="connect-social" href={platform.connectUrl}>Connect</a>}
+                {canManage && !platform.connected && platform.connectUrl && platform.setupReady !== false && <a className="connect-social" href={platform.connectUrl}>Connect</a>}
+                {canManage && !platform.connected && platform.setupReady === false && <button type="button" disabled title="Platform administrator must finish provider setup first.">Setup pending</button>}
                 {canManage && platform.connected && platform.disconnectUrl && (
                   <form action={platform.disconnectUrl} method="post"><button type="submit">Disconnect</button></form>
                 )}
