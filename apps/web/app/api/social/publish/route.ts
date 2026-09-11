@@ -7,6 +7,7 @@ import { publishLinkedIn } from "../../../../lib/linkedin-integration";
 import { publishX } from "../../../../lib/x-integration";
 import { publishTikTok } from "../../../../lib/tiktok-integration";
 import { publishYouTube } from "../../../../lib/youtube-integration";
+import { publishPinterest } from "../../../../lib/pinterest-integration";
 
 const platform = z.enum(["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest"]);
 const contentType = z.enum(["reel", "carousel", "static", "story", "video", "short"]);
@@ -24,13 +25,14 @@ const publishRequest = z.object({
   tiktokPrivacyLevel: z.enum(["PUBLIC_TO_EVERYONE", "MUTUAL_FOLLOW_FRIENDS", "FOLLOWER_OF_CREATOR", "SELF_ONLY"]).optional(),
   youtubePrivacyStatus: z.enum(["public", "private", "unlisted"]).optional(),
   youtubeMadeForKids: z.boolean().optional(),
+  pinterestBoardId: z.string().optional(),
   scheduledAt: z.string().optional(),
   action: z.enum(["draft", "schedule", "publish"]),
 });
 
 function friendlyPublishError(error: unknown, platformName: string) {
   const message = error instanceof Error ? error.message : "Unknown publishing error";
-  if (["FACEBOOK_NOT_CONNECTED", "INSTAGRAM_NOT_CONNECTED", "LINKEDIN_NOT_CONNECTED", "X_NOT_CONNECTED", "TIKTOK_NOT_CONNECTED", "YOUTUBE_NOT_CONNECTED"].includes(message)) {
+  if (["FACEBOOK_NOT_CONNECTED", "INSTAGRAM_NOT_CONNECTED", "LINKEDIN_NOT_CONNECTED", "X_NOT_CONNECTED", "TIKTOK_NOT_CONNECTED", "YOUTUBE_NOT_CONNECTED", "PINTEREST_NOT_CONNECTED"].includes(message)) {
     return `${platformName} is not connected yet.`;
   }
   if (message === "INSTAGRAM_MEDIA_REQUIRED") return "Instagram needs a public image or video URL before it can publish.";
@@ -44,6 +46,9 @@ function friendlyPublishError(error: unknown, platformName: string) {
   if (message === "YOUTUBE_PRIVACY_REQUIRED") return "Choose a YouTube privacy setting before publishing.";
   if (message === "YOUTUBE_MEDIA_NOT_VIDEO") return "The YouTube media URL must point to a video file.";
   if (message === "YOUTUBE_MEDIA_TOO_LARGE_FOR_SERVER_TRANSFER") return "This YouTube video is too large for the current server-transfer limit and stayed in the queue.";
+  if (message === "PINTEREST_BOARD_REQUIRED") return "Choose a Pinterest board before publishing.";
+  if (message === "PINTEREST_MEDIA_REQUIRED") return "Pinterest needs a public image URL before publishing.";
+  if (message === "PINTEREST_VIDEO_UPLOAD_NOT_READY") return "Pinterest video Pin upload is not enabled yet; the post stayed safely in the queue.";
   if (message.includes("url_ownership_unverified")) return "TikTok requires the media URL domain or URL prefix to be verified in the TikTok developer app.";
   if (message.includes("unaudited_client")) return "TikTok app audit is required for broader public posting; unaudited clients are restricted.";
   if (message.endsWith("FORMAT_NOT_READY")) return `${platformName} publishing for this format is still queued.`;
@@ -162,6 +167,16 @@ export async function POST(request: Request) {
         } catch (error) {
           queued.push("YouTube");
           warnings.push(friendlyPublishError(error, "YouTube"));
+        }
+      } else if (channel === "pinterest") {
+        try {
+          const result = await publishPinterest({ ...common, boardId: input.pinterestBoardId });
+          externalId = result.pinId;
+          status = "published";
+          published.push("Pinterest");
+        } catch (error) {
+          queued.push("Pinterest");
+          warnings.push(friendlyPublishError(error, "Pinterest"));
         }
       } else {
         queued.push(label);
