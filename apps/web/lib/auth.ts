@@ -11,6 +11,7 @@ export type AppSession = {
   name?: string;
   userId: string;
   workspaceId: string;
+  platformAdmin?: boolean;
 };
 
 type SessionTokenPayload = Partial<AppSession> & {
@@ -71,6 +72,7 @@ export function readSessionToken(token: string | undefined): AppSession | null {
         name: payload.name,
         userId: "preview_user",
         workspaceId: "preview_workspace",
+        platformAdmin: true,
       };
     }
 
@@ -80,6 +82,7 @@ export function readSessionToken(token: string | undefined): AppSession | null {
       name: payload.name,
       userId: payload.userId,
       workspaceId: payload.workspaceId,
+      platformAdmin: Boolean(payload.platformAdmin),
     };
   } catch {
     return null;
