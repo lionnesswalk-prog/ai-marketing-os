@@ -2,6 +2,7 @@ import type { SocialPlatform } from "./domain";
 import { getMetaConnection, getMetaSetupState } from "./meta-integration";
 import { getLinkedInConnection, getLinkedInSetupState } from "./linkedin-integration";
 import { getXConnection, getXSetupState } from "./x-integration";
+import { getTikTokConnection, getTikTokSetupState } from "./tiktok-integration";
 
 export type SocialPlatformConfig = {
   id: SocialPlatform;
@@ -16,18 +17,21 @@ export type SocialPlatformConfig = {
 };
 
 export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
-  const [meta, linkedin, x] = await Promise.all([
+  const [meta, linkedin, x, tiktok] = await Promise.all([
     getMetaConnection().catch(() => null),
     getLinkedInConnection().catch(() => null),
     getXConnection().catch(() => null),
+    getTikTokConnection().catch(() => null),
   ]);
   const metaSetup = getMetaSetupState();
   const linkedinSetup = getLinkedInSetupState();
   const xSetup = getXSetupState();
+  const tiktokSetup = getTikTokSetupState();
   const instagramConnected = Boolean(meta?.instagramBusinessAccountId && meta.pageAccessToken);
   const facebookConnected = Boolean(meta?.pageId && meta.pageAccessToken);
   const linkedinConnected = Boolean(linkedin?.accessToken && linkedin.authorUrn);
   const xConnected = Boolean(x?.accessToken);
+  const tiktokConnected = Boolean(tiktok?.accessToken);
 
   return [
     {
@@ -74,7 +78,17 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       disconnectUrl: xConnected ? "/api/integrations/x/disconnect" : undefined,
       setupReady: xSetup.appConfigured && xSetup.storageReady,
     },
-    { id: "tiktok", name: "TikTok", short: "TT", homeUrl: "https://www.tiktok.com/", connected: Boolean(process.env.TIKTOK_ACCESS_TOKEN) },
+    {
+      id: "tiktok",
+      name: "TikTok",
+      short: "TT",
+      homeUrl: "https://www.tiktok.com/",
+      connected: tiktokConnected,
+      accountLabel: tiktokConnected ? (tiktok?.displayName || "TikTok creator") : undefined,
+      connectUrl: "/api/integrations/tiktok/connect",
+      disconnectUrl: tiktokConnected ? "/api/integrations/tiktok/disconnect" : undefined,
+      setupReady: tiktokSetup.appConfigured && tiktokSetup.storageReady,
+    },
     { id: "youtube", name: "YouTube", short: "YT", homeUrl: "https://www.youtube.com/", connected: Boolean(process.env.YOUTUBE_ACCESS_TOKEN) },
     { id: "pinterest", name: "Pinterest", short: "P", homeUrl: "https://www.pinterest.com/", connected: Boolean(process.env.PINTEREST_ACCESS_TOKEN) },
   ];
