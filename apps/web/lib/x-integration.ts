@@ -43,10 +43,15 @@ function allowSharedEnv() {
   return process.env.ALLOW_SHARED_ENV_INTEGRATIONS === "true" || !usePostgres();
 }
 
-async function currentBrand() {
+async function currentBrand(brandId?: string) {
+  const prisma = getPrisma();
+  if (brandId) {
+    const brand = await prisma.brand.findUnique({ where: { id: brandId } });
+    if (!brand) throw new Error("BRAND_NOT_FOUND");
+    return brand;
+  }
   const session = await getSession();
   if (!session?.workspaceId) throw new Error("WORKSPACE_SESSION_REQUIRED");
-  const prisma = getPrisma();
   const brand = await prisma.brand.findFirst({
     where: { workspaceId: session.workspaceId },
     orderBy: { createdAt: "asc" },
@@ -197,7 +202,7 @@ async function refreshDatabaseToken(connectionId: string, refreshToken: string) 
   return token.access_token;
 }
 
-export async function getXConnection(): Promise<XConnection | null> {
+export async function getXConnection(brandId?: string): Promise<XConnection | null> {
   if (allowSharedEnv() && process.env.X_ACCESS_TOKEN) {
     return {
       source: "env",
@@ -211,7 +216,7 @@ export async function getXConnection(): Promise<XConnection | null> {
 
   if (!storageReady()) return null;
   const prisma = getPrisma();
-  const brand = await currentBrand();
+  const brand = await currentBrand(brandId);
   const row = await prisma.integrationConnection.findUnique({
     where: { brandId_provider: { brandId: brand.id, provider: "x" } },
   });
@@ -251,8 +256,8 @@ export async function publishX(input: {
   mediaUrl?: string;
   linkUrl?: string;
   contentType: string;
-}) {
-  const connection = await getXConnection();
+}, brandId?: string) {
+  const connection = await getXConnection(brandId);
   if (!connection) throw new Error("X_NOT_CONNECTED");
   if (input.mediaUrl) throw new Error("X_MEDIA_UPLOAD_NOT_READY");
   if (["reel", "video", "short", "story", "carousel"].includes(input.contentType)) {
