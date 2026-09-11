@@ -30,9 +30,14 @@ async function loginAction(formData: FormData) {
     const session = await authenticateAccount({ email, password });
     await setSession(session);
   } catch (error) {
+    const retrySuffix = invite
+      ? `&invite=${encodeURIComponent(invite)}`
+      : next !== "/dashboard"
+        ? `&next=${encodeURIComponent(next)}`
+        : "";
     destination = error instanceof Error && error.message === "INVALID_CREDENTIALS"
-      ? "/login?error=credentials"
-      : "/login?error=failed";
+      ? `/login?error=credentials${retrySuffix}`
+      : `/login?error=failed${retrySuffix}`;
   }
 
   redirect(destination);
