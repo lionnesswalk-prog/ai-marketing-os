@@ -4,6 +4,7 @@ import { getLinkedInConnection, getLinkedInSetupState } from "./linkedin-integra
 import { getXConnection, getXSetupState } from "./x-integration";
 import { getTikTokConnection, getTikTokSetupState } from "./tiktok-integration";
 import { getYouTubeConnection, getYouTubeSetupState } from "./youtube-integration";
+import { getPinterestConnection, getPinterestSetupState } from "./pinterest-integration";
 
 export type SocialPlatformConfig = {
   id: SocialPlatform;
@@ -18,24 +19,27 @@ export type SocialPlatformConfig = {
 };
 
 export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
-  const [meta, linkedin, x, tiktok, youtube] = await Promise.all([
+  const [meta, linkedin, x, tiktok, youtube, pinterest] = await Promise.all([
     getMetaConnection().catch(() => null),
     getLinkedInConnection().catch(() => null),
     getXConnection().catch(() => null),
     getTikTokConnection().catch(() => null),
     getYouTubeConnection().catch(() => null),
+    getPinterestConnection().catch(() => null),
   ]);
   const metaSetup = getMetaSetupState();
   const linkedinSetup = getLinkedInSetupState();
   const xSetup = getXSetupState();
   const tiktokSetup = getTikTokSetupState();
   const youtubeSetup = getYouTubeSetupState();
+  const pinterestSetup = getPinterestSetupState();
   const instagramConnected = Boolean(meta?.instagramBusinessAccountId && meta.pageAccessToken);
   const facebookConnected = Boolean(meta?.pageId && meta.pageAccessToken);
   const linkedinConnected = Boolean(linkedin?.accessToken && linkedin.authorUrn);
   const xConnected = Boolean(x?.accessToken);
   const tiktokConnected = Boolean(tiktok?.accessToken);
   const youtubeConnected = Boolean(youtube?.accessToken);
+  const pinterestConnected = Boolean(pinterest?.accessToken);
 
   return [
     {
@@ -104,6 +108,16 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       disconnectUrl: youtubeConnected ? "/api/integrations/youtube/disconnect" : undefined,
       setupReady: youtubeSetup.appConfigured && youtubeSetup.storageReady,
     },
-    { id: "pinterest", name: "Pinterest", short: "P", homeUrl: "https://www.pinterest.com/", connected: Boolean(process.env.PINTEREST_ACCESS_TOKEN) },
+    {
+      id: "pinterest",
+      name: "Pinterest",
+      short: "P",
+      homeUrl: pinterest?.username ? `https://www.pinterest.com/${pinterest.username}/` : "https://www.pinterest.com/",
+      connected: pinterestConnected,
+      accountLabel: pinterestConnected ? `@${pinterest?.username || "Pinterest"}` : undefined,
+      connectUrl: "/api/integrations/pinterest/connect",
+      disconnectUrl: pinterestConnected ? "/api/integrations/pinterest/disconnect" : undefined,
+      setupReady: pinterestSetup.appConfigured && pinterestSetup.storageReady,
+    },
   ];
 }
