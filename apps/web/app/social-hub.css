@@ -49,3 +49,9 @@
   .social-platform { grid-template-columns: 38px minmax(0,1fr); }
   .social-platform-actions { grid-column: 1 / -1; justify-content: flex-start; padding-left: 49px; }
 }
+
+.tiktok-status-control { display: inline-flex; align-items: center; gap: 8px; }
+.tiktok-status-control button { appearance: none; border: 1px solid var(--border-strong); background: rgba(255,255,255,.78); color: var(--ink-soft); border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 10px; font-weight: 750; cursor: pointer; }
+.tiktok-status-control button:hover { background: rgba(24,25,24,.05); }
+.tiktok-status-control button:disabled { opacity: .55; cursor: wait; }
+.tiktok-status-control small { color: var(--muted); font-size: 9px; }
