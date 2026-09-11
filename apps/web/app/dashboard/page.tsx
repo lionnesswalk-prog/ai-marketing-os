@@ -1,11 +1,12 @@
 import { requireSession } from "../../lib/auth";
 import { dashboardData } from "../../lib/repository";
+import { getCurrentBrandProfile } from "../../lib/brand-profile";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
 export default async function Dashboard() {
-  await requireSession();
-  const data = await dashboardData();
+  const session = await requireSession();
+  const [data, profile] = await Promise.all([dashboardData(), getCurrentBrandProfile(session)]);
   const metrics = [
     ["Tracked spend", money.format(data.spend)],
     ["Tracked revenue", money.format(data.revenue)],
@@ -24,8 +25,8 @@ export default async function Dashboard() {
           <p className="muted large">Paid media, social content, leads and approval-gated AI recommendations in one operating view.</p>
         </div>
         <div className="hero-badges">
-          <span className="pill accent">AI workspace</span>
-          <span className="pill">Preview data</span>
+          <span className="pill accent">{profile.name}</span>
+          <span className="pill">{process.env.DATA_BACKEND === "postgres" ? "Production data" : "Preview data"}</span>
         </div>
       </div>
 
