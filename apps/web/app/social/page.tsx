@@ -8,7 +8,7 @@ import { YouTubeStatusButton } from "../../components/YouTubeStatusButton";
 import { SocialQueueActions } from "../../components/SocialQueueActions";
 
 function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?: string, youtube?: string, pinterest?: string, access?: string) {
-  if (access === "forbidden") return { tone: "error", text: "Your workspace role cannot connect, disconnect, publish, or modify social accounts." };
+  if (access === "forbidden") return { tone: "error", text: "Your workspace role cannot connect, disconnect, publish, or modify social accounts." };\n  if (access === "plan-limit") return { tone: "error", text: "This workspace has reached its social-connection plan limit. Upgrade the plan or disconnect an unused provider before connecting another account." };
   if (meta === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
   if (meta === "disconnected") return { tone: "success", text: "Meta connection removed." };
   if (meta === "app-required") return { tone: "error", text: "Meta connection is not enabled by the platform administrator yet." };

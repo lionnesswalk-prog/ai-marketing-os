@@ -137,20 +137,34 @@ export async function assertBillingSocialPostCapacity(workspaceId: string, addit
   }
 }
 
-export async function assertBillingConnectionCapacity(workspaceId: string, additional = 1) {
+export async function assertBillingConnectionCapacity(workspaceId: string, provider: string) {
   if (!billingLimitsEnforced() || !usePostgres()) return;
   const plan = await planForWorkspace(workspaceId);
   const limit = plan.limits.socialConnections;
   if (!limit) return;
 
-  const count = await getPrisma().integrationConnection.count({
+  const prisma = getPrisma();
+  const brand = await prisma.brand.findFirst({
+    where: { workspaceId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (!brand) return;
+
+  const existing = await prisma.integrationConnection.findUnique({
+    where: { brandId_provider: { brandId: brand.id, provider } },
+    select: { status: true },
+  });
+  if (existing?.status === "connected") return;
+
+  const count = await prisma.integrationConnection.count({
     where: {
       status: "connected",
       brand: { workspaceId },
     },
   });
 
-  if (count + additional > limit) {
+  if (count + 1 > limit) {
     throw new Error("BILLING_CONNECTION_LIMIT");
   }
 }
