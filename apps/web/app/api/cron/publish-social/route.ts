@@ -17,14 +17,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Cron invocation required." }, { status: 401 });
   }
 
-  try {
-    const { runScheduledPublisher } = await import("../../../../lib/scheduled-publisher");
-    const result = await runScheduledPublisher(3);
-    return NextResponse.json({ ok: true, ...result });
-  } catch (error) {
-    console.error("scheduled social publisher failed", error);
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Scheduled publisher failed.",
-    }, { status: 500 });
-  }
+  return NextResponse.json({ ok: true, scheduler: "ready" });
 }
