@@ -1,4 +1,4 @@
-import { requireSession } from "../../lib/auth";
+import { canManageMarketing, requireSession } from "../../lib/auth";
 import { SocialPlanner } from "../../components/SocialPlanner";
 import { SocialPublisher } from "../../components/SocialPublisher";
 import { listSocialPosts } from "../../lib/repository";
@@ -59,7 +59,8 @@ export default async function SocialPage({
 }: {
   searchParams?: Promise<{ meta?: string; linkedin?: string; x?: string; tiktok?: string; youtube?: string; pinterest?: string; access?: string }>;
 }) {
-  await requireSession();
+  const session = await requireSession();
+  const canManage = canManageMarketing(session.role);
   const params = searchParams ? await searchParams : undefined;
   const notice = integrationNotice(params?.meta, params?.linkedin, params?.x, params?.tiktok, params?.youtube, params?.pinterest, params?.access);
   const [scheduled, platforms] = await Promise.all([
@@ -83,14 +84,14 @@ export default async function SocialPage({
 
       {notice && <div className={`profile-notice social-notice ${notice.tone}`}>{notice.text}</div>}
 
-      <SocialPublisher platforms={platforms} />
+      <SocialPublisher platforms={platforms} canManage={canManage} />
 
       <section>
         <div className="section-head">
           <div><p className="eyebrow">AI CONTENT STUDIO</p><h2>Generate campaign-ready social ideas</h2></div>
           <span className="pill">Lioness Walk voice</span>
         </div>
-        <SocialPlanner />
+        <SocialPlanner disabled={!canManage} />
       </section>
 
       <section>
@@ -120,7 +121,7 @@ export default async function SocialPage({
                 {post.linkUrl && <a href={post.linkUrl} target="_blank" rel="noreferrer">Open destination ↗</a>}
                 {post.platform === "tiktok" && post.status === "publishing" && post.externalId && <TikTokStatusButton postId={post.id} />}
                 {post.platform === "youtube" && post.status === "publishing" && post.externalId && <YouTubeStatusButton postId={post.id} />}
-                <SocialQueueActions postId={post.id} status={post.status} scheduledAt={post.scheduledAt} />
+                {canManage && <SocialQueueActions postId={post.id} status={post.status} scheduledAt={post.scheduledAt} />}
               </div>
             </article>
           ))}
