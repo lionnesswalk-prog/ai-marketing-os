@@ -4,6 +4,7 @@ import { getSession } from "../../../../lib/auth";
 import { createSocialPosts } from "../../../../lib/repository";
 import { publishFacebook, publishInstagram } from "../../../../lib/meta-integration";
 import { publishLinkedIn } from "../../../../lib/linkedin-integration";
+import { publishX } from "../../../../lib/x-integration";
 
 const platform = z.enum(["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest"]);
 const contentType = z.enum(["reel", "carousel", "static", "story", "video", "short"]);
@@ -24,11 +25,13 @@ const publishRequest = z.object({
 
 function friendlyPublishError(error: unknown, platformName: string) {
   const message = error instanceof Error ? error.message : "Unknown publishing error";
-  if (["FACEBOOK_NOT_CONNECTED", "INSTAGRAM_NOT_CONNECTED", "LINKEDIN_NOT_CONNECTED"].includes(message)) {
+  if (["FACEBOOK_NOT_CONNECTED", "INSTAGRAM_NOT_CONNECTED", "LINKEDIN_NOT_CONNECTED", "X_NOT_CONNECTED"].includes(message)) {
     return `${platformName} is not connected yet.`;
   }
   if (message === "INSTAGRAM_MEDIA_REQUIRED") return "Instagram needs a public image or video URL before it can publish.";
   if (message === "LINKEDIN_MEDIA_UPLOAD_NOT_READY") return "LinkedIn media upload is not enabled yet; the post stayed safely in the queue.";
+  if (message === "X_MEDIA_UPLOAD_NOT_READY") return "X media upload is not enabled yet; the post stayed safely in the queue.";
+  if (message === "X_TEXT_REQUIRED") return "X needs post text before publishing.";
   if (message.endsWith("FORMAT_NOT_READY")) return `${platformName} publishing for this format is still queued.`;
   if (message === "INSTAGRAM_MEDIA_STILL_PROCESSING") return "Instagram is still processing the video. The post was kept in the queue so it can be retried safely.";
   return `${platformName}: ${message}`;
@@ -109,6 +112,15 @@ export async function POST(request: Request) {
         } catch (error) {
           queued.push("LinkedIn");
           warnings.push(friendlyPublishError(error, "LinkedIn"));
+        }
+      } else if (channel === "x") {
+        try {
+          await publishX(common);
+          status = "published";
+          published.push("X");
+        } catch (error) {
+          queued.push("X");
+          warnings.push(friendlyPublishError(error, "X"));
         }
       } else {
         queued.push(label);
