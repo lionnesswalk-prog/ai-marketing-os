@@ -118,7 +118,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
   }
 
   async function submit(action: "draft" | "schedule" | "publish") {
-    if (action === "publish" && tiktokSelected && tiktokConnected && !tiktokPrivacyLevel) {
+    if ((action === "publish" || action === "schedule") && tiktokSelected && tiktokConnected && !tiktokPrivacyLevel) {
       setError("Choose a TikTok privacy level before publishing.");
       return;
     }
