@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       if (channel === "facebook") {
         try {
           const result = await publishFacebook(common);
-          externalId = result.post_id || result.id;
+          externalId = ("post_id" in result ? result.post_id : undefined) || result.id;
           status = "published";
           published.push("Facebook");
         } catch (error) {
