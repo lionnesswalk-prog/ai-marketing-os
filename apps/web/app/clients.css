@@ -1,0 +1,21 @@
+.clients-page { width: 100%; }
+.clients-hero { margin-bottom: 20px; }
+.clients-layout { display: grid; grid-template-columns: minmax(280px,.72fr) minmax(0,1.28fr); gap: 20px; align-items: start; }
+.client-create-card { position: sticky; top: 28px; }
+.client-create-card h2 { margin-bottom: 10px; }
+.client-create-card form { margin-top: 20px; }
+.client-list-head { margin-bottom: 14px; }
+.client-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.client-card { display: grid; align-content: start; gap: 13px; min-height: 185px; }
+.client-card.current { outline-color: rgba(114,103,240,.28); background: rgba(255,255,255,.94); }
+.client-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.client-card h3 { margin: 5px 0 0; }
+.client-brand-label { color: #6359cf; font-size: 9px; font-weight: 820; letter-spacing: .13em; text-transform: uppercase; }
+.client-card form { margin-top: auto; }
+@media (max-width: 1050px) {
+  .clients-layout { grid-template-columns: 1fr; }
+  .client-create-card { position: static; }
+}
+@media (max-width: 760px) {
+  .client-grid { grid-template-columns: 1fr; }
+}
