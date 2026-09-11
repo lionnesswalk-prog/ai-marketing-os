@@ -1,6 +1,6 @@
 import { requireSession } from "../../lib/auth";
 import { BillingActions } from "../../components/BillingActions";
-import { getBillingPlans, getBillingSetupState, getWorkspaceBilling } from "../../lib/billing";
+import { billingLimitsEnforced, getBillingPlans, getBillingSetupState, getWorkspaceBilling } from "../../lib/billing";
 
 function limit(value?:number){return value?String(value):"Not enforced";}
 function notice(status?:string){
@@ -18,6 +18,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
   const message=notice(params?.status);
   const currentPlan=billing.subscription?.planKey;
   const canManage=session.role==="admin";
+  const limitsEnforced=billingLimitsEnforced();
 
   return <div className="billing-page">
     <div className="dashboard-hero billing-hero">
@@ -54,7 +55,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
     </section>
 
     <section>
-      <div className="section-head"><div><p className="eyebrow">PLANS</p><h2>Choose workspace capacity</h2></div><span className="pill">Limits are informational until enforcement is enabled</span></div>
+      <div className="section-head"><div><p className="eyebrow">PLANS</p><h2>Choose workspace capacity</h2></div><span className={limitsEnforced ? "pill accent" : "pill"}>{limitsEnforced ? "Plan limits enforced" : "Limits informational · enforcement off"}</span></div>
       <div className="billing-plan-grid">
         {plans.map((plan)=>{
           const active=currentPlan===plan.key&&Boolean(billing.subscription);
