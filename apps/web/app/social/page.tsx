@@ -84,7 +84,7 @@ export default async function SocialPage({
               <div className="meta-row">
                 <span className="pill">{post.platform}</span>
                 <span className="pill">{post.contentType}</span>
-                <span className={`health ${post.status === "scheduled" || post.status === "published" ? "healthy" : post.status === "failed" ? "needs-action" : "watch"}`}>{post.status}</span>
+                <span className={`health ${post.status === "scheduled" || post.status === "published" ? "healthy" : post.status === "failed" ? "needs_action" : "watch"}`}>{post.status}</span>
               </div>
               <h3>{post.title}</h3>
               <p className="muted large">{post.caption || "No caption added yet."}</p>
