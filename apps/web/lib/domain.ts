@@ -39,6 +39,8 @@ export type SocialPostView = {
   hashtags?: string;
   cta?: string;
   altText?: string;
+  lastDeliveryError?: string;
+  lastDeliveryAttemptAt?: string;
 };
 
 export type InsightView = {
