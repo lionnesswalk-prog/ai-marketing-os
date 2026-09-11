@@ -181,7 +181,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
               <div className="social-platform-mark">{platform.short}</div>
               <div className="social-platform-copy">
                 <strong>{platform.name}</strong>
-                <span>{platform.connected ? (platform.accountLabel || "API connected") : platform.setupReady === false && platform.connectUrl ? "Setup required" : "Connection required"}</span>
+                <span>{platform.connected ? (platform.accountLabel || "API connected") : platform.setupReady === false && platform.connectUrl ? "Platform setup pending" : "Connection required"}</span>
               </div>
               <div className="social-platform-actions">
                 <a href={platform.homeUrl} target="_blank" rel="noreferrer">Open ↗</a>
