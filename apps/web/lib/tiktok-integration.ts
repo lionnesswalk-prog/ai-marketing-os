@@ -62,10 +62,15 @@ function allowSharedEnv() {
   return process.env.ALLOW_SHARED_ENV_INTEGRATIONS === "true" || !usePostgres();
 }
 
-async function currentBrand() {
+async function currentBrand(brandId?: string) {
+  const prisma = getPrisma();
+  if (brandId) {
+    const brand = await prisma.brand.findUnique({ where: { id: brandId } });
+    if (!brand) throw new Error("BRAND_NOT_FOUND");
+    return brand;
+  }
   const session = await getSession();
   if (!session?.workspaceId) throw new Error("WORKSPACE_SESSION_REQUIRED");
-  const prisma = getPrisma();
   const brand = await prisma.brand.findFirst({
     where: { workspaceId: session.workspaceId },
     orderBy: { createdAt: "asc" },
@@ -232,7 +237,7 @@ async function refreshDatabaseToken(connectionId: string, refreshToken: string) 
   return { accessToken: token.access_token, refreshToken: nextRefresh };
 }
 
-export async function getTikTokConnection(): Promise<TikTokConnection | null> {
+export async function getTikTokConnection(brandId?: string): Promise<TikTokConnection | null> {
   if (allowSharedEnv() && process.env.TIKTOK_ACCESS_TOKEN) {
     return {
       source: "env",
@@ -245,7 +250,7 @@ export async function getTikTokConnection(): Promise<TikTokConnection | null> {
 
   if (!storageReady()) return null;
   const prisma = getPrisma();
-  const brand = await currentBrand();
+  const brand = await currentBrand(brandId);
   const row = await prisma.integrationConnection.findUnique({
     where: { brandId_provider: { brandId: brand.id, provider: "tiktok" } },
   });
@@ -276,8 +281,8 @@ export async function getTikTokConnection(): Promise<TikTokConnection | null> {
   };
 }
 
-export async function queryTikTokCreatorInfo(): Promise<TikTokCreatorInfo> {
-  const connection = await getTikTokConnection();
+export async function queryTikTokCreatorInfo(brandId?: string): Promise<TikTokCreatorInfo> {
+  const connection = await getTikTokConnection(brandId);
   if (!connection) throw new Error("TIKTOK_NOT_CONNECTED");
 
   const response = await fetch("https://open.tiktokapis.com/v2/post/publish/creator_info/query/", {
@@ -328,14 +333,14 @@ export async function publishTikTok(input: {
   mediaUrl?: string;
   contentType: string;
   privacyLevel?: TikTokPrivacyLevel;
-}) {
-  const connection = await getTikTokConnection();
+}, brandId?: string) {
+  const connection = await getTikTokConnection(brandId);
   if (!connection) throw new Error("TIKTOK_NOT_CONNECTED");
   if (!input.mediaUrl) throw new Error("TIKTOK_MEDIA_REQUIRED");
   if (!["reel", "video", "short"].includes(input.contentType)) throw new Error("TIKTOK_FORMAT_NOT_READY");
   if (!input.privacyLevel) throw new Error("TIKTOK_PRIVACY_REQUIRED");
 
-  const creator = await queryTikTokCreatorInfo();
+  const creator = await queryTikTokCreatorInfo(brandId);
   if (!creator.privacyLevelOptions.includes(input.privacyLevel)) {
     throw new Error("TIKTOK_PRIVACY_NOT_ALLOWED");
   }
