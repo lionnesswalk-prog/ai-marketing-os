@@ -5,6 +5,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { SocialPlatform, SocialContentType } from "../lib/domain";
 import type { SocialPlatformConfig } from "../lib/social-platforms";
 
+type PinterestBoard = { id: string; name: string; privacy?: string };
+
 type TikTokCreatorInfo = {
   creatorUsername?: string;
   creatorNickname?: string;
@@ -38,6 +40,9 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
   const [tiktokLoading, setTikTokLoading] = useState(false);
   const [youtubePrivacyStatus, setYouTubePrivacyStatus] = useState<"public" | "private" | "unlisted">("private");
   const [youtubeMadeForKids, setYouTubeMadeForKids] = useState(false);
+  const [pinterestBoards, setPinterestBoards] = useState<PinterestBoard[]>([]);
+  const [pinterestBoardId, setPinterestBoardId] = useState("");
+  const [pinterestLoading, setPinterestLoading] = useState(false);
 
   const selectedConfigs = useMemo(() => platforms.filter((item) => selected.includes(item.id)), [platforms, selected]);
   const allConnected = selectedConfigs.length > 0 && selectedConfigs.every((item) => item.connected);
@@ -45,6 +50,38 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
   const tiktokSelected = selected.includes("tiktok");
   const youtubeConnected = Boolean(platforms.find((item) => item.id === "youtube")?.connected);
   const youtubeSelected = selected.includes("youtube");
+  const pinterestConnected = Boolean(platforms.find((item) => item.id === "pinterest")?.connected);
+  const pinterestSelected = selected.includes("pinterest");
+
+  useEffect(() => {
+    if (!pinterestSelected || !pinterestConnected) {
+      setPinterestBoards([]);
+      setPinterestBoardId("");
+      return;
+    }
+
+    const controller = new AbortController();
+    setPinterestLoading(true);
+    fetch("/api/integrations/pinterest/boards", { signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "Unable to load Pinterest boards.");
+        return body.boards as PinterestBoard[];
+      })
+      .then((boards) => {
+        setPinterestBoards(boards);
+        setPinterestBoardId((current) => boards.some((board) => board.id === current) ? current : "");
+      })
+      .catch((err) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setPinterestBoards([]);
+        setPinterestBoardId("");
+        setError(err instanceof Error ? err.message : "Unable to load Pinterest boards.");
+      })
+      .finally(() => setPinterestLoading(false));
+
+    return () => controller.abort();
+  }, [pinterestConnected, pinterestSelected]);
 
   useEffect(() => {
     if (!tiktokSelected || !tiktokConnected) {
@@ -85,6 +122,10 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
       setError("Choose a TikTok privacy level before publishing.");
       return;
     }
+    if ((action === "publish" || action === "schedule") && pinterestSelected && pinterestConnected && !pinterestBoardId) {
+      setError("Choose a Pinterest board before publishing or scheduling.");
+      return;
+    }
 
     setBusy(action);
     setMessage("");
@@ -106,6 +147,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
           tiktokPrivacyLevel: tiktokPrivacyLevel || undefined,
           youtubePrivacyStatus: youtubePrivacyStatus,
           youtubeMadeForKids,
+          pinterestBoardId: pinterestBoardId || undefined,
           scheduledAt: scheduledAt || undefined,
           action,
         }),
@@ -151,7 +193,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
             </article>
           ))}
         </div>
-        <p className="social-help">Meta, LinkedIn, X, TikTok and YouTube have secure OAuth connection flows. Pinterest remains in queue mode until its adapter is enabled.</p>
+        <p className="social-help">Meta, LinkedIn, X, TikTok, YouTube and Pinterest have secure OAuth connection flows. Pinterest image Pins can publish directly to a selected board; video Pins remain queued until media upload support is enabled.</p>
       </section>
 
       <form className="card social-composer" onSubmit={preventSubmit}>
@@ -220,6 +262,22 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
           </div>
         )}
 
+        {pinterestSelected && pinterestConnected && (
+          <div className="social-form-grid">
+            <label>
+              Pinterest board
+              <select value={pinterestBoardId} onChange={(e) => setPinterestBoardId(e.target.value)} disabled={pinterestLoading}>
+                <option value="">{pinterestLoading ? "Loading boards..." : "Choose board"}</option>
+                {pinterestBoards.map((board) => <option key={board.id} value={board.id}>{board.name}{board.privacy ? ` · ${board.privacy.toLowerCase()}` : ""}</option>)}
+              </select>
+            </label>
+            <label>
+              Pinterest format
+              <input value={["video", "reel", "short"].includes(contentType) ? "Video will stay queued" : "Image Pin ready"} readOnly aria-readonly="true" />
+            </label>
+          </div>
+        )}
+
         <label>Alt text<input value={altText} onChange={(e) => setAltText(e.target.value)} placeholder="Describe the image for accessibility" /></label>
         <label>Schedule time<input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} /></label>
 
@@ -229,7 +287,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
         <div className="social-actions">
           <button className="btn secondary" type="button" disabled={busy !== null || selected.length === 0} onClick={() => submit("draft")}>{busy === "draft" ? "Saving…" : "Save draft"}</button>
           <button className="btn secondary" type="button" disabled={busy !== null || selected.length === 0 || !scheduledAt} onClick={() => submit("schedule")}>{busy === "schedule" ? "Scheduling…" : "Schedule"}</button>
-          <button className="btn" type="button" disabled={busy !== null || selected.length === 0 || (tiktokSelected && tiktokConnected && (tiktokLoading || !tiktokPrivacyLevel))} onClick={() => submit("publish")}>{busy === "publish" ? "Publishing…" : "Publish now"}</button>
+          <button className="btn" type="button" disabled={busy !== null || selected.length === 0 || (tiktokSelected && tiktokConnected && (tiktokLoading || !tiktokPrivacyLevel)) || (pinterestSelected && pinterestConnected && (pinterestLoading || !pinterestBoardId))} onClick={() => submit("publish")}>{busy === "publish" ? "Publishing…" : "Publish now"}</button>
         </div>
       </form>
     </div>
