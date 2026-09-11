@@ -19,8 +19,9 @@
     "db:seed": "tsx scripts/seed.ts",
     "postinstall": "prisma generate",
     "test:billing": "tsx tests/billing.test.ts",
-    "test": "npm run test:core && npm run test:billing && npm run test:operations",
-    "test:operations": "tsx tests/operations.test.ts"
+    "test": "npm run test:core && npm run test:billing && npm run test:operations && npm run test:runtime",
+    "test:operations": "tsx tests/operations.test.ts",
+    "test:runtime": "tsx tests/runtime.test.ts"
   },
   "dependencies": {
     "@openai/agents": "latest",

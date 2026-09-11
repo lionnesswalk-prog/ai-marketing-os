@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { canManageIntegrations, getSession } from "../../../../../lib/auth";
+import { oauthRedirectUri } from "../../../../../lib/app-origin";
 import { assertBillingConnectionCapacity } from "../../../../../lib/billing";
 import { buildMetaOAuthUrl, getMetaSetupState } from "../../../../../lib/meta-integration";
 
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   if (!setup.storageReady) return NextResponse.redirect(new URL("/social?meta=storage-required", request.url));
 
   const state = randomBytes(24).toString("base64url");
-  const redirectUri = `${request.nextUrl.origin}/api/integrations/meta/callback`;
+  const redirectUri = oauthRedirectUri(request.nextUrl.origin, "/api/integrations/meta/callback");
   const store = await cookies();
   store.set(STATE_COOKIE, state, {
     httpOnly: true,

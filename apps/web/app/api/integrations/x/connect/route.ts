@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { canManageIntegrations, getSession } from "../../../../../lib/auth";
+import { oauthRedirectUri } from "../../../../../lib/app-origin";
 import { assertBillingConnectionCapacity } from "../../../../../lib/billing";
 import { buildXOAuthUrl, createPkceChallenge, getXSetupState } from "../../../../../lib/x-integration";
 
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
   const state = randomBytes(24).toString("base64url");
   const verifier = randomBytes(48).toString("base64url");
   const challenge = createPkceChallenge(verifier);
-  const redirectUri = `${request.nextUrl.origin}/api/integrations/x/callback`;
+  const redirectUri = oauthRedirectUri(request.nextUrl.origin, "/api/integrations/x/callback");
   const store = await cookies();
 
   for (const [name, value] of [[STATE_COOKIE, state], [VERIFIER_COOKIE, verifier], [WORKSPACE_COOKIE, session.workspaceId]] as const) {

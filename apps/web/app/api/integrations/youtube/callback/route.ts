@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { canManageIntegrations, getSession } from "../../../../../lib/auth";
+import { oauthRedirectUri } from "../../../../../lib/app-origin";
 import { exchangeYouTubeCode, saveYouTubeConnection } from "../../../../../lib/youtube-integration";
 
 const STATE_COOKIE = "amos_youtube_oauth_state";
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const redirectUri = `${request.nextUrl.origin}/api/integrations/youtube/callback`;
+    const redirectUri = oauthRedirectUri(request.nextUrl.origin, "/api/integrations/youtube/callback");
     const result = await exchangeYouTubeCode(code, redirectUri);
     await saveYouTubeConnection(result);
     return NextResponse.redirect(new URL("/social?youtube=connected", request.url));

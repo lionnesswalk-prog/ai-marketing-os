@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { canManageIntegrations, getSession } from "../../../../../lib/auth";
+import { oauthRedirectUri } from "../../../../../lib/app-origin";
 import { exchangeMetaCode, saveMetaConnection } from "../../../../../lib/meta-integration";
 
 const STATE_COOKIE = "amos_meta_oauth_state";
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const redirectUri = `${request.nextUrl.origin}/api/integrations/meta/callback`;
+    const redirectUri = oauthRedirectUri(request.nextUrl.origin, "/api/integrations/meta/callback");
     const result = await exchangeMetaCode(code, redirectUri);
     const preferredPage = result.pages.find((page) => page.instagram_business_account) || result.pages[0];
     await saveMetaConnection({ userAccessToken: result.userAccessToken, page: preferredPage });

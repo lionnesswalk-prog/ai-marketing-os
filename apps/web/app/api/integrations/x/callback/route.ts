@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { canManageIntegrations, getSession } from "../../../../../lib/auth";
+import { oauthRedirectUri } from "../../../../../lib/app-origin";
 import { exchangeXCode, saveXConnection } from "../../../../../lib/x-integration";
 
 const STATE_COOKIE = "amos_x_oauth_state";
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const redirectUri = `${request.nextUrl.origin}/api/integrations/x/callback`;
+    const redirectUri = oauthRedirectUri(request.nextUrl.origin, "/api/integrations/x/callback");
     const result = await exchangeXCode(code, redirectUri, verifier);
     await saveXConnection(result);
     return NextResponse.redirect(new URL("/social?x=connected", request.url));

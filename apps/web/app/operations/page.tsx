@@ -86,11 +86,11 @@ export default async function OperationsPage() {
             <article className="card" key={provider.id}>
               <div className="row-between">
                 <strong>{provider.name}</strong>
-                <span className={"health " + (provider.connected ? "healthy" : provider.setupReady ? "watch" : "needs_action")}>
-                  {provider.connected ? "Connected" : provider.setupReady ? "Ready to connect" : "Platform setup"}
+                <span className={"health " + (provider.connectionCheckFailed ? "needs_action" : provider.connected ? "healthy" : provider.setupReady ? "watch" : "needs_action")}>
+                  {provider.connectionCheckFailed ? "Health check failed" : provider.connected ? "Connected" : provider.setupReady ? "Ready to connect" : "Platform setup"}
                 </span>
               </div>
-              <p className="muted">{provider.accountLabel || (provider.setupReady ? "No client account connected yet." : "Central provider app is not ready yet.")}</p>
+              <p className="muted">{provider.connectionCheckFailed ? "Portal could not read the saved connection state. Review integration storage and runtime logs." : provider.accountLabel || (provider.setupReady ? "No client account connected yet." : "Central provider app is not ready yet.")}</p>
             </article>
           ))}
         </div>

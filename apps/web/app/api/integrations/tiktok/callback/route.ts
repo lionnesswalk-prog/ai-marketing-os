@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { canManageIntegrations, getSession } from "../../../../../lib/auth";
+import { oauthRedirectUri } from "../../../../../lib/app-origin";
 import { exchangeTikTokCode, saveTikTokConnection } from "../../../../../lib/tiktok-integration";
 
 const STATE_COOKIE = "amos_tiktok_oauth_state";
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const redirectUri = `${request.nextUrl.origin}/api/integrations/tiktok/callback`;
+    const redirectUri = oauthRedirectUri(request.nextUrl.origin, "/api/integrations/tiktok/callback");
     const result = await exchangeTikTokCode(code, redirectUri);
     await saveTikTokConnection(result);
     return NextResponse.redirect(new URL("/social?tiktok=connected", request.url));

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { canManageIntegrations, getSession } from "../../../../../lib/auth";
+import { oauthRedirectUri } from "../../../../../lib/app-origin";
 import { exchangePinterestCode, savePinterestConnection } from "../../../../../lib/pinterest-integration";
 
 const STATE_COOKIE = "amos_pinterest_oauth_state";
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const redirectUri = `${request.nextUrl.origin}/api/integrations/pinterest/callback`;
+    const redirectUri = oauthRedirectUri(request.nextUrl.origin, "/api/integrations/pinterest/callback");
     const result = await exchangePinterestCode(code, redirectUri);
     await savePinterestConnection(result);
     return NextResponse.redirect(new URL("/social?pinterest=connected", request.url));

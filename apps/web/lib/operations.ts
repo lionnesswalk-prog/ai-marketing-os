@@ -54,6 +54,7 @@ export type OperationsOverview = {
     name: string;
     connected: boolean;
     setupReady: boolean;
+    connectionCheckFailed: boolean;
     accountLabel?: string;
   }>;
   recentIssues: OperationsIssue[];
@@ -68,6 +69,7 @@ export async function getOperationsOverview(session: AppSession): Promise<Operat
     name: platform.name,
     connected: platform.connected,
     setupReady: Boolean(platform.setupReady),
+    connectionCheckFailed: Boolean(platform.connectionCheckFailed),
     accountLabel: platform.accountLabel,
   }));
 

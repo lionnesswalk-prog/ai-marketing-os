@@ -16,17 +16,24 @@ export type SocialPlatformConfig = {
   connectUrl?: string;
   disconnectUrl?: string;
   setupReady?: boolean;
+  connectionCheckFailed?: boolean;
 };
 
 export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
-  const [meta, linkedin, x, tiktok, youtube, pinterest] = await Promise.all([
-    getMetaConnection().catch(() => null),
-    getLinkedInConnection().catch(() => null),
-    getXConnection().catch(() => null),
-    getTikTokConnection().catch(() => null),
-    getYouTubeConnection().catch(() => null),
-    getPinterestConnection().catch(() => null),
+  const [metaResult, linkedinResult, xResult, tiktokResult, youtubeResult, pinterestResult] = await Promise.allSettled([
+    getMetaConnection(),
+    getLinkedInConnection(),
+    getXConnection(),
+    getTikTokConnection(),
+    getYouTubeConnection(),
+    getPinterestConnection(),
   ]);
+  const meta = metaResult.status === "fulfilled" ? metaResult.value : null;
+  const linkedin = linkedinResult.status === "fulfilled" ? linkedinResult.value : null;
+  const x = xResult.status === "fulfilled" ? xResult.value : null;
+  const tiktok = tiktokResult.status === "fulfilled" ? tiktokResult.value : null;
+  const youtube = youtubeResult.status === "fulfilled" ? youtubeResult.value : null;
+  const pinterest = pinterestResult.status === "fulfilled" ? pinterestResult.value : null;
   const metaSetup = getMetaSetupState();
   const linkedinSetup = getLinkedInSetupState();
   const xSetup = getXSetupState();
@@ -52,6 +59,7 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       connectUrl: "/api/integrations/meta/connect",
       disconnectUrl: instagramConnected ? "/api/integrations/meta/disconnect" : undefined,
       setupReady: metaSetup.appConfigured && metaSetup.storageReady,
+      connectionCheckFailed: metaResult.status === "rejected",
     },
     {
       id: "facebook",
@@ -63,6 +71,7 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       connectUrl: "/api/integrations/meta/connect",
       disconnectUrl: facebookConnected ? "/api/integrations/meta/disconnect" : undefined,
       setupReady: metaSetup.appConfigured && metaSetup.storageReady,
+      connectionCheckFailed: metaResult.status === "rejected",
     },
     {
       id: "linkedin",
@@ -74,6 +83,7 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       connectUrl: "/api/integrations/linkedin/connect",
       disconnectUrl: linkedinConnected ? "/api/integrations/linkedin/disconnect" : undefined,
       setupReady: linkedinSetup.appConfigured && linkedinSetup.storageReady,
+      connectionCheckFailed: linkedinResult.status === "rejected",
     },
     {
       id: "x",
@@ -85,6 +95,7 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       connectUrl: "/api/integrations/x/connect",
       disconnectUrl: xConnected ? "/api/integrations/x/disconnect" : undefined,
       setupReady: xSetup.appConfigured && xSetup.storageReady,
+      connectionCheckFailed: xResult.status === "rejected",
     },
     {
       id: "tiktok",
@@ -96,6 +107,7 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       connectUrl: "/api/integrations/tiktok/connect",
       disconnectUrl: tiktokConnected ? "/api/integrations/tiktok/disconnect" : undefined,
       setupReady: tiktokSetup.appConfigured && tiktokSetup.storageReady,
+      connectionCheckFailed: tiktokResult.status === "rejected",
     },
     {
       id: "youtube",
@@ -107,6 +119,7 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       connectUrl: "/api/integrations/youtube/connect",
       disconnectUrl: youtubeConnected ? "/api/integrations/youtube/disconnect" : undefined,
       setupReady: youtubeSetup.appConfigured && youtubeSetup.storageReady,
+      connectionCheckFailed: youtubeResult.status === "rejected",
     },
     {
       id: "pinterest",
@@ -118,6 +131,7 @@ export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
       connectUrl: "/api/integrations/pinterest/connect",
       disconnectUrl: pinterestConnected ? "/api/integrations/pinterest/disconnect" : undefined,
       setupReady: pinterestSetup.appConfigured && pinterestSetup.storageReady,
+      connectionCheckFailed: pinterestResult.status === "rejected",
     },
   ];
 }
