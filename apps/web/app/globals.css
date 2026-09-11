@@ -280,3 +280,53 @@ input:focus, textarea:focus { border-color: rgba(114,103,240,.55); background: #
   .action-meta { justify-items: start; }
   h1 { font-size: 36px; }
 }
+
+.workspace-switcher {
+  margin: 24px 6px 0;
+  padding: 12px;
+  border-radius: 13px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.045);
+  display: grid;
+  gap: 7px;
+}
+.workspace-switcher-label {
+  color: #777b74;
+  font-size: 8px;
+  letter-spacing: .16em;
+  font-weight: 820;
+}
+.workspace-switcher-control {
+  display: grid;
+  grid-template-columns: 7px minmax(0,1fr);
+  gap: 8px;
+  align-items: center;
+}
+.workspace-switcher-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #9abe8e;
+  box-shadow: 0 0 0 4px rgba(154,190,142,.08);
+}
+.workspace-switcher select {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #f6f6f2;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 720;
+  cursor: pointer;
+}
+.workspace-switcher select option { color: #171817; background: white; }
+.workspace-switcher small {
+  color: #73766f;
+  font-size: 9px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
