@@ -282,3 +282,75 @@ export async function publishX(input: {
   }
   return json.data;
 }
+
+
+export async function fetchXAnalytics() {
+  const connection = await getXConnection();
+  if (!connection) throw new Error("X_NOT_CONNECTED");
+
+  const meResponse = await fetch("https://api.x.com/2/users/me?user.fields=public_metrics,name,username", {
+    headers: { Authorization: `Bearer ${connection.accessToken}` },
+    cache: "no-store",
+  });
+  const meBody = await meResponse.json().catch(() => ({})) as {
+    data?: {
+      id?: string;
+      name?: string;
+      username?: string;
+      public_metrics?: {
+        followers_count?: number;
+        following_count?: number;
+        tweet_count?: number;
+        listed_count?: number;
+      };
+    };
+    detail?: string;
+    title?: string;
+  };
+  if (!meResponse.ok || !meBody.data?.id) {
+    throw new Error(meBody.detail || meBody.title || `X analytics failed (${meResponse.status})`);
+  }
+
+  const tweetsUrl = new URL(`https://api.x.com/2/users/${meBody.data.id}/tweets`);
+  tweetsUrl.searchParams.set("max_results", "10");
+  tweetsUrl.searchParams.set("tweet.fields", "created_at,public_metrics");
+  const tweetsResponse = await fetch(tweetsUrl, {
+    headers: { Authorization: `Bearer ${connection.accessToken}` },
+    cache: "no-store",
+  });
+  const tweetsBody = await tweetsResponse.json().catch(() => ({})) as {
+    data?: Array<{
+      id: string;
+      text?: string;
+      public_metrics?: {
+        retweet_count?: number;
+        reply_count?: number;
+        like_count?: number;
+        quote_count?: number;
+        bookmark_count?: number;
+        impression_count?: number;
+      };
+    }>;
+    detail?: string;
+    title?: string;
+  };
+  if (!tweetsResponse.ok) {
+    throw new Error(tweetsBody.detail || tweetsBody.title || `X posts analytics failed (${tweetsResponse.status})`);
+  }
+
+  return {
+    accountLabel: meBody.data.username ? `@${meBody.data.username}` : meBody.data.name || "X",
+    followers: Number(meBody.data.public_metrics?.followers_count || 0),
+    posts: Number(meBody.data.public_metrics?.tweet_count || 0),
+    tweets: (tweetsBody.data || []).map((tweet) => ({
+      id: tweet.id,
+      title: tweet.text?.slice(0, 100) || "X post",
+      url: meBody.data?.username ? `https://x.com/${meBody.data.username}/status/${tweet.id}` : undefined,
+      impressions: Number(tweet.public_metrics?.impression_count || 0),
+      likes: Number(tweet.public_metrics?.like_count || 0),
+      comments: Number(tweet.public_metrics?.reply_count || 0),
+      shares: Number(tweet.public_metrics?.retweet_count || 0) + Number(tweet.public_metrics?.quote_count || 0),
+      saves: Number(tweet.public_metrics?.bookmark_count || 0),
+    })),
+  };
+}
