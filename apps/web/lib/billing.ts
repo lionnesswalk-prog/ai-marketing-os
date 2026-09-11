@@ -76,6 +76,85 @@ export function getBillingPlans(): BillingPlan[] {
   ];
 }
 
+
+export function billingLimitsEnforced() {
+  return process.env.BILLING_ENFORCE_LIMITS === "true";
+}
+
+async function planForWorkspace(workspaceId: string) {
+  const prisma = getPrisma();
+  const subscription = await prisma.workspaceSubscription.findUnique({
+    where: { workspaceId },
+    select: { planKey: true },
+  });
+  const selected = planKey(subscription?.planKey);
+  return getBillingPlans().find((item) => item.key === selected) || getBillingPlans()[0];
+}
+
+export async function assertBillingMemberCapacity(workspaceId: string, additional = 1) {
+  if (!billingLimitsEnforced() || !usePostgres()) return;
+  const plan = await planForWorkspace(workspaceId);
+  const limit = plan.limits.members;
+  if (!limit) return;
+
+  const prisma = getPrisma();
+  const [members, invites] = await Promise.all([
+    prisma.workspaceAccess.count({ where: { workspaceId } }),
+    prisma.workspaceInvite.count({
+      where: {
+        workspaceId,
+        acceptedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+    }),
+  ]);
+
+  if (members + invites + additional > limit) {
+    throw new Error("BILLING_MEMBER_LIMIT");
+  }
+}
+
+export async function assertBillingSocialPostCapacity(workspaceId: string, additional = 1) {
+  if (!billingLimitsEnforced() || !usePostgres()) return;
+  const plan = await planForWorkspace(workspaceId);
+  const limit = plan.limits.socialPostsMonthly;
+  if (!limit) return;
+
+  const start = new Date();
+  start.setUTCDate(1);
+  start.setUTCHours(0, 0, 0, 0);
+
+  const count = await getPrisma().socialPost.count({
+    where: {
+      brand: { workspaceId },
+      createdAt: { gte: start },
+    },
+  });
+
+  if (count + additional > limit) {
+    throw new Error("BILLING_SOCIAL_POST_LIMIT");
+  }
+}
+
+export async function assertBillingConnectionCapacity(workspaceId: string, additional = 1) {
+  if (!billingLimitsEnforced() || !usePostgres()) return;
+  const plan = await planForWorkspace(workspaceId);
+  const limit = plan.limits.socialConnections;
+  if (!limit) return;
+
+  const count = await getPrisma().integrationConnection.count({
+    where: {
+      status: "connected",
+      brand: { workspaceId },
+    },
+  });
+
+  if (count + additional > limit) {
+    throw new Error("BILLING_CONNECTION_LIMIT");
+  }
+}
+
 export function getBillingSetupState() {
   const plans=getBillingPlans();
   return {

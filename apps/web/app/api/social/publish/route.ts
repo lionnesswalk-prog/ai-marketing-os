@@ -8,6 +8,7 @@ import { publishX } from "../../../../lib/x-integration";
 import { publishTikTok } from "../../../../lib/tiktok-integration";
 import { publishYouTube } from "../../../../lib/youtube-integration";
 import { publishPinterest } from "../../../../lib/pinterest-integration";
+import { assertBillingSocialPostCapacity } from "../../../../lib/billing";
 
 const platform = z.enum(["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest"]);
 const contentType = z.enum(["reel", "carousel", "static", "story", "video", "short"]);
@@ -69,6 +70,17 @@ export async function POST(request: Request) {
   const input = parsed.data;
   if (input.action === "schedule" && !input.scheduledAt) {
     return NextResponse.json({ error: "Choose a schedule date and time first." }, { status: 400 });
+  }
+
+  try {
+    await assertBillingSocialPostCapacity(session.workspaceId, input.platforms.length);
+  } catch (error) {
+    if (error instanceof Error && error.message === "BILLING_SOCIAL_POST_LIMIT") {
+      return NextResponse.json({
+        error: "This workspace has reached its monthly social-post plan limit. Upgrade the plan before creating more posts.",
+      }, { status: 402 });
+    }
+    throw error;
   }
 
   const common = {

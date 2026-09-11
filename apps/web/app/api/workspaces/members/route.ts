@@ -29,6 +29,7 @@ function friendly(error: unknown) {
     MEMBER_NOT_FOUND: "This member no longer has workspace access.",
     LAST_ADMIN: "At least one admin must remain in the workspace.",
     CANNOT_REMOVE_SELF: "You cannot remove your own workspace access.",
+    BILLING_MEMBER_LIMIT: "This workspace has reached its plan member limit. Upgrade the plan or remove an unused seat before inviting another member.",
   };
   return messages[code] || code;
 }

@@ -4,6 +4,7 @@ import { setSession } from "./auth";
 import { hashPassword } from "./password";
 import { getPrisma } from "./prisma";
 import { recordAuditEvent } from "./audit";
+import { assertBillingMemberCapacity } from "./billing";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const ROLES: AppRole[] = ["admin", "marketing_manager", "sales", "viewer"];
@@ -164,6 +165,8 @@ export async function createWorkspaceInvite(
     },
     data: { revokedAt: new Date() },
   });
+
+  await assertBillingMemberCapacity(session.workspaceId);
 
   const token = randomBytes(32).toString("base64url");
   const invite = await prisma.workspaceInvite.create({
