@@ -3,6 +3,7 @@ import { SocialPlanner } from "../../components/SocialPlanner";
 import { SocialPublisher } from "../../components/SocialPublisher";
 import { listSocialPosts } from "../../lib/repository";
 import { getSocialPlatforms } from "../../lib/social-platforms";
+import { getCurrentBrandProfile } from "../../lib/brand-profile";
 import { TikTokStatusButton } from "../../components/TikTokStatusButton";
 import { YouTubeStatusButton } from "../../components/YouTubeStatusButton";
 import { SocialQueueActions } from "../../components/SocialQueueActions";
@@ -64,9 +65,10 @@ export default async function SocialPage({
   const canManage = canManageMarketing(session.role);
   const params = searchParams ? await searchParams : undefined;
   const notice = integrationNotice(params?.meta, params?.linkedin, params?.x, params?.tiktok, params?.youtube, params?.pinterest, params?.access);
-  const [scheduled, platforms] = await Promise.all([
+  const [scheduled, platforms, profile] = await Promise.all([
     listSocialPosts(),
     getSocialPlatforms(),
+    getCurrentBrandProfile(session),
   ]);
 
   return (
@@ -90,9 +92,9 @@ export default async function SocialPage({
       <section>
         <div className="section-head">
           <div><p className="eyebrow">AI CONTENT STUDIO</p><h2>Generate campaign-ready social ideas</h2></div>
-          <span className="pill">Lioness Walk voice</span>
+          <span className="pill">{profile.name} voice</span>
         </div>
-        <SocialPlanner disabled={!canManage} />
+        <SocialPlanner brandName={profile.name} disabled={!canManage} />
       </section>
 
       <section>
