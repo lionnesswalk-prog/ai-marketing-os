@@ -102,6 +102,10 @@ export function getBillingPlans(): BillingPlan[] {
 }
 
 
+export function paymentsEnabled() {
+  return process.env.PAYMENTS_ENABLED === "true";
+}
+
 export function billingLimitsEnforced() {
   return process.env.BILLING_ENFORCE_LIMITS === "true";
 }
@@ -221,11 +225,13 @@ export function getStripeCredentialMode() {
 export function getBillingSetupState() {
   const plans=getBillingPlans();
   const configuredPlans=plans.filter((item)=>Boolean(item.priceId)).map((item)=>item.key);
+  const enabled=paymentsEnabled();
   return {
+    paymentsEnabled: enabled,
     stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
     stripeMode: getStripeCredentialMode(),
-    checkoutConfigured: Boolean(process.env.STRIPE_SECRET_KEY && configuredPlans.length > 0),
-    portalConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+    checkoutConfigured: Boolean(enabled && process.env.STRIPE_SECRET_KEY && configuredPlans.length > 0),
+    portalConfigured: Boolean(enabled && process.env.STRIPE_SECRET_KEY),
     webhookConfigured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
     configuredPlans,
     configuredPlanCount: configuredPlans.length,
@@ -338,6 +344,29 @@ type StripePriceVerification = {
 
 export async function verifyStripeProductionConfiguration() {
   const setup=getBillingSetupState();
+  if(!setup.paymentsEnabled){
+    const plans=getBillingPlans();
+    return {
+      deferred:true,
+      accountReachable:false,
+      accountReady:false,
+      accountDetail:"Payment gateway is intentionally deferred. Core SaaS readiness does not depend on payment setup.",
+      mode:"deferred" as const,
+      modeReady:true,
+      webhookReady:false,
+      prices:plans.map((plan):StripePriceVerification=>({
+        planKey:plan.key,
+        planName:plan.name,
+        configured:Boolean(plan.priceId),
+        reachable:false,
+        ready:false,
+        detail:"Deferred until a payment gateway is selected.",
+      })),
+      allPricesReady:false,
+      ready:false,
+    };
+  }
+
   const expectedLive=process.env.VERCEL_ENV==="production" || process.env.NODE_ENV==="production";
   const modeReady=!expectedLive || setup.stripeMode==="live";
   const plans=getBillingPlans();
@@ -495,6 +524,7 @@ export async function getWorkspaceBilling(session:AppSession) {
 
 export async function createStripeCheckout(session:AppSession, requestedPlan:BillingPlanKey, requestOrigin?:string) {
   requireBillingAdmin(session);
+  if(!paymentsEnabled()) throw new Error("PAYMENTS_DEFERRED");
   const plan=getBillingPlans().find((item)=>item.key===requestedPlan);
   if(!plan?.priceId) throw new Error("PLAN_PRICE_NOT_CONFIGURED");
   const prisma=getPrisma();
@@ -536,6 +566,7 @@ export async function createStripeCheckout(session:AppSession, requestedPlan:Bil
 
 export async function createStripePortal(session:AppSession, requestOrigin?:string) {
   requireBillingAdmin(session);
+  if(!paymentsEnabled()) throw new Error("PAYMENTS_DEFERRED");
   const prisma=getPrisma();
   const subscription=await prisma.workspaceSubscription.findUnique({where:{workspaceId:session.workspaceId}});
   if(!subscription?.stripeCustomerId) throw new Error("BILLING_CUSTOMER_REQUIRED");
