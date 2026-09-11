@@ -69,7 +69,7 @@ async function publishClaimedPost(post: {
   try {
     if (post.platform === "facebook") {
       const result = await publishFacebook(common, post.brandId);
-      await completePost(post.id, "published", result.post_id || result.id);
+      await completePost(post.id, "published", ("post_id" in result ? result.post_id : undefined) || result.id);
       return "published";
     }
 
