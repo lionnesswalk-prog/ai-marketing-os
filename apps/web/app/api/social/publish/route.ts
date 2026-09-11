@@ -86,16 +86,19 @@ export async function POST(request: Request) {
 
     const posts = [];
     const published: string[] = [];
+    const processing: string[] = [];
     const queued: string[] = [];
     const warnings: string[] = [];
 
     for (const channel of input.platforms) {
-      let status: "draft" | "published" = "draft";
+      let status: "draft" | "publishing" | "published" = "draft";
+      let externalId: string | undefined;
       const label = channel === "x" ? "X" : channel.charAt(0).toUpperCase() + channel.slice(1);
 
       if (channel === "facebook") {
         try {
-          await publishFacebook(common);
+          const result = await publishFacebook(common);
+          externalId = result.post_id || result.id;
           status = "published";
           published.push("Facebook");
         } catch (error) {
@@ -104,7 +107,8 @@ export async function POST(request: Request) {
         }
       } else if (channel === "instagram") {
         try {
-          await publishInstagram(common);
+          const result = await publishInstagram(common);
+          externalId = result.id;
           status = "published";
           published.push("Instagram");
         } catch (error) {
@@ -113,7 +117,8 @@ export async function POST(request: Request) {
         }
       } else if (channel === "linkedin") {
         try {
-          await publishLinkedIn(common);
+          const result = await publishLinkedIn(common);
+          externalId = result.id;
           status = "published";
           published.push("LinkedIn");
         } catch (error) {
@@ -122,7 +127,8 @@ export async function POST(request: Request) {
         }
       } else if (channel === "x") {
         try {
-          await publishX(common);
+          const result = await publishX(common);
+          externalId = result.id;
           status = "published";
           published.push("X");
         } catch (error) {
@@ -131,9 +137,10 @@ export async function POST(request: Request) {
         }
       } else if (channel === "tiktok") {
         try {
-          await publishTikTok({ ...common, privacyLevel: input.tiktokPrivacyLevel });
-          status = "published";
-          published.push("TikTok");
+          const result = await publishTikTok({ ...common, privacyLevel: input.tiktokPrivacyLevel });
+          externalId = result.publishId;
+          status = "publishing";
+          processing.push("TikTok");
         } catch (error) {
           queued.push("TikTok");
           warnings.push(friendlyPublishError(error, "TikTok"));
@@ -142,21 +149,23 @@ export async function POST(request: Request) {
         queued.push(label);
       }
 
-      const [created] = await createSocialPosts({ ...common, platforms: [channel], status });
+      const [created] = await createSocialPosts({ ...common, platforms: [channel], status, externalId });
       posts.push(created);
     }
 
-    const message = published.length
-      ? `Published to ${published.join(", ")}.${queued.length ? ` ${queued.join(", ")} stayed in the portal queue.` : ""}`
-      : `Saved to the publishing queue for ${queued.join(", ")}.`;
+    const messageParts: string[] = [];
+    if (published.length) messageParts.push(`Published to ${published.join(", ")}.`);
+    if (processing.length) messageParts.push(`${processing.join(", ")} submitted and is processing.`);
+    if (queued.length) messageParts.push(`${queued.join(", ")} stayed in the portal queue.`);
+    const message = messageParts.join(" ") || "Post saved.";
 
     return NextResponse.json({
       ok: true,
       posts,
-      mode: queued.length ? "partial" : "live",
+      mode: queued.length ? "partial" : processing.length ? "processing" : "live",
       message,
       warning: warnings.length ? warnings.join(" ") : queued.length ? "Connect the remaining social APIs to publish those channels directly." : undefined,
-    }, { status: queued.length ? 207 : 200 });
+    }, { status: queued.length ? 207 : processing.length ? 202 : 200 });
   } catch (error) {
     console.error("social publish failed", error);
     return NextResponse.json({ error: "Unable to save or publish this post right now." }, { status: 500 });
