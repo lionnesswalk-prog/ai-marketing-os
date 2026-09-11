@@ -15,6 +15,7 @@ model Workspace {
   users     WorkspaceUser[]
   accesses  WorkspaceAccess[]
   invites   WorkspaceInvite[]
+  subscription WorkspaceSubscription?
 }
 
 model Brand {
@@ -232,4 +233,22 @@ model AuditLog {
   brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId, createdAt])
+}
+
+
+model WorkspaceSubscription {
+  id                   String    @id @default(cuid())
+  workspaceId          String    @unique
+  provider             String    @default("stripe")
+  planKey              String    @default("starter")
+  status               String    @default("inactive")
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([status, planKey])
 }

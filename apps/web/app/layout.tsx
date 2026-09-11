@@ -11,6 +11,7 @@ import "./clients.css";
 import "./team.css";
 import "./platform.css";
 import "./security.css";
+import "./billing.css";
 
 export const metadata = {
   title: "AI Marketing OS",

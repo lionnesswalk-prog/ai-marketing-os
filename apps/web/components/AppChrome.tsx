@@ -15,6 +15,7 @@ const nav = [
   ["/leads", "Leads"],
   ["/approvals", "Approvals"],
   ["/team", "Team"],
+  ["/billing", "Billing"],
   ["/security", "Security"],
   ["/clients", "Clients"],
   ["/platform", "Platform Setup"],
