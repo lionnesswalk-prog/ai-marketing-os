@@ -4,8 +4,9 @@ import { SocialPublisher } from "../../components/SocialPublisher";
 import { listSocialPosts } from "../../lib/repository";
 import { getSocialPlatforms } from "../../lib/social-platforms";
 import { TikTokStatusButton } from "../../components/TikTokStatusButton";
+import { YouTubeStatusButton } from "../../components/YouTubeStatusButton";
 
-function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?: string) {
+function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?: string, youtube?: string) {
   if (meta === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
   if (meta === "disconnected") return { tone: "success", text: "Meta connection removed." };
   if (meta === "app-required") return { tone: "error", text: "Meta App ID and App Secret still need to be added to the production environment before account authorization can start." };
@@ -34,17 +35,24 @@ function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?
   if (tiktok === "cancelled") return { tone: "error", text: "TikTok connection was cancelled before permissions were approved." };
   if (tiktok === "invalid-state") return { tone: "error", text: "TikTok authorization could not be verified. Start the connection again from this page." };
   if (tiktok === "failed") return { tone: "error", text: "TikTok authorization failed. Check the Content Posting API product, video.publish scope and redirect URL." };
+
+  if (youtube === "connected") return { tone: "success", text: "YouTube connected successfully. Videos and Shorts can now be uploaded directly from the Social Hub." };
+  if (youtube === "disconnected") return { tone: "success", text: "YouTube connection removed." };
+  if (youtube === "setup-required") return { tone: "error", text: "YouTube connection needs PostgreSQL, secure integration encryption, and Google OAuth Client ID/Secret before authorization can start." };
+  if (youtube === "cancelled") return { tone: "error", text: "YouTube connection was cancelled before permissions were approved." };
+  if (youtube === "invalid-state") return { tone: "error", text: "YouTube authorization could not be verified. Start the connection again from this page." };
+  if (youtube === "failed") return { tone: "error", text: "YouTube authorization failed. Check the Google OAuth consent screen, YouTube Data API, scopes and redirect URL." };
   return null;
 }
 
 export default async function SocialPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ meta?: string; linkedin?: string; x?: string; tiktok?: string }>;
+  searchParams?: Promise<{ meta?: string; linkedin?: string; x?: string; tiktok?: string; youtube?: string }>;
 }) {
   await requireSession();
   const params = searchParams ? await searchParams : undefined;
-  const notice = integrationNotice(params?.meta, params?.linkedin, params?.x, params?.tiktok);
+  const notice = integrationNotice(params?.meta, params?.linkedin, params?.x, params?.tiktok, params?.youtube);
   const [scheduled, platforms] = await Promise.all([
     listSocialPosts(),
     getSocialPlatforms(),
@@ -95,6 +103,7 @@ export default async function SocialPage({
                 {post.mediaUrl && <a href={post.mediaUrl} target="_blank" rel="noreferrer">Open media ↗</a>}
                 {post.linkUrl && <a href={post.linkUrl} target="_blank" rel="noreferrer">Open destination ↗</a>}
                 {post.platform === "tiktok" && post.status === "publishing" && post.externalId && <TikTokStatusButton postId={post.id} />}
+                {post.platform === "youtube" && post.status === "publishing" && post.externalId && <YouTubeStatusButton postId={post.id} />}
               </div>
             </article>
           ))}
