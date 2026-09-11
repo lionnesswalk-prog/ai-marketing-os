@@ -440,3 +440,96 @@ export async function getYouTubeVideoStatus(videoId: string) {
     partsProcessed: video.processingDetails?.processingProgress?.partsProcessed,
   };
 }
+
+
+export async function fetchYouTubeAnalytics() {
+  const connection = await getYouTubeConnection();
+  if (!connection) throw new Error("YOUTUBE_NOT_CONNECTED");
+
+  const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
+  channelUrl.searchParams.set("part", "snippet,statistics,contentDetails");
+  channelUrl.searchParams.set("mine", "true");
+
+  const channelResponse = await fetch(channelUrl, {
+    headers: { Authorization: `Bearer ${connection.accessToken}` },
+    cache: "no-store",
+  });
+  const channelBody = await channelResponse.json().catch(() => ({})) as {
+    items?: Array<{
+      id: string;
+      snippet?: { title?: string };
+      statistics?: {
+        viewCount?: string;
+        subscriberCount?: string;
+        videoCount?: string;
+      };
+      contentDetails?: { relatedPlaylists?: { uploads?: string } };
+    }>;
+    error?: { message?: string };
+  };
+  if (!channelResponse.ok) {
+    throw new Error(channelBody.error?.message || `YouTube analytics failed (${channelResponse.status})`);
+  }
+
+  const channel = channelBody.items?.[0];
+  if (!channel?.id) throw new Error("YOUTUBE_CHANNEL_NOT_FOUND");
+  const uploads = channel.contentDetails?.relatedPlaylists?.uploads;
+
+  let videos: Array<{
+    id: string;
+    title: string;
+    url: string;
+    views: number;
+    likes: number;
+    comments: number;
+  }> = [];
+
+  if (uploads) {
+    const playlistUrl = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
+    playlistUrl.searchParams.set("part", "contentDetails");
+    playlistUrl.searchParams.set("playlistId", uploads);
+    playlistUrl.searchParams.set("maxResults", "12");
+
+    const playlistResponse = await fetch(playlistUrl, {
+      headers: { Authorization: `Bearer ${connection.accessToken}` },
+      cache: "no-store",
+    });
+    const playlistBody = await playlistResponse.json().catch(() => ({})) as {
+      items?: Array<{ contentDetails?: { videoId?: string } }>;
+    };
+    const ids = (playlistBody.items || []).map((item) => item.contentDetails?.videoId).filter(Boolean) as string[];
+
+    if (ids.length) {
+      const videosUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
+      videosUrl.searchParams.set("part", "snippet,statistics");
+      videosUrl.searchParams.set("id", ids.join(","));
+      const videosResponse = await fetch(videosUrl, {
+        headers: { Authorization: `Bearer ${connection.accessToken}` },
+        cache: "no-store",
+      });
+      const videosBody = await videosResponse.json().catch(() => ({})) as {
+        items?: Array<{
+          id: string;
+          snippet?: { title?: string };
+          statistics?: { viewCount?: string; likeCount?: string; commentCount?: string };
+        }>;
+      };
+      videos = (videosBody.items || []).map((video) => ({
+        id: video.id,
+        title: video.snippet?.title || "YouTube video",
+        url: `https://www.youtube.com/watch?v=${video.id}`,
+        views: Number(video.statistics?.viewCount || 0),
+        likes: Number(video.statistics?.likeCount || 0),
+        comments: Number(video.statistics?.commentCount || 0),
+      }));
+    }
+  }
+
+  return {
+    accountLabel: channel.snippet?.title || connection.channelTitle || "YouTube",
+    followers: Number(channel.statistics?.subscriberCount || 0),
+    views: Number(channel.statistics?.viewCount || 0),
+    posts: Number(channel.statistics?.videoCount || 0),
+    videos,
+  };
+}
