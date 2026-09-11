@@ -93,6 +93,18 @@ export function getPlatformReadiness() {
       detail: "Stripe secret key plus at least one plan Price ID are required before a workspace can start paid checkout.",
     },
     {
+      key: "billing-plan-prices",
+      label: "Stripe plan prices",
+      ready: billing.allPlanPricesConfigured,
+      detail: billing.configuredPlanCount + "/" + billing.totalPlans + " plan Price IDs are configured for hosted checkout.",
+    },
+    {
+      key: "billing-portal",
+      label: "Stripe Customer Portal",
+      ready: billing.portalConfigured,
+      detail: "The Stripe secret key is required before workspace admins can open hosted billing management.",
+    },
+    {
       key: "billing-webhook",
       label: "Stripe webhook sync",
       ready: billing.webhookConfigured,

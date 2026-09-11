@@ -252,3 +252,12 @@ model WorkspaceSubscription {
 
   @@index([status, planKey])
 }
+
+model BillingWebhookEvent {
+  eventId     String    @id
+  type        String
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([receivedAt])
+}

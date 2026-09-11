@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { billingLimitsEnforced, getBillingPlans, verifyStripeWebhook } from "../apps/web/lib/billing";
+import { billingLimitsEnforced, getBillingPlans, getBillingSetupState, shouldManageSubscriptionInPortal, verifyStripeWebhook } from "../apps/web/lib/billing";
 
 const previous = {
   enforce: process.env.BILLING_ENFORCE_LIMITS,
+  stripeSecret: process.env.STRIPE_SECRET_KEY,
   starterPrice: process.env.STRIPE_PRICE_STARTER_MONTHLY,
+  growthPrice: process.env.STRIPE_PRICE_GROWTH_MONTHLY,
+  scalePrice: process.env.STRIPE_PRICE_SCALE_MONTHLY,
   starterDisplay: process.env.BILLING_STARTER_DISPLAY_PRICE,
   starterMembers: process.env.BILLING_STARTER_MEMBER_LIMIT,
   webhook: process.env.STRIPE_WEBHOOK_SECRET,
@@ -24,6 +27,20 @@ try {
   assert.equal(starter?.displayPrice, "Test display");
   assert.equal(starter?.limits.members, 5);
 
+  process.env.STRIPE_SECRET_KEY = "sk_test_only";
+  process.env.STRIPE_PRICE_GROWTH_MONTHLY = "price_test_growth";
+  process.env.STRIPE_PRICE_SCALE_MONTHLY = "price_test_scale";
+  const setup = getBillingSetupState();
+  assert.equal(setup.checkoutConfigured, true);
+  assert.equal(setup.portalConfigured, true);
+  assert.equal(setup.configuredPlanCount, 3);
+  assert.equal(setup.allPlanPricesConfigured, true);
+
+  assert.equal(shouldManageSubscriptionInPortal("active", "sub_test"), true);
+  assert.equal(shouldManageSubscriptionInPortal("past_due", "sub_test"), true);
+  assert.equal(shouldManageSubscriptionInPortal("canceled", "sub_test"), false);
+  assert.equal(shouldManageSubscriptionInPortal("active", undefined), false);
+
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_only";
   const payload = JSON.stringify({ id: "evt_test", type: "customer.subscription.updated" });
   const timestamp = Math.floor(Date.now() / 1000);
@@ -38,7 +55,10 @@ try {
   console.log("billing tests passed");
 } finally {
   if (previous.enforce === undefined) delete process.env.BILLING_ENFORCE_LIMITS; else process.env.BILLING_ENFORCE_LIMITS = previous.enforce;
+  if (previous.stripeSecret === undefined) delete process.env.STRIPE_SECRET_KEY; else process.env.STRIPE_SECRET_KEY = previous.stripeSecret;
   if (previous.starterPrice === undefined) delete process.env.STRIPE_PRICE_STARTER_MONTHLY; else process.env.STRIPE_PRICE_STARTER_MONTHLY = previous.starterPrice;
+  if (previous.growthPrice === undefined) delete process.env.STRIPE_PRICE_GROWTH_MONTHLY; else process.env.STRIPE_PRICE_GROWTH_MONTHLY = previous.growthPrice;
+  if (previous.scalePrice === undefined) delete process.env.STRIPE_PRICE_SCALE_MONTHLY; else process.env.STRIPE_PRICE_SCALE_MONTHLY = previous.scalePrice;
   if (previous.starterDisplay === undefined) delete process.env.BILLING_STARTER_DISPLAY_PRICE; else process.env.BILLING_STARTER_DISPLAY_PRICE = previous.starterDisplay;
   if (previous.starterMembers === undefined) delete process.env.BILLING_STARTER_MEMBER_LIMIT; else process.env.BILLING_STARTER_MEMBER_LIMIT = previous.starterMembers;
   if (previous.webhook === undefined) delete process.env.STRIPE_WEBHOOK_SECRET; else process.env.STRIPE_WEBHOOK_SECRET = previous.webhook;

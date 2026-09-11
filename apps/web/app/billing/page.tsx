@@ -1,11 +1,20 @@
 import { requireSession } from "../../lib/auth";
 import { BillingActions } from "../../components/BillingActions";
-import { billingLimitsEnforced, getBillingPlans, getBillingSetupState, getWorkspaceBilling } from "../../lib/billing";
+import { billingLimitsEnforced, getBillingPlans, getBillingSetupState, getWorkspaceBilling, shouldManageSubscriptionInPortal } from "../../lib/billing";
 
 function limit(value?:number){return value?String(value):"Not enforced";}
 function notice(status?:string){
   if(status==="success") return {tone:"success",text:"Checkout completed. Stripe webhook confirmation updates the workspace subscription automatically."};
   if(status==="cancelled") return {tone:"error",text:"Checkout was cancelled. No billing change was applied."};
+  return null;
+}
+
+function subscriptionNotice(status?:string){
+  if(status==="past_due") return {tone:"error",text:"Payment is past due. Open Stripe billing to update the payment method and restore normal billing state."};
+  if(status==="unpaid") return {tone:"error",text:"Subscription is unpaid. Billing must be resolved in Stripe before relying on paid-plan access."};
+  if(status==="incomplete") return {tone:"error",text:"Subscription setup is incomplete. Finish the payment flow in Stripe."};
+  if(status==="paused") return {tone:"error",text:"Subscription is paused in Stripe. Review the billing portal before continuing paid-plan operations."};
+  if(status==="canceled") return {tone:"error",text:"Subscription is canceled. Choose a plan to start a new subscription when needed."};
   return null;
 }
 
@@ -16,9 +25,14 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
   const setup=getBillingSetupState();
   const params=searchParams?await searchParams:undefined;
   const message=notice(params?.status);
+  const billingStateNotice=subscriptionNotice(billing.subscription?.status);
   const currentPlan=billing.subscription?.planKey;
   const canManage=session.role==="admin";
   const limitsEnforced=billingLimitsEnforced();
+  const manageExistingSubscription=shouldManageSubscriptionInPortal(
+    billing.subscription?.status,
+    billing.subscription?.subscriptionId,
+  );
 
   return <div className="billing-page">
     <div className="dashboard-hero billing-hero">
@@ -34,6 +48,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
     </div>
 
     {message&&<div className={"profile-notice "+message.tone}>{message.text}</div>}
+    {billingStateNotice&&<div className={"profile-notice "+billingStateNotice.tone}>{billingStateNotice.text}</div>}
     {!setup.webhookConfigured&&<div className="profile-notice error">Stripe webhook secret is not configured yet. Automatic subscription synchronization is not production-ready.</div>}
 
     <section>
@@ -69,7 +84,13 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
               <div><span>Posts / month</span><strong>{limit(plan.limits.socialPostsMonthly)}</strong></div>
             </div>
             <div className="billing-features">{plan.features.map((feature)=><span key={feature}>✓ {feature}</span>)}</div>
-            {!active&&<BillingActions planKey={plan.key} checkoutEnabled={Boolean(plan.priceId&&setup.checkoutConfigured)} canManage={canManage}/>}
+            {!active&&<BillingActions
+              planKey={plan.key}
+              checkoutEnabled={Boolean(plan.priceId&&setup.checkoutConfigured&&!manageExistingSubscription)}
+              canManage={canManage}
+              showPortal={manageExistingSubscription&&Boolean(billing.subscription?.customerId)}
+              portalLabel="Change plan in Stripe"
+            />}
           </article>;
         })}
       </div>

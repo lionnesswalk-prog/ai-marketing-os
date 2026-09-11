@@ -172,11 +172,22 @@ export async function assertBillingConnectionCapacity(workspaceId: string, provi
 
 export function getBillingSetupState() {
   const plans=getBillingPlans();
+  const configuredPlans=plans.filter((item)=>Boolean(item.priceId)).map((item)=>item.key);
   return {
-    checkoutConfigured: Boolean(process.env.STRIPE_SECRET_KEY && plans.some((item)=>item.priceId)),
+    stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+    checkoutConfigured: Boolean(process.env.STRIPE_SECRET_KEY && configuredPlans.length > 0),
     portalConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
     webhookConfigured: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
+    configuredPlans,
+    configuredPlanCount: configuredPlans.length,
+    totalPlans: plans.length,
+    allPlanPricesConfigured: configuredPlans.length === plans.length,
   };
+}
+
+export function shouldManageSubscriptionInPortal(status:string|undefined, subscriptionId?:string) {
+  if(!subscriptionId) return false;
+  return status !== "canceled" && status !== "incomplete_expired";
 }
 
 function requireBillingAdmin(session: AppSession) {
@@ -254,6 +265,9 @@ export async function createStripeCheckout(session:AppSession, requestedPlan:Bil
   if(!plan?.priceId) throw new Error("PLAN_PRICE_NOT_CONFIGURED");
   const prisma=getPrisma();
   const current=await prisma.workspaceSubscription.findUnique({where:{workspaceId:session.workspaceId}});
+  if(shouldManageSubscriptionInPortal(current?.status,current?.stripeSubscriptionId || undefined)){
+    throw new Error("BILLING_MANAGE_EXISTING_SUBSCRIPTION_IN_PORTAL");
+  }
   const fields=new URLSearchParams();
   fields.set("mode","subscription");
   fields.set("success_url",origin(requestOrigin)+"/billing?status=success");
@@ -351,7 +365,7 @@ export async function syncStripeSubscription(object:StripeSubscription) {
   const workspaceId=object.metadata?.workspaceId || existing?.workspaceId;
   if(!workspaceId) throw new Error("STRIPE_WORKSPACE_METADATA_MISSING");
   const customerId=typeof object.customer==="string"?object.customer:object.customer?.id;
-  const selectedPlan=planKey(object.metadata?.planKey || planFromPrice(object.items?.data?.[0]?.price?.id) || existing?.planKey);
+  const selectedPlan=planKey(planFromPrice(object.items?.data?.[0]?.price?.id) || object.metadata?.planKey || existing?.planKey);
   await prisma.workspaceSubscription.upsert({
     where:{workspaceId},
     create:{
@@ -384,27 +398,49 @@ export async function syncStripeSubscription(object:StripeSubscription) {
 }
 
 export async function processStripeWebhook(rawBody:string) {
-  const event=JSON.parse(rawBody) as {type?:string;data?:{object?:Record<string,unknown>}};
+  const event=JSON.parse(rawBody) as {id?:string;type?:string;data?:{object?:Record<string,unknown>}};
   const object=event.data?.object;
   if(!event.type||!object) return;
-  if(["customer.subscription.created","customer.subscription.updated","customer.subscription.deleted"].includes(event.type)){
-    await syncStripeSubscription(object as StripeSubscription);
-    return;
-  }
-  if(event.type==="checkout.session.completed"){
-    const checkout=object as {subscription?:string|null;customer?:string|null;client_reference_id?:string|null;metadata?:Record<string,string>};
-    const workspaceId=checkout.metadata?.workspaceId || checkout.client_reference_id || undefined;
-    if(!workspaceId) return;
-    if(checkout.subscription){
-      const subscription=await stripeGet<StripeSubscription>("/v1/subscriptions/"+encodeURIComponent(checkout.subscription));
-      await syncStripeSubscription(subscription);
-      return;
+
+  const prisma=usePostgres()?getPrisma():null;
+  let claimedEvent=false;
+  if(prisma&&event.id){
+    try{
+      await prisma.billingWebhookEvent.create({data:{eventId:event.id,type:event.type}});
+      claimedEvent=true;
+    }catch(error){
+      if((error as {code?:string}).code==="P2002") return;
+      throw error;
     }
-    const prisma=getPrisma();
-    await prisma.workspaceSubscription.upsert({
-      where:{workspaceId},
-      create:{workspaceId,provider:"stripe",planKey:planKey(checkout.metadata?.planKey),status:"checkout_complete",stripeCustomerId:checkout.customer||null},
-      update:{status:"checkout_complete",...(checkout.customer?{stripeCustomerId:checkout.customer}:{})},
-    });
+  }
+
+  try{
+    if(["customer.subscription.created","customer.subscription.updated","customer.subscription.deleted"].includes(event.type)){
+      await syncStripeSubscription(object as StripeSubscription);
+    }else if(event.type==="checkout.session.completed"){
+      const checkout=object as {subscription?:string|null;customer?:string|null;client_reference_id?:string|null;metadata?:Record<string,string>};
+      const workspaceId=checkout.metadata?.workspaceId || checkout.client_reference_id || undefined;
+      if(workspaceId){
+        if(checkout.subscription){
+          const subscription=await stripeGet<StripeSubscription>("/v1/subscriptions/"+encodeURIComponent(checkout.subscription));
+          await syncStripeSubscription(subscription);
+        }else if(prisma){
+          await prisma.workspaceSubscription.upsert({
+            where:{workspaceId},
+            create:{workspaceId,provider:"stripe",planKey:planKey(checkout.metadata?.planKey),status:"checkout_complete",stripeCustomerId:checkout.customer||null},
+            update:{status:"checkout_complete",...(checkout.customer?{stripeCustomerId:checkout.customer}:{})},
+          });
+        }
+      }
+    }
+
+    if(prisma&&claimedEvent&&event.id){
+      await prisma.billingWebhookEvent.update({where:{eventId:event.id},data:{processedAt:new Date()}});
+    }
+  }catch(error){
+    if(prisma&&claimedEvent&&event.id){
+      await prisma.billingWebhookEvent.delete({where:{eventId:event.id}}).catch(()=>undefined);
+    }
+    throw error;
   }
 }

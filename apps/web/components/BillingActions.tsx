@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { BillingPlanKey } from "../lib/billing";
 
-export function BillingActions({planKey,checkoutEnabled,canManage,showPortal}:{planKey:BillingPlanKey;checkoutEnabled:boolean;canManage:boolean;showPortal?:boolean}){
+export function BillingActions({planKey,checkoutEnabled,canManage,showPortal,portalLabel="Manage in Stripe"}:{planKey:BillingPlanKey;checkoutEnabled:boolean;canManage:boolean;showPortal?:boolean;portalLabel?:string}){
   const [busy,setBusy]=useState<"checkout"|"portal"|null>(null);
   const [error,setError]=useState("");
 
@@ -29,7 +29,7 @@ export function BillingActions({planKey,checkoutEnabled,canManage,showPortal}:{p
 
   return <div className="billing-actions">
     {showPortal
-      ? <button className="btn secondary" type="button" disabled={!canManage||busy!==null} onClick={portal}>{busy==="portal"?"Opening…":"Manage in Stripe"}</button>
+      ? <button className="btn secondary" type="button" disabled={!canManage||busy!==null} onClick={portal}>{busy==="portal"?"Opening…":portalLabel}</button>
       : <button className="btn" type="button" disabled={!canManage||!checkoutEnabled||busy!==null} onClick={checkout}>{busy==="checkout"?"Opening…":checkoutEnabled?"Choose plan":"Setup required"}</button>}
     {error&&<small className="billing-action-error">{error}</small>}
   </div>;

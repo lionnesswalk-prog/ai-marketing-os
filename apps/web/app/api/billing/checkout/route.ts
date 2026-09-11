@@ -20,6 +20,7 @@ export async function POST(request:Request){
       DATABASE_MODE_REQUIRED:"Billing requires production database mode.",
       PLAN_PRICE_NOT_CONFIGURED:"This plan does not have a Stripe Price ID configured yet.",
       STRIPE_NOT_CONFIGURED:"Stripe billing is not configured yet.",
+      BILLING_MANAGE_EXISTING_SUBSCRIPTION_IN_PORTAL:"This workspace already has a Stripe subscription. Use the billing portal to change or manage the current plan.",
     };
     return NextResponse.json({error:messages[code]||code},{status:400});
   }
