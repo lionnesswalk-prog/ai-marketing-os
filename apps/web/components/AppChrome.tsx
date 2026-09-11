@@ -39,7 +39,7 @@ export function AppChrome({
   workspaces: WorkspaceOption[];
 }) {
   const pathname = usePathname();
-  const isAuthPage = pathname === "/login" || pathname === "/signup";
+  const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname.startsWith("/invite/");
 
   if (isAuthPage) return <main className="auth-shell">{children}</main>;
 
