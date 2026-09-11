@@ -33,7 +33,7 @@ async function finish(
   });
 }
 
-async function deliver(post: any): Promise<DeliveryStatus> {
+export async function deliverSocialPost(post: any): Promise<DeliveryStatus> {
   const metadata = meta(post.metadataJson);
   const common: any = {
     title: post.title,
@@ -143,7 +143,7 @@ export async function runScheduledPublisher(limit = 3) {
     if (claim.count !== 1) continue;
 
     claimed += 1;
-    const status = await deliver(post);
+    const status = await deliverSocialPost(post);
     if (status === "published") published += 1;
     else if (status === "publishing") processing += 1;
     else failed += 1;
