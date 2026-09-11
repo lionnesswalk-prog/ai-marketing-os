@@ -14,12 +14,13 @@ async function loginAction(formData: FormData) {
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const invite = String(formData.get("invite") ?? "").trim();
 
   if (!email.includes("@") || password.length < 8) {
     redirect("/login?error=invalid");
   }
 
-  let destination = "/dashboard";
+  let destination = invite ? "/invite/" + encodeURIComponent(invite) : "/dashboard";
   try {
     const session = await authenticateAccount({ email, password });
     await setSession(session);
@@ -35,7 +36,7 @@ async function loginAction(formData: FormData) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; invite?: string }>;
 }) {
   const mode = getAuthMode();
   const params = searchParams ? await searchParams : undefined;
@@ -49,6 +50,7 @@ export default async function LoginPage({
       <p className="muted large">Sign in to your marketing command center.</p>
       {mode === "preview" && <div className="preview-note">Preview mode · use the same browser and credentials you used on signup.</div>}
       <form className="auth-form" action={loginAction}>
+        {params?.invite && <input type="hidden" name="invite" value={params.invite} />}
         <label>Email address<input name="email" type="email" autoComplete="email" required placeholder="you@company.com" /></label>
         <label>Password<input name="password" type="password" autoComplete="current-password" minLength={8} required placeholder="Minimum 8 characters" /></label>
         {message && <div className="error-box" role="alert">{message}</div>}
