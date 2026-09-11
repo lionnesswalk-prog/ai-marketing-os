@@ -345,3 +345,78 @@ export async function publishPinterest(input: {
   }
   return { pinId: body.id, boardId: body.board_id || input.boardId };
 }
+
+
+function pinterestMetric(metrics: Record<string, unknown> | undefined, keys: string[]) {
+  if (!metrics) return undefined;
+  for (const key of keys) {
+    const raw = metrics[key];
+    if (typeof raw === "number") return raw;
+    if (typeof raw === "string" && raw.trim() !== "" && Number.isFinite(Number(raw))) return Number(raw);
+  }
+  return undefined;
+}
+
+function pinterestPinMetrics(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const root = value as Record<string, unknown>;
+  const candidate =
+    (root.lifetime_metrics && typeof root.lifetime_metrics === "object" ? root.lifetime_metrics : undefined) ||
+    (root["90d"] && typeof root["90d"] === "object" ? root["90d"] : undefined) ||
+    (root.ninety_day_metrics && typeof root.ninety_day_metrics === "object" ? root.ninety_day_metrics : undefined) ||
+    root;
+  return candidate as Record<string, unknown>;
+}
+
+export async function fetchPinterestAnalytics() {
+  const connection = await getPinterestConnection();
+  if (!connection) throw new Error("PINTEREST_NOT_CONNECTED");
+
+  const pinsUrl = new URL("https://api.pinterest.com/v5/pins");
+  pinsUrl.searchParams.set("page_size", "25");
+  pinsUrl.searchParams.set("pin_metrics", "true");
+
+  const response = await fetch(pinsUrl, {
+    headers: { Authorization: `Bearer ${connection.accessToken}` },
+    cache: "no-store",
+  });
+  const body = await response.json().catch(() => ({})) as {
+    items?: Array<{
+      id: string;
+      title?: string;
+      description?: string;
+      link?: string;
+      pin_metrics?: unknown;
+    }>;
+    message?: string;
+  };
+  if (!response.ok) {
+    throw new Error(body.message || `Pinterest analytics failed (${response.status})`);
+  }
+
+  const pins = (body.items || []).map((pin) => {
+    const metrics = pinterestPinMetrics(pin.pin_metrics);
+    return {
+      id: pin.id,
+      title: pin.title || pin.description?.slice(0, 90) || "Pinterest Pin",
+      url: `https://www.pinterest.com/pin/${pin.id}/`,
+      impressions: pinterestMetric(metrics, ["IMPRESSION", "impression", "impressions"]),
+      engagements: pinterestMetric(metrics, ["ENGAGEMENT", "engagement", "engagements"]),
+      saves: pinterestMetric(metrics, ["SAVE", "save", "saves"]),
+      clicks: pinterestMetric(metrics, ["PIN_CLICK", "pin_click", "pin_clicks"]),
+      outboundClicks: pinterestMetric(metrics, ["OUTBOUND_CLICK", "outbound_click", "outbound_clicks"]),
+    };
+  });
+
+  const sum = (key: "impressions" | "engagements" | "saves") =>
+    pins.reduce((total, item) => total + (typeof item[key] === "number" ? item[key] as number : 0), 0);
+
+  return {
+    accountLabel: connection.username ? `@${connection.username}` : "Pinterest",
+    posts: pins.length,
+    impressions: sum("impressions"),
+    engagements: sum("engagements"),
+    saves: sum("saves"),
+    pins,
+  };
+}
