@@ -5,6 +5,7 @@ import "./globals.css";
 import "./auth.css";
 import "./profile.css";
 import "./social-hub.css";
+import "./analytics.css";
 
 export const metadata = {
   title: "AI Marketing OS",
