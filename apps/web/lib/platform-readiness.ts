@@ -50,7 +50,7 @@ export async function getPlatformReadiness() {
   const billing = getBillingSetupState();
   const stripe = await verifyStripeProductionConfiguration();
 
-  const checks: PlatformCheck[] = [
+  const coreChecks: PlatformCheck[] = [
     {
       key: "database",
       label: "Production database",
@@ -88,46 +88,37 @@ export async function getPlatformReadiness() {
       detail: "Open SaaS signup creates a separate workspace and brand for every new client.",
     },
     {
+      key: "scheduler-auth",
+      label: "Scheduler authentication",
+      ready: Boolean(process.env.CRON_SECRET),
+      detail: process.env.CRON_SECRET
+        ? "CRON_SECRET protects scheduled publishing invocations."
+        : "Set CRON_SECRET before enabling production scheduled publishing.",
+    },
+  ];
+
+  const paymentChecks: PlatformCheck[] = billing.paymentsEnabled ? [
+    {
       key: "billing-checkout",
-      label: "Stripe Checkout",
+      label: "Payment checkout",
       ready: billing.checkoutConfigured,
-      detail: "Stripe secret key plus at least one plan Price ID are required before a workspace can start paid checkout.",
+      detail: "A configured payment provider is required only when paid checkout is enabled.",
     },
     {
       key: "billing-api",
-      label: "Stripe account verification",
+      label: "Payment provider account",
       ready: stripe.accountReachable && stripe.accountReady,
       detail: stripe.accountDetail,
     },
     {
-      key: "billing-live-mode",
-      label: "Stripe production mode",
-      ready: stripe.modeReady,
-      detail: stripe.mode === "live"
-        ? "Live Stripe secret key is configured for production."
-        : stripe.mode === "test"
-          ? "Test-mode Stripe key detected. Replace it with a live key before accepting production payments."
-          : "Stripe key mode cannot be verified.",
-    },
-    {
-      key: "billing-plan-prices",
-      label: "Stripe plan prices",
-      ready: billing.allPlanPricesConfigured,
-      detail: billing.configuredPlanCount + "/" + billing.totalPlans + " plan Price IDs are configured for hosted checkout.",
-    },
-    {
-      key: "billing-portal",
-      label: "Stripe Customer Portal",
-      ready: billing.portalConfigured,
-      detail: "The Stripe secret key is required before workspace admins can open hosted billing management.",
-    },
-    {
       key: "billing-webhook",
-      label: "Stripe webhook sync",
+      label: "Payment webhook sync",
       ready: billing.webhookConfigured,
-      detail: "STRIPE_WEBHOOK_SECRET verifies subscription lifecycle events before billing state is written to the workspace.",
+      detail: "Signed lifecycle events keep workspace subscription state synchronized.",
     },
-  ];
+  ] : [];
+
+  const checks = [...coreChecks, ...paymentChecks];
 
   function provider(input: Omit<ProviderReadiness, "ready">): ProviderReadiness {
     return { ...input, ready: input.appConfigured && input.storageReady };
