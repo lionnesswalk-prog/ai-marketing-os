@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getPrisma } from "./prisma";
 
 export type AppRole = "admin" | "marketing_manager" | "sales" | "viewer";
 
@@ -109,7 +110,31 @@ export async function clearSession() {
 
 export async function getSession(): Promise<AppSession | null> {
   const store = await cookies();
-  return readSessionToken(store.get(SESSION_COOKIE)?.value);
+  const session = readSessionToken(store.get(SESSION_COOKIE)?.value);
+  if (!session) return null;
+
+  if (process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres") {
+    try {
+      const prisma = getPrisma();
+      const access = await prisma.workspaceAccess.findUnique({
+        where: {
+          userId_workspaceId: {
+            userId: session.userId,
+            workspaceId: session.workspaceId,
+          },
+        },
+      });
+      if (!access) return null;
+      return {
+        ...session,
+        role: access.role as AppRole,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  return session;
 }
 
 export async function requireSession(): Promise<AppSession> {
