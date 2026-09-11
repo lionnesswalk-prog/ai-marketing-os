@@ -55,8 +55,9 @@ export default async function PlatformPage() {
             {data.summary.runtimeReady ? "Production ready" : data.summary.blockers + " setup items"}
           </span>
         </div>
+        {data.stripe.deferred && <div className="profile-notice">Payment gateway setup is intentionally deferred. Plans, usage and entitlements remain available without blocking core SaaS production readiness.</div>}
 
-        <div className="platform-check-grid">
+        {!data.stripe.deferred && <div className="platform-check-grid">
           {data.checks.map((check) => (
             <article className="card platform-check" key={check.key}>
               <div className="platform-check-head">
@@ -67,14 +68,14 @@ export default async function PlatformPage() {
               <p>{check.detail}</p>
             </article>
           ))}
-        </div>
+        </div>}
       </section>
 
       <section>
         <div className="section-head">
-          <div><p className="eyebrow">STRIPE LIVE PREFLIGHT</p><h2>Payment configuration verification</h2></div>
-          <span className={"health " + (data.stripe.ready ? "healthy" : "needs_action")}>
-            {data.stripe.ready ? "Live payments ready" : "Setup required"}
+          <div><p className="eyebrow">PAYMENTS</p><h2>Payment gateway readiness</h2></div>
+          <span className={data.stripe.deferred ? "pill" : "health " + (data.stripe.ready ? "healthy" : "needs_action")}>
+            {data.stripe.deferred ? "Deferred" : data.stripe.ready ? "Live payments ready" : "Setup required"}
           </span>
         </div>
 
@@ -103,9 +104,9 @@ export default async function PlatformPage() {
             </div>
             <p>Signed Stripe lifecycle events keep subscription state synchronized and idempotent.</p>
           </article>
-        </div>
+        </div>}
 
-        <div className="billing-plan-grid">
+        {!data.stripe.deferred && <div className="billing-plan-grid">
           {data.stripe.prices.map((price) => (
             <article className={"card billing-plan " + (price.ready ? "active" : "")} key={price.planKey}>
               <div className="billing-plan-head">
