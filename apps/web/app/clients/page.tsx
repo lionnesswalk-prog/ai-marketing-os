@@ -1,16 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "../../lib/auth";
-import { createClientWorkspace, switchWorkspace } from "../../lib/workspaces";
-import { enterAgencyWorkspace, listAgencyClients } from "../../lib/agency";\nimport { ClientOnboardingForm } from "../../components/ClientOnboardingForm";
-
-function notice(status?: string) {
-  if (status === "created") return { tone: "success", text: "Client workspace created and opened." };
-  if (status === "invalid") return { tone: "error", text: "Enter a valid client and brand name." };
-  if (status === "database") return { tone: "error", text: "Client workspaces require production database mode." };
-  if (status === "forbidden") return { tone: "error", text: "Only platform administrators can create client workspaces." };
-  if (status === "failed") return { tone: "error", text: "Unable to create the client workspace." };
-  return null;
-}
+import { enterAgencyWorkspace, listAgencyClients } from "../../lib/agency";
+import { ClientOnboardingForm } from "../../components/ClientOnboardingForm";
 
 async function openClientAction(formData: FormData) {
   "use server";
@@ -20,16 +11,11 @@ async function openClientAction(formData: FormData) {
   redirect("/dashboard");
 }
 
-export default async function ClientsPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ status?: string }>;
-}) {
+export default async function ClientsPage() {
   const session = await requireSession();
   if (!session.platformAdmin) redirect("/dashboard");
+
   const clients = await listAgencyClients(session);
-  const params = searchParams ? await searchParams : undefined;
-  const message = notice(params?.status);
 
   return (
     <div className="clients-page">
@@ -37,7 +23,9 @@ export default async function ClientsPage({
         <div className="hero-copy">
           <p className="eyebrow">AGENCY WORKSPACES</p>
           <h1>Clients</h1>
-          <p className="muted large">Each client gets an isolated brand workspace with its own social connections, content, analytics, leads and campaigns.</p>
+          <p className="muted large">
+            Each client gets an isolated brand workspace with its own social connections, content, analytics, leads and campaigns.
+          </p>
         </div>
         <div className="hero-badges">
           <span className="pill accent">{clients.length} workspaces</span>
@@ -45,34 +33,31 @@ export default async function ClientsPage({
         </div>
       </div>
 
-      {message && <div className={`profile-notice ${message.tone}`}>{message.text}</div>}
-
       <div className="clients-layout">
-        <section className="card client-create-card">
-          <p className="eyebrow">ADD CLIENT</p>
-          <h2>New workspace</h2>
-          <p className="muted">Create a private workspace for a new client. You can connect their social accounts after switching into it.</p>
-          <form action={createClientAction}>
-            <label>Client / workspace name<input name="workspaceName" minLength={2} required placeholder="Acme Fashion" /></label>
-            <label>Brand name<input name="brandName" minLength={2} required placeholder="Acme" /></label>
-            <button className="btn" type="submit" disabled={!session.platformAdmin}>Create client workspace</button>
-          </form>
-          {!session.platformAdmin && <p className="muted">Only platform administrators can add client workspaces.</p>}
-        </section>
+        <ClientOnboardingForm />
 
         <section>
           <div className="section-head client-list-head">
-            <div><p className="eyebrow">AGENCY OVERVIEW</p><h2>All client workspaces</h2></div>
+            <div>
+              <p className="eyebrow">AGENCY OVERVIEW</p>
+              <h2>All client workspaces</h2>
+            </div>
           </div>
+
           <div className="client-grid agency-client-grid">
             {clients.map((client) => (
-              <article className={`card client-card agency-client-card ${client.current ? "current" : ""}`} key={client.workspaceId}>
+              <article
+                className={`card client-card agency-client-card ${client.current ? "current" : ""}`}
+                key={client.workspaceId}
+              >
                 <div className="client-card-head">
                   <div>
                     <span className="client-brand-label">{client.brandName || "Brand"}</span>
                     <h3>{client.workspaceName}</h3>
                   </div>
-                  <span className={client.current ? "pill accent" : "pill"}>{client.current ? "Active" : `${client.members} members`}</span>
+                  <span className={client.current ? "pill accent" : "pill"}>
+                    {client.current ? "Active" : `${client.members} members`}
+                  </span>
                 </div>
 
                 <div className="agency-client-stats">
@@ -84,13 +69,21 @@ export default async function ClientsPage({
                 </div>
 
                 <div className="agency-provider-row">
-                  {client.connectedProviders.length ? client.connectedProviders.map((provider) => (
-                    <span className="pill" key={provider}>{provider}</span>
-                  )) : <span className="muted">No social accounts connected yet.</span>}
+                  {client.connectedProviders.length ? (
+                    client.connectedProviders.map((provider) => (
+                      <span className="pill" key={provider}>{provider}</span>
+                    ))
+                  ) : (
+                    <span className="muted">No social accounts connected yet.</span>
+                  )}
                 </div>
 
                 <div className="agency-client-footer">
-                  <small>{client.lastActivityAt ? `Last social activity · ${new Date(client.lastActivityAt).toLocaleString("en-IN")}` : "No social activity yet"}</small>
+                  <small>
+                    {client.lastActivityAt
+                      ? `Last social activity · ${new Date(client.lastActivityAt).toLocaleString("en-IN")}`
+                      : "No social activity yet"}
+                  </small>
                   {!client.current && (
                     <form action={openClientAction}>
                       <input type="hidden" name="workspaceId" value={client.workspaceId} />
@@ -103,7 +96,6 @@ export default async function ClientsPage({
           </div>
         </section>
       </div>
-
     </div>
   );
 }

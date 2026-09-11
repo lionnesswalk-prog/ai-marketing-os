@@ -15,7 +15,8 @@ const nav = [
   ["/leads", "Leads"],
   ["/approvals", "Approvals"],
   ["/team", "Team"],
-  ["/clients", "Clients"],\n  ["/platform", "Platform Setup"],
+  ["/clients", "Clients"],
+  ["/platform", "Platform Setup"],
 ] as const;
 
 function initials(session: AppSession | null) {
@@ -64,8 +65,14 @@ export function AppChrome({
           {nav.map(([href, label], index) => {
             if ((href === "/clients" || href === "/platform") && !session?.platformAdmin) return null;
             const active = pathname === href || pathname.startsWith(`${href}/`);
+
             return (
-              <a className={active ? "active" : undefined} href={href} key={href} aria-current={active ? "page" : undefined}>
+              <a
+                className={active ? "active" : undefined}
+                href={href}
+                key={href}
+                aria-current={active ? "page" : undefined}
+              >
                 <span className="nav-index">{String(index + 1).padStart(2, "0")}</span>
                 <span>{label}</span>
               </a>
@@ -83,7 +90,9 @@ export function AppChrome({
             <span className="profile-chevron" aria-hidden="true">›</span>
           </a>
           <div className="safe-mode"><span className="status-dot" /> Human-approved automation</div>
-          <form action="/api/auth/logout" method="post"><button className="logout-button" type="submit">Sign out</button></form>
+          <form action="/api/auth/logout" method="post">
+            <button className="logout-button" type="submit">Sign out</button>
+          </form>
         </div>
       </aside>
       <main className="shell">{children}</main>

@@ -8,7 +8,8 @@ import "./profile.css";
 import "./social-hub.css";
 import "./analytics.css";
 import "./clients.css";
-import "./team.css";\nimport "./platform.css";
+import "./team.css";
+import "./platform.css";
 
 export const metadata = {
   title: "AI Marketing OS",
@@ -18,9 +19,12 @@ export const metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   const workspaces = session ? await listAccessibleWorkspaces(session).catch(() => []) : [];
+
   return (
     <html lang="en">
-      <body><AppChrome session={session} workspaces={workspaces}>{children}</AppChrome></body>
+      <body>
+        <AppChrome session={session} workspaces={workspaces}>{children}</AppChrome>
+      </body>
     </html>
   );
 }
