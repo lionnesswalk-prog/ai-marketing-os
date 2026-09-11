@@ -7,7 +7,7 @@ type ContentPlan = {
   posts: Array<{ platform: string; format: string; hook: string; caption: string; cta: string }>;
 };
 
-export function SocialPlanner() {
+export function SocialPlanner({ disabled = false }: { disabled?: boolean }) {
   const [theme, setTheme] = useState("One-of-one craftsmanship");
   const [objective, setObjective] = useState("Build desire and qualified product discovery");
   const [plan, setPlan] = useState<ContentPlan | null>(null);
@@ -16,6 +16,10 @@ export function SocialPlanner() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (disabled) {
+      setError("Your workspace role has read-only content access.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -43,9 +47,9 @@ export function SocialPlanner() {
     <div className="two-col">
       <form className="card form-card" onSubmit={submit}>
         <h2>Content brief</h2>
-        <label>Theme<input value={theme} onChange={(e) => setTheme(e.target.value)} /></label>
-        <label>Objective<textarea rows={3} value={objective} onChange={(e) => setObjective(e.target.value)} /></label>
-        <button className="btn" disabled={busy}>{busy ? "Generating…" : "Generate content set"}</button>
+        <label>Theme<input disabled={disabled} value={theme} onChange={(e) => setTheme(e.target.value)} /></label>
+        <label>Objective<textarea disabled={disabled} rows={3} value={objective} onChange={(e) => setObjective(e.target.value)} /></label>
+        <button className="btn" disabled={disabled || busy}>{busy ? "Generating…" : "Generate content set"}</button>
         {error && <div className="error-box">{error}</div>}
       </form>
 
