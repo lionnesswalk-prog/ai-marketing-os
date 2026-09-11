@@ -44,7 +44,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
       <div className="hero-copy">
         <p className="eyebrow">WORKSPACE BILLING</p>
         <h1>Subscription & usage</h1>
-        <p className="muted large">Stripe-hosted checkout keeps payment data outside AI Marketing OS. The portal stores only billing identifiers and subscription state.</p>
+        <p className="muted large">{setup.paymentsEnabled ? "Hosted checkout keeps payment data outside AI Marketing OS. The portal stores only billing identifiers and subscription state." : "Track workspace usage, plan capacity and feature entitlements now. A production payment gateway will be connected separately."}</p>
       </div>
       <div className="hero-badges">
         <span className={"pill "+((billing.subscription?.status==="active"||billing.subscription?.status==="trialing")?"accent":"")}>{billing.subscription?.status||"No paid plan"}</span>
@@ -96,7 +96,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
               checkoutEnabled={Boolean(setup.paymentsEnabled&&plan.priceId&&setup.checkoutConfigured&&!manageExistingSubscription)}
               canManage={canManage}
               showPortal={manageExistingSubscription&&Boolean(billing.subscription?.customerId)}
-              portalLabel="Change plan in Stripe"
+              portalLabel="Manage subscription"
             />}
           </article>;
         })}
@@ -131,7 +131,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
           ))}
         </div>
       ) : (
-        <div className="card empty"><h3>No billing events yet</h3><p className="muted">Checkout, portal and Stripe subscription synchronization events will appear here.</p></div>
+        <div className="card empty"><h3>No billing events yet</h3><p className="muted">Checkout, portal and subscription synchronization events will appear here once a payment gateway is enabled.</p></div>
       )}
     </section>
 
