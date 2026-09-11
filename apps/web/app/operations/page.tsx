@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { canManageMarketing, requireSession } from "../../lib/auth";
 import { getOperationsOverview } from "../../lib/operations";
 import { OperationsRunButton } from "../../components/OperationsRunButton";
+import { ProviderDiagnosticsButton } from "../../components/ProviderDiagnosticsButton";
 
 function displayTime(value?: string) {
   return value ? new Date(value).toLocaleString("en-IN") : "None";
@@ -93,6 +94,16 @@ export default async function OperationsPage() {
               <p className="muted">{provider.connectionCheckFailed ? "Portal could not read the saved connection state. Review integration storage and runtime logs." : provider.accountLabel || (provider.setupReady ? "No client account connected yet." : "Central provider app is not ready yet.")}</p>
             </article>
           ))}
+        </div>
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="row-between">
+            <div>
+              <p className="eyebrow">LIVE API DIAGNOSTICS</p>
+              <h3>Verify saved provider access without publishing</h3>
+              <p className="muted">Runs read-only checks against connected social APIs. It does not create, edit, or delete posts.</p>
+            </div>
+            <ProviderDiagnosticsButton />
+          </div>
         </div>
       </section>
 

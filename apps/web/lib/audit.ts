@@ -59,6 +59,7 @@ function eventLabel(action: string) {
     billing_portal_opened: "Billing portal opened",
     billing_subscription_synced: "Subscription status updated",
     scheduler_manual_run: "Manual publishing run",
+    provider_diagnostics_run: "Provider diagnostics run",
   };
   return labels[action] || action.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
@@ -104,6 +105,12 @@ function eventDetail(action: string, rawPayload: unknown) {
     const failed = typeof payload.failed === "number" ? payload.failed : 0;
     const recovered = typeof payload.recovered === "number" ? payload.recovered : 0;
     return claimed + " claimed · " + published + " published · " + failed + " failed · " + recovered + " stale recovered";
+  }
+  if (action === "provider_diagnostics_run") {
+    const ready = typeof payload.ready === "number" ? payload.ready : 0;
+    const disconnected = typeof payload.disconnected === "number" ? payload.disconnected : 0;
+    const failed = typeof payload.error === "number" ? payload.error : 0;
+    return ready + " ready · " + disconnected + " disconnected · " + failed + " errors";
   }
   return "Security-relevant workspace activity";
 }
