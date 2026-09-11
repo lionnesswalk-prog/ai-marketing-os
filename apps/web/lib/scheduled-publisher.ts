@@ -39,7 +39,7 @@ async function completePost(
         ...meta,
         lastDeliveryAttemptAt: new Date().toISOString(),
         lastDeliveryError: error || null,
-      },
+      } as any,
     },
   });
 }
