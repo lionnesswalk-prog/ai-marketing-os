@@ -20,7 +20,7 @@ const privacyLabels: Record<string, string> = {
   SELF_ONLY: "Only me",
 };
 
-export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig[] }) {
+export function SocialPublisher({ platforms, canManage = true }: { platforms: SocialPlatformConfig[]; canManage?: boolean }) {
   const router = useRouter();
   const [selected, setSelected] = useState<SocialPlatform[]>(["instagram", "facebook"]);
   const [title, setTitle] = useState("New social post");
@@ -114,10 +114,15 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
   }, [tiktokConnected, tiktokSelected]);
 
   function togglePlatform(platform: SocialPlatform) {
+    if (!canManage) return;
     setSelected((current) => current.includes(platform) ? current.filter((item) => item !== platform) : [...current, platform]);
   }
 
   async function submit(action: "draft" | "schedule" | "publish") {
+    if (!canManage) {
+      setError("Your workspace role has read-only social access.");
+      return;
+    }
     if ((action === "publish" || action === "schedule") && tiktokSelected && tiktokConnected && !tiktokPrivacyLevel) {
       setError("Choose a TikTok privacy level before publishing.");
       return;
@@ -185,8 +190,8 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
               </div>
               <div className="social-platform-actions">
                 <a href={platform.homeUrl} target="_blank" rel="noreferrer">Open ↗</a>
-                {!platform.connected && platform.connectUrl && <a className="connect-social" href={platform.connectUrl}>Connect</a>}
-                {platform.connected && platform.disconnectUrl && (
+                {canManage && !platform.connected && platform.connectUrl && <a className="connect-social" href={platform.connectUrl}>Connect</a>}
+                {canManage && platform.connected && platform.disconnectUrl && (
                   <form action={platform.disconnectUrl} method="post"><button type="submit">Disconnect</button></form>
                 )}
               </div>
@@ -194,6 +199,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
           ))}
         </div>
         <p className="social-help">Meta, LinkedIn, X, TikTok, YouTube and Pinterest have secure OAuth connection flows. Pinterest image Pins can publish directly to a selected board; video Pins remain queued until media upload support is enabled.</p>
+        {!canManage && <div className="profile-notice social-notice">Read-only social access · ask a workspace admin or marketing manager to connect accounts or publish content.</div>}
       </section>
 
       <form className="card social-composer" onSubmit={preventSubmit}>
@@ -205,7 +211,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
         <label>Platforms</label>
         <div className="platform-picker">
           {platforms.map((platform) => (
-            <button className={selected.includes(platform.id) ? "selected" : ""} type="button" key={platform.id} onClick={() => togglePlatform(platform.id)}>
+            <button className={selected.includes(platform.id) ? "selected" : ""} type="button" key={platform.id} disabled={!canManage} onClick={() => togglePlatform(platform.id)}>
               <span>{platform.short}</span>{platform.name}
             </button>
           ))}
@@ -285,9 +291,9 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
         {error && <div className="profile-notice error">{error}</div>}
 
         <div className="social-actions">
-          <button className="btn secondary" type="button" disabled={busy !== null || selected.length === 0} onClick={() => submit("draft")}>{busy === "draft" ? "Saving…" : "Save draft"}</button>
-          <button className="btn secondary" type="button" disabled={busy !== null || selected.length === 0 || !scheduledAt} onClick={() => submit("schedule")}>{busy === "schedule" ? "Scheduling…" : "Schedule"}</button>
-          <button className="btn" type="button" disabled={busy !== null || selected.length === 0 || (tiktokSelected && tiktokConnected && (tiktokLoading || !tiktokPrivacyLevel)) || (pinterestSelected && pinterestConnected && (pinterestLoading || !pinterestBoardId))} onClick={() => submit("publish")}>{busy === "publish" ? "Publishing…" : "Publish now"}</button>
+          <button className="btn secondary" type="button" disabled={!canManage || busy !== null || selected.length === 0} onClick={() => submit("draft")}>{busy === "draft" ? "Saving…" : "Save draft"}</button>
+          <button className="btn secondary" type="button" disabled={!canManage || busy !== null || selected.length === 0 || !scheduledAt} onClick={() => submit("schedule")}>{busy === "schedule" ? "Scheduling…" : "Schedule"}</button>
+          <button className="btn" type="button" disabled={!canManage || busy !== null || selected.length === 0 || (tiktokSelected && tiktokConnected && (tiktokLoading || !tiktokPrivacyLevel)) || (pinterestSelected && pinterestConnected && (pinterestLoading || !pinterestBoardId))} onClick={() => submit("publish")}>{busy === "publish" ? "Publishing…" : "Publish now"}</button>
         </div>
       </form>
     </div>
