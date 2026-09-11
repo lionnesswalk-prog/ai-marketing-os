@@ -98,6 +98,8 @@ export async function listSocialPosts(): Promise<SocialPostView[]> {
       hashtags: typeof meta.hashtags === "string" ? meta.hashtags : undefined,
       cta: typeof meta.cta === "string" ? meta.cta : undefined,
       altText: typeof meta.altText === "string" ? meta.altText : undefined,
+      lastDeliveryError: typeof meta.lastDeliveryError === "string" ? meta.lastDeliveryError : undefined,
+      lastDeliveryAttemptAt: typeof meta.lastDeliveryAttemptAt === "string" ? meta.lastDeliveryAttemptAt : undefined,
     };
   });
 }
@@ -209,6 +211,8 @@ export async function getSocialPostById(id: string): Promise<SocialPostView | nu
     hashtags: typeof meta.hashtags === "string" ? meta.hashtags : undefined,
     cta: typeof meta.cta === "string" ? meta.cta : undefined,
     altText: typeof meta.altText === "string" ? meta.altText : undefined,
+    lastDeliveryError: typeof meta.lastDeliveryError === "string" ? meta.lastDeliveryError : undefined,
+    lastDeliveryAttemptAt: typeof meta.lastDeliveryAttemptAt === "string" ? meta.lastDeliveryAttemptAt : undefined,
   };
 }
 
