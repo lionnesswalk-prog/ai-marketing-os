@@ -5,6 +5,7 @@ import { getXSetupState } from "./x-integration";
 import { getTikTokSetupState } from "./tiktok-integration";
 import { getYouTubeSetupState } from "./youtube-integration";
 import { getPinterestSetupState } from "./pinterest-integration";
+import { getBillingSetupState } from "./billing";
 
 export type PlatformCheck = {
   key: string;
@@ -46,6 +47,7 @@ export function getPlatformReadiness() {
   const tiktok = getTikTokSetupState();
   const youtube = getYouTubeSetupState();
   const pinterest = getPinterestSetupState();
+  const billing = getBillingSetupState();
 
   const checks: PlatformCheck[] = [
     {
@@ -83,6 +85,18 @@ export function getPlatformReadiness() {
       label: "Client onboarding",
       ready: (process.env.SIGNUP_MODE || "open") === "open",
       detail: "Open SaaS signup creates a separate workspace and brand for every new client.",
+    },
+    {
+      key: "billing-checkout",
+      label: "Stripe Checkout",
+      ready: billing.checkoutConfigured,
+      detail: "Stripe secret key plus at least one plan Price ID are required before a workspace can start paid checkout.",
+    },
+    {
+      key: "billing-webhook",
+      label: "Stripe webhook sync",
+      ready: billing.webhookConfigured,
+      detail: "STRIPE_WEBHOOK_SECRET verifies subscription lifecycle events before billing state is written to the workspace.",
     },
   ];
 
