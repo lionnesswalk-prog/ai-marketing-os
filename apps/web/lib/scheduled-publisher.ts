@@ -28,6 +28,7 @@ async function finish(
         ...metadata,
         lastDeliveryAttemptAt: new Date().toISOString(),
         lastDeliveryError: error || null,
+        deliveryClaimedAt: null,
       } as any,
     },
   });
@@ -121,6 +122,34 @@ export async function runScheduledPublisher(limit = 3) {
   }
 
   const prisma = getPrisma();
+  const staleBefore = new Date(Date.now() - 15 * 60_000);
+  const stale = await prisma.socialPost.findMany({
+    where: {
+      status: "publishing",
+      externalId: null,
+      updatedAt: { lte: staleBefore },
+    },
+    take: 10,
+  });
+
+  let recovered = 0;
+  for (const post of stale) {
+    const metadata = meta(post.metadataJson);
+    const recovery = await prisma.socialPost.updateMany({
+      where: { id: post.id, status: "publishing", externalId: null, updatedAt: { lte: staleBefore } },
+      data: {
+        status: "failed",
+        metadataJson: {
+          ...metadata,
+          deliveryClaimedAt: null,
+          staleClaimRecoveredAt: new Date().toISOString(),
+          lastDeliveryError: "Delivery state became uncertain before confirmation. Review the provider account before retrying to avoid a duplicate post.",
+        } as any,
+      },
+    });
+    recovered += recovery.count;
+  }
+
   const due = await prisma.socialPost.findMany({
     where: {
       status: "scheduled",
@@ -136,9 +165,17 @@ export async function runScheduledPublisher(limit = 3) {
   let failed = 0;
 
   for (const post of due) {
+    const metadata = meta(post.metadataJson);
     const claim = await prisma.socialPost.updateMany({
       where: { id: post.id, status: "scheduled" },
-      data: { status: "publishing" },
+      data: {
+        status: "publishing",
+        metadataJson: {
+          ...metadata,
+          deliveryClaimedAt: new Date().toISOString(),
+          deliveryAttemptCount: Number(metadata.deliveryAttemptCount || 0) + 1,
+        } as any,
+      },
     });
     if (claim.count !== 1) continue;
 
@@ -149,5 +186,5 @@ export async function runScheduledPublisher(limit = 3) {
     else failed += 1;
   }
 
-  return { claimed, published, processing, failed };
+  return { recovered, claimed, published, processing, failed };
 }
