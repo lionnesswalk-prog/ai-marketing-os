@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSession } from "../../../../../lib/auth";
+import { canManageMarketing, getSession } from "../../../../../lib/auth";
 import {
   cancelSocialSchedule,
   rescheduleSocialPost,
@@ -29,7 +29,9 @@ function friendlyError(error: unknown) {
 }
 
 export async function POST(request: Request) {
-  if (!(await getSession())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!canManageMarketing(session.role)) return NextResponse.json({ error: "Your role cannot modify the publishing queue." }, { status: 403 });
 
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid post action." }, { status: 400 });
