@@ -4,7 +4,7 @@ import { SocialPublisher } from "../../components/SocialPublisher";
 import { listSocialPosts } from "../../lib/repository";
 import { getSocialPlatforms } from "../../lib/social-platforms";
 
-function integrationNotice(meta?: string, linkedin?: string) {
+function integrationNotice(meta?: string, linkedin?: string, x?: string) {
   if (meta === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
   if (meta === "disconnected") return { tone: "success", text: "Meta connection removed." };
   if (meta === "app-required") return { tone: "error", text: "Meta App ID and App Secret still need to be added to the production environment before account authorization can start." };
@@ -19,17 +19,24 @@ function integrationNotice(meta?: string, linkedin?: string) {
   if (linkedin === "cancelled") return { tone: "error", text: "LinkedIn connection was cancelled before permissions were approved." };
   if (linkedin === "invalid-state") return { tone: "error", text: "LinkedIn authorization could not be verified. Start the connection again from this page." };
   if (linkedin === "failed") return { tone: "error", text: "LinkedIn authorization failed. Check the LinkedIn app products, scopes and redirect URL, then connect again." };
+
+  if (x === "connected") return { tone: "success", text: "X connected successfully. Text and link posts can now publish directly from the Social Hub." };
+  if (x === "disconnected") return { tone: "success", text: "X connection removed." };
+  if (x === "setup-required") return { tone: "error", text: "X connection needs PostgreSQL, secure integration encryption, and an X Client ID before authorization can start." };
+  if (x === "cancelled") return { tone: "error", text: "X connection was cancelled before permissions were approved." };
+  if (x === "invalid-state") return { tone: "error", text: "X authorization could not be verified. Start the connection again from this page." };
+  if (x === "failed") return { tone: "error", text: "X authorization failed. Check the X app OAuth settings, scopes and callback URL, then connect again." };
   return null;
 }
 
 export default async function SocialPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ meta?: string; linkedin?: string }>;
+  searchParams?: Promise<{ meta?: string; linkedin?: string; x?: string }>;
 }) {
   await requireSession();
   const params = searchParams ? await searchParams : undefined;
-  const notice = integrationNotice(params?.meta, params?.linkedin);
+  const notice = integrationNotice(params?.meta, params?.linkedin, params?.x);
   const [scheduled, platforms] = await Promise.all([
     listSocialPosts(),
     getSocialPlatforms(),
