@@ -75,7 +75,7 @@ export async function createClientWorkspace(
   input: { workspaceName: string; brandName: string },
 ): Promise<WorkspaceOption> {
   if (!isDatabaseMode()) throw new Error("DATABASE_MODE_REQUIRED");
-  if (session.role !== "admin") throw new Error("WORKSPACE_CREATE_FORBIDDEN");
+  if (!session.platformAdmin) throw new Error("WORKSPACE_CREATE_FORBIDDEN");
 
   const workspaceName = input.workspaceName.trim();
   const brandName = input.brandName.trim();
