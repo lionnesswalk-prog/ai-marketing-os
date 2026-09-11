@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { AppSession } from "./auth";
 import { getPrisma } from "./prisma";
+import { recordAuditEvent } from "./audit";
 
 export type BillingPlanKey = "starter" | "growth" | "scale";
 
@@ -273,6 +274,14 @@ export async function createStripeCheckout(session:AppSession, requestedPlan:Bil
     create:{workspaceId:session.workspaceId,provider:"stripe",planKey:requestedPlan,status:"checkout_pending",stripeCustomerId:typeof checkout.customer==="string"?checkout.customer:null},
     update:{planKey:requestedPlan,status:"checkout_pending",...(typeof checkout.customer==="string"?{stripeCustomerId:checkout.customer}:{})},
   });
+  await recordAuditEvent({
+    workspaceId:session.workspaceId,
+    actorType:session.platformAdmin?"platform_admin":"workspace_user",
+    actorId:session.userId,
+    action:"billing_checkout_started",
+    entityType:"WorkspaceSubscription",
+    payload:{planKey:requestedPlan,checkoutSessionId:checkout.id},
+  });
   if(!checkout.url) throw new Error("STRIPE_CHECKOUT_URL_MISSING");
   return checkout.url;
 }
@@ -284,6 +293,14 @@ export async function createStripePortal(session:AppSession, requestOrigin?:stri
   if(!subscription?.stripeCustomerId) throw new Error("BILLING_CUSTOMER_REQUIRED");
   const fields=new URLSearchParams({customer:subscription.stripeCustomerId,return_url:origin(requestOrigin)+"/billing"});
   const portal=await stripePost<{url?:string}>("/v1/billing_portal/sessions",fields);
+  await recordAuditEvent({
+    workspaceId:session.workspaceId,
+    actorType:session.platformAdmin?"platform_admin":"workspace_user",
+    actorId:session.userId,
+    action:"billing_portal_opened",
+    entityType:"WorkspaceSubscription",
+    entityId:subscription.id,
+  });
   if(!portal.url) throw new Error("STRIPE_PORTAL_URL_MISSING");
   return portal.url;
 }
@@ -349,6 +366,19 @@ export async function syncStripeSubscription(object:StripeSubscription) {
       stripeSubscriptionId:object.id,
       currentPeriodEnd:object.current_period_end?new Date(object.current_period_end*1000):null,
       cancelAtPeriodEnd:Boolean(object.cancel_at_period_end),
+    },
+  });
+  await recordAuditEvent({
+    workspaceId,
+    actorType:"stripe_webhook",
+    action:"billing_subscription_synced",
+    entityType:"WorkspaceSubscription",
+    entityId:object.id,
+    payload:{
+      planKey:selectedPlan,
+      status:object.status||"active",
+      cancelAtPeriodEnd:Boolean(object.cancel_at_period_end),
+      currentPeriodEnd:object.current_period_end||null,
     },
   });
 }
