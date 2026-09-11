@@ -5,9 +5,11 @@ import { getSession } from "../../../../../lib/auth";
 import { buildMetaOAuthUrl, getMetaSetupState } from "../../../../../lib/meta-integration";
 
 const STATE_COOKIE = "amos_meta_oauth_state";
+const WORKSPACE_COOKIE = "amos_meta_oauth_workspace";
 
 export async function GET(request: NextRequest) {
-  if (!(await getSession())) return NextResponse.redirect(new URL("/login", request.url));
+  const session = await getSession();
+  if (!session) return NextResponse.redirect(new URL("/login", request.url));
 
   const setup = getMetaSetupState();
   if (!setup.appConfigured) return NextResponse.redirect(new URL("/social?meta=app-required", request.url));
@@ -17,6 +19,13 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${request.nextUrl.origin}/api/integrations/meta/callback`;
   const store = await cookies();
   store.set(STATE_COOKIE, state, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 10,
+  });
+  store.set(WORKSPACE_COOKIE, session.workspaceId, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
