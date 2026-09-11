@@ -1,0 +1,49 @@
+.team-page { width: 100%; }
+.team-hero { margin-bottom: 18px; }
+.team-role-guide { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-bottom: 20px; }
+.team-role-guide > div { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--border); border-radius: 11px; background: rgba(255,255,255,.46); }
+.team-role-guide strong { font-size: 11px; }
+.team-role-guide span { color: var(--muted); font-size: 9px; line-height: 1.45; }
+.team-layout { display: grid; gap: 22px; }
+.team-invite-card { display: grid; gap: 12px; }
+.team-invite-card h2 { margin: 0; }
+.team-invite-form { display: grid; grid-template-columns: minmax(0,1fr) 220px auto; gap: 10px; align-items: end; }
+.team-invite-form label { margin: 0; }
+.team-invite-form input, .team-invite-form select, .team-member-actions select, .team-invite-link input {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: rgba(255,255,255,.84);
+  padding: 10px 11px;
+  font: inherit;
+  font-size: 10px;
+  color: var(--ink);
+}
+.team-invite-link { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; padding-top: 2px; }
+.team-message { margin: 0; color: var(--muted); font-size: 10px; }
+.team-member-list { display: grid; gap: 10px; }
+.team-member-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 17px; }
+.team-member-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.team-avatar { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: #171817; color: white; font-size: 10px; font-weight: 850; flex: 0 0 auto; }
+.team-avatar.pending { background: rgba(114,103,240,.12); color: #574dc5; }
+.team-member-person h3 { margin: 0; font-size: 13px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.team-member-person p { margin: 4px 0 0; color: var(--muted); font-size: 10px; overflow: hidden; text-overflow: ellipsis; }
+.team-member-actions { display: flex; align-items: center; gap: 8px; }
+.team-member-actions select { min-width: 170px; }
+.team-remove { border: 1px solid rgba(137,71,60,.18); background: rgba(245,231,228,.48); color: #884c41; border-radius: 9px; padding: 9px 10px; font: inherit; font-size: 9px; font-weight: 780; cursor: pointer; }
+.team-remove:disabled { opacity: .55; cursor: wait; }
+
+@media (max-width: 960px) {
+  .team-role-guide { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .team-invite-form { grid-template-columns: 1fr 1fr; }
+  .team-invite-form .btn { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+  .team-role-guide { grid-template-columns: 1fr; }
+  .team-invite-form { grid-template-columns: 1fr; }
+  .team-invite-form .btn { grid-column: auto; }
+  .team-invite-link { grid-template-columns: 1fr; }
+  .team-member-card { align-items: flex-start; flex-direction: column; }
+  .team-member-actions { width: 100%; }
+  .team-member-actions select { min-width: 0; flex: 1; }
+}
