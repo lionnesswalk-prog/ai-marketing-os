@@ -38,6 +38,7 @@ function previewSession(account: Pick<PreviewAccount, "email" | "name" | "role">
     role: account.role,
     userId: PREVIEW_USER_ID,
     workspaceId: PREVIEW_WORKSPACE_ID,
+    platformAdmin: true,
   };
 }
 
@@ -91,6 +92,7 @@ function sessionFromDatabaseUser(user: {
   email: string;
   name: string | null;
   role: string;
+  isPlatformAdmin: boolean;
 }): AppSession {
   return {
     userId: user.id,
@@ -98,6 +100,7 @@ function sessionFromDatabaseUser(user: {
     email: user.email,
     name: user.name ?? undefined,
     role: user.role as AppRole,
+    platformAdmin: user.isPlatformAdmin,
   };
 }
 
@@ -116,6 +119,7 @@ export async function registerAccount(input: { name: string; email: string; pass
   const prisma = getPrisma();
   const duplicate = await prisma.workspaceUser.findUnique({ where: { email } });
   if (duplicate) throw new Error("ACCOUNT_EXISTS");
+  const userCount = await prisma.workspaceUser.count();
 
   const signupMode = process.env.SIGNUP_MODE ?? "open";
   if (signupMode === "closed") throw new Error("SIGNUP_CLOSED");
@@ -143,6 +147,7 @@ export async function registerAccount(input: { name: string; email: string; pass
         name,
         passwordHash,
         role: "admin",
+        isPlatformAdmin: userCount === 0,
         lastLoginAt: new Date(),
       },
     });
@@ -189,6 +194,7 @@ export async function authenticateAccount(input: { email: string; password: stri
     email: user.email,
     name: user.name ?? undefined,
     role: access.role as AppRole,
+    platformAdmin: user.isPlatformAdmin,
   };
 }
 
