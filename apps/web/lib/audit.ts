@@ -53,6 +53,7 @@ function eventLabel(action: string) {
     invite_account_created: "Invited account created",
     member_role_updated: "Member role changed",
     member_access_revoked: "Member access revoked",
+    brand_profile_updated: "Brand profile updated",
   };
   return labels[action] || action.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
@@ -80,6 +81,7 @@ function eventDetail(action: string, rawPayload: unknown) {
   if (action === "member_role_updated") return [email, previousRole && nextRole ? previousRole + " → " + nextRole : undefined].filter(Boolean).join(" · ") || "Workspace role changed";
   if (action === "member_access_revoked") return email ? "Access revoked for " + email : "Workspace access revoked";
   if (action === "enter_workspace") return workspaceName ? "Entered " + workspaceName + " from agency control" : "Agency workspace opened";
+  if (action === "brand_profile_updated") return brandName ? brandName + " AI context updated" : "Brand AI context updated";
   return "Security-relevant workspace activity";
 }
 

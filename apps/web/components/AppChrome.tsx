@@ -8,6 +8,7 @@ import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 const nav = [
   ["/dashboard", "Dashboard"],
+  ["/brand", "Brand Profile"],
   ["/campaigns", "Campaigns"],
   ["/strategy", "AI Strategy"],
   ["/social", "Social Hub"],

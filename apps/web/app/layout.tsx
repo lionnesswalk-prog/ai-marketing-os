@@ -11,6 +11,7 @@ import "./clients.css";
 import "./team.css";
 import "./platform.css";
 import "./security.css";
+import "./brand.css";
 import "./billing.css";
 
 export const metadata = {
