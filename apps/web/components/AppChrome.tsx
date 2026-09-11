@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { AppSession } from "../lib/auth";
+import type { WorkspaceOption } from "../lib/workspaces";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 const nav = [
   ["/dashboard", "Dashboard"],
@@ -12,6 +14,7 @@ const nav = [
   ["/analytics", "Analytics"],
   ["/leads", "Leads"],
   ["/approvals", "Approvals"],
+  ["/clients", "Clients"],
 ] as const;
 
 function initials(session: AppSession | null) {
@@ -26,7 +29,15 @@ function roleLabel(role?: string) {
   return role.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
 }
 
-export function AppChrome({ children, session }: { children: ReactNode; session: AppSession | null }) {
+export function AppChrome({
+  children,
+  session,
+  workspaces,
+}: {
+  children: ReactNode;
+  session: AppSession | null;
+  workspaces: WorkspaceOption[];
+}) {
   const pathname = usePathname();
   const isAuthPage = pathname === "/login" || pathname === "/signup";
 
@@ -45,9 +56,12 @@ export function AppChrome({ children, session }: { children: ReactNode; session:
           </div>
         </div>
 
+        {session && <WorkspaceSwitcher workspaces={workspaces} />}
+
         <div className="nav-label">WORKSPACE</div>
         <nav>
           {nav.map(([href, label], index) => {
+            if (href === "/clients" && session?.role !== "admin") return null;
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
               <a className={active ? "active" : undefined} href={href} key={href} aria-current={active ? "page" : undefined}>
