@@ -6,9 +6,11 @@ import { buildXOAuthUrl, createPkceChallenge, getXSetupState } from "../../../..
 
 const STATE_COOKIE = "amos_x_oauth_state";
 const VERIFIER_COOKIE = "amos_x_oauth_verifier";
+const WORKSPACE_COOKIE = "amos_x_oauth_workspace";
 
 export async function GET(request: NextRequest) {
-  if (!(await getSession())) return NextResponse.redirect(new URL("/login", request.url));
+  const session = await getSession();
+  if (!session) return NextResponse.redirect(new URL("/login", request.url));
 
   const setup = getXSetupState();
   if (!setup.appConfigured || !setup.storageReady) {
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${request.nextUrl.origin}/api/integrations/x/callback`;
   const store = await cookies();
 
-  for (const [name, value] of [[STATE_COOKIE, state], [VERIFIER_COOKIE, verifier]] as const) {
+  for (const [name, value] of [[STATE_COOKIE, state], [VERIFIER_COOKIE, verifier], [WORKSPACE_COOKIE, session.workspaceId]] as const) {
     store.set(name, value, {
       httpOnly: true,
       sameSite: "lax",
