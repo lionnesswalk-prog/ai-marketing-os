@@ -36,11 +36,15 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
   const [tiktokCreator, setTikTokCreator] = useState<TikTokCreatorInfo | null>(null);
   const [tiktokPrivacyLevel, setTikTokPrivacyLevel] = useState("");
   const [tiktokLoading, setTikTokLoading] = useState(false);
+  const [youtubePrivacyStatus, setYouTubePrivacyStatus] = useState<"public" | "private" | "unlisted">("private");
+  const [youtubeMadeForKids, setYouTubeMadeForKids] = useState(false);
 
   const selectedConfigs = useMemo(() => platforms.filter((item) => selected.includes(item.id)), [platforms, selected]);
   const allConnected = selectedConfigs.length > 0 && selectedConfigs.every((item) => item.connected);
   const tiktokConnected = Boolean(platforms.find((item) => item.id === "tiktok")?.connected);
   const tiktokSelected = selected.includes("tiktok");
+  const youtubeConnected = Boolean(platforms.find((item) => item.id === "youtube")?.connected);
+  const youtubeSelected = selected.includes("youtube");
 
   useEffect(() => {
     if (!tiktokSelected || !tiktokConnected) {
@@ -100,6 +104,8 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
           altText,
           contentType,
           tiktokPrivacyLevel: tiktokPrivacyLevel || undefined,
+          youtubePrivacyStatus: youtubePrivacyStatus,
+          youtubeMadeForKids,
           scheduledAt: scheduledAt || undefined,
           action,
         }),
@@ -145,7 +151,7 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
             </article>
           ))}
         </div>
-        <p className="social-help">Meta, LinkedIn, X and TikTok have secure OAuth connection flows. YouTube and Pinterest remain in queue mode until their adapters are enabled.</p>
+        <p className="social-help">Meta, LinkedIn, X, TikTok and YouTube have secure OAuth connection flows. Pinterest remains in queue mode until its adapter is enabled.</p>
       </section>
 
       <form className="card social-composer" onSubmit={preventSubmit}>
@@ -190,6 +196,26 @@ export function SocialPublisher({ platforms }: { platforms: SocialPlatformConfig
             <label>
               TikTok creator
               <input value={tiktokCreator?.creatorNickname || tiktokCreator?.creatorUsername || "Connected creator"} readOnly aria-readonly="true" />
+            </label>
+          </div>
+        )}
+
+        {youtubeSelected && youtubeConnected && (
+          <div className="social-form-grid">
+            <label>
+              YouTube privacy
+              <select value={youtubePrivacyStatus} onChange={(e) => setYouTubePrivacyStatus(e.target.value as "public" | "private" | "unlisted")}>
+                <option value="private">Private</option>
+                <option value="unlisted">Unlisted</option>
+                <option value="public">Public</option>
+              </select>
+            </label>
+            <label>
+              Made for kids
+              <select value={youtubeMadeForKids ? "yes" : "no"} onChange={(e) => setYouTubeMadeForKids(e.target.value === "yes")}>
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
             </label>
           </div>
         )}
