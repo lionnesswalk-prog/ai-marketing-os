@@ -88,11 +88,19 @@ export async function getPlatformReadiness() {
       detail: "Open SaaS signup creates a separate workspace and brand for every new client.",
     },
     {
+      key: "ai-runtime",
+      label: "AI runtime",
+      ready: process.env.AI_MODE === "live" && Boolean(process.env.OPENAI_API_KEY),
+      detail: process.env.AI_MODE === "live" && process.env.OPENAI_API_KEY
+        ? "Live AI mode is configured with a server-side API key."
+        : "Set AI_MODE=live and configure OPENAI_API_KEY before relying on production AI generation.",
+    },
+    {
       key: "scheduler-auth",
       label: "Scheduler authentication",
       ready: Boolean(process.env.CRON_SECRET),
       detail: process.env.CRON_SECRET
-        ? "CRON_SECRET protects scheduled publishing invocations."
+        ? "CRON_SECRET protects scheduled publishing invocations. Current Vercel cron cadence remains daily until a higher-frequency scheduler is connected."
         : "Set CRON_SECRET before enabling production scheduled publishing.",
     },
   ];
