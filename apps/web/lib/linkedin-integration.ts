@@ -39,10 +39,15 @@ function storageReady() {
   return usePostgres() && canEncryptIntegrations();
 }
 
-async function currentBrand() {
+async function currentBrand(brandId?: string) {
+  const prisma = getPrisma();
+  if (brandId) {
+    const brand = await prisma.brand.findUnique({ where: { id: brandId } });
+    if (!brand) throw new Error("BRAND_NOT_FOUND");
+    return brand;
+  }
   const session = await getSession();
   if (!session?.workspaceId) throw new Error("WORKSPACE_SESSION_REQUIRED");
-  const prisma = getPrisma();
   const brand = await prisma.brand.findFirst({
     where: { workspaceId: session.workspaceId },
     orderBy: { createdAt: "asc" },
@@ -164,7 +169,7 @@ export async function disconnectLinkedInConnection() {
   await prisma.integrationConnection.deleteMany({ where: { brandId: brand.id, provider: "linkedin" } });
 }
 
-export async function getLinkedInConnection(): Promise<LinkedInConnection | null> {
+export async function getLinkedInConnection(brandId?: string): Promise<LinkedInConnection | null> {
   const allowSharedEnv = !usePostgres() || process.env.ALLOW_SHARED_ENV_INTEGRATIONS === "true";
   if (allowSharedEnv && process.env.LINKEDIN_ACCESS_TOKEN && (process.env.LINKEDIN_AUTHOR_URN || process.env.LINKEDIN_AUTHOR_ID)) {
     const rawAuthor = process.env.LINKEDIN_AUTHOR_URN || process.env.LINKEDIN_AUTHOR_ID || "";
@@ -179,7 +184,7 @@ export async function getLinkedInConnection(): Promise<LinkedInConnection | null
 
   if (!storageReady()) return null;
   const prisma = getPrisma();
-  const brand = await currentBrand();
+  const brand = await currentBrand(brandId);
   const row = await prisma.integrationConnection.findUnique({
     where: { brandId_provider: { brandId: brand.id, provider: "linkedin" } },
   });
@@ -210,8 +215,8 @@ export async function publishLinkedIn(input: {
   mediaUrl?: string;
   linkUrl?: string;
   contentType: string;
-}) {
-  const connection = await getLinkedInConnection();
+}, brandId?: string) {
+  const connection = await getLinkedInConnection(brandId);
   if (!connection) throw new Error("LINKEDIN_NOT_CONNECTED");
   if (input.mediaUrl) throw new Error("LINKEDIN_MEDIA_UPLOAD_NOT_READY");
   if (["reel", "video", "short", "story", "carousel"].includes(input.contentType)) {
