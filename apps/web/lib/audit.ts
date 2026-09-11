@@ -54,6 +54,7 @@ function eventLabel(action: string) {
     member_role_updated: "Member role changed",
     member_access_revoked: "Member access revoked",
     brand_profile_updated: "Brand profile updated",
+    campaign_draft_created: "Campaign draft created",
     billing_checkout_started: "Billing checkout started",
     billing_portal_opened: "Billing portal opened",
     billing_subscription_synced: "Subscription status updated",
@@ -85,6 +86,7 @@ function eventDetail(action: string, rawPayload: unknown) {
   if (action === "member_access_revoked") return email ? "Access revoked for " + email : "Workspace access revoked";
   if (action === "enter_workspace") return workspaceName ? "Entered " + workspaceName + " from agency control" : "Agency workspace opened";
   if (action === "brand_profile_updated") return brandName ? brandName + " AI context updated" : "Brand AI context updated";
+  if (action === "campaign_draft_created") return typeof payload.name === "string" ? payload.name + " saved as an internal draft" : "Internal campaign draft saved";
   if (action === "billing_checkout_started") {
     const planKey = typeof payload.planKey === "string" ? payload.planKey : "selected";
     return "Stripe Checkout started for " + planKey + " plan";

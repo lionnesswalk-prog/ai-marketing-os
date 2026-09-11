@@ -4,6 +4,7 @@ import { memoryStore } from "./memory-store";
 import type { ApprovalView, CampaignView, DashboardView, LeadView, SocialPlatform, SocialContentType, SocialPostView } from "./domain";
 import { getPrisma } from "./prisma";
 import { getSession } from "./auth";
+import { recordAuditEvent } from "./audit";
 
 function usePostgres() {
   return process.env.DATA_BACKEND === "postgres";
@@ -21,6 +22,81 @@ function decimalToNumber(value: unknown) {
     return value.toNumber();
   }
   return Number(value ?? 0);
+}
+
+export async function createCampaignDraft(input: {
+  name: string;
+  channel: "meta" | "google";
+  dailyBudget: number;
+}): Promise<CampaignView> {
+  const name = input.name.trim();
+  if (!name) throw new Error("CAMPAIGN_NAME_REQUIRED");
+
+  if (!usePostgres()) {
+    const draft: CampaignSnapshot = {
+      id: `draft_${Date.now()}`,
+      name,
+      channel: input.channel,
+      status: "draft",
+      dailyBudget: input.dailyBudget,
+      spend: 0,
+      impressions: 0,
+      clicks: 0,
+      conversions: 0,
+      revenue: 0,
+    };
+    memoryStore.campaigns.unshift(draft);
+    return { ...draft, diagnosis: diagnoseCampaign(draft) };
+  }
+
+  const session = await getSession();
+  if (!session?.workspaceId) throw new Error("WORKSPACE_SESSION_REQUIRED");
+  const prisma = getPrisma();
+  const brand = await prisma.brand.findFirst({
+    where: { workspaceId: session.workspaceId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (!brand) throw new Error("BRAND_NOT_FOUND");
+
+  const row = await prisma.campaign.create({
+    data: {
+      brandId: brand.id,
+      channel: input.channel,
+      name,
+      status: "draft",
+      dailyBudget: input.dailyBudget,
+    },
+  });
+
+  await recordAuditEvent({
+    workspaceId: session.workspaceId,
+    actorType: session.platformAdmin ? "platform_admin" : "workspace_user",
+    actorId: session.userId,
+    action: "campaign_draft_created",
+    entityType: "Campaign",
+    entityId: row.id,
+    payload: {
+      name: row.name,
+      channel: row.channel,
+      dailyBudget: input.dailyBudget,
+    },
+  });
+
+  const snapshot: CampaignSnapshot = {
+    id: row.id,
+    name: row.name,
+    channel: row.channel as CampaignSnapshot["channel"],
+    status: "draft",
+    dailyBudget: decimalToNumber(row.dailyBudget),
+    spend: 0,
+    impressions: 0,
+    clicks: 0,
+    conversions: 0,
+    revenue: 0,
+  };
+
+  return { ...snapshot, diagnosis: diagnoseCampaign(snapshot) };
 }
 
 export async function listCampaigns(): Promise<CampaignView[]> {
