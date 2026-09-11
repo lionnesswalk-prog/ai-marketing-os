@@ -98,3 +98,21 @@
   .agency-client-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .agency-client-footer { align-items: flex-start; flex-direction: column; }
 }
+
+.client-onboarding-form { display: grid; gap: 11px; margin-top: 18px; }
+.client-onboarding-form label { margin: 0; }
+.client-onboarding-form input, .client-onboarding-form select, .client-invite-result input {
+  width: 100%; border: 1px solid var(--border-strong); border-radius: 9px;
+  background: rgba(255,255,255,.86); padding: 10px 11px; font: inherit; font-size: 10px; color: var(--ink);
+}
+.client-invite-result {
+  display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 8px; align-items: end;
+  margin-top: 14px; padding: 11px; border: 1px solid rgba(114,103,240,.18);
+  border-radius: 11px; background: rgba(114,103,240,.045);
+}
+.client-invite-result > div { display: grid; gap: 6px; }
+.client-invite-result span { color: #6359cf; font-size: 8px; font-weight: 850; letter-spacing: .1em; }
+.client-open-link { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+@media (max-width: 760px) {
+  .client-invite-result { grid-template-columns: 1fr; }
+}

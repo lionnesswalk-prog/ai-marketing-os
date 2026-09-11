@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "../../lib/auth";
 import { createClientWorkspace, switchWorkspace } from "../../lib/workspaces";
-import { enterAgencyWorkspace, listAgencyClients } from "../../lib/agency";
+import { enterAgencyWorkspace, listAgencyClients } from "../../lib/agency";\nimport { ClientOnboardingForm } from "../../components/ClientOnboardingForm";
 
 function notice(status?: string) {
   if (status === "created") return { tone: "success", text: "Client workspace created and opened." };
@@ -10,29 +10,6 @@ function notice(status?: string) {
   if (status === "forbidden") return { tone: "error", text: "Only platform administrators can create client workspaces." };
   if (status === "failed") return { tone: "error", text: "Unable to create the client workspace." };
   return null;
-}
-
-async function createClientAction(formData: FormData) {
-  "use server";
-  const session = await requireSession();
-  const workspaceName = String(formData.get("workspaceName") ?? "").trim();
-  const brandName = String(formData.get("brandName") ?? "").trim();
-
-  if (workspaceName.length < 2 || brandName.length < 2) redirect("/clients?status=invalid");
-
-  let createdId = "";
-  try {
-    const created = await createClientWorkspace(session, { workspaceName, brandName });
-    createdId = created.id;
-    await switchWorkspace(session, created.id);
-  } catch (error) {
-    if (error instanceof Error && error.message === "DATABASE_MODE_REQUIRED") redirect("/clients?status=database");
-    if (error instanceof Error && error.message === "WORKSPACE_CREATE_FORBIDDEN") redirect("/clients?status=forbidden");
-    redirect("/clients?status=failed");
-  }
-
-  if (createdId) redirect("/dashboard");
-  redirect("/clients?status=failed");
 }
 
 async function openClientAction(formData: FormData) {
