@@ -2,8 +2,8 @@ name: Social Scheduler
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -18,14 +18,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     env:
-      APP_URL: ${{ vars.SCHEDULER_APP_URL || vars.PRODUCTION_APP_URL || 'https://ai-marketing-os.vercel.app' }}
+      SCHEDULER_APP_URL_OVERRIDE: ${{ vars.SCHEDULER_APP_URL }}
+      PRODUCTION_APP_URL_OVERRIDE: ${{ vars.PRODUCTION_APP_URL }}
     steps:
       - name: Request GitHub OIDC token
         id: oidc
         run: |
           set -euo pipefail
-          response="$(curl --fail-with-body --silent --show-error             -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN"             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=ai-marketing-os-scheduler")"
-          token="$(printf '%s' "$response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
+          response="$(curl --fail-with-body --silent --show-error -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=ai-marketing-os-scheduler")"
+          token="$(echo "$response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
           echo "::add-mask::$token"
           echo "token=$token" >> "$GITHUB_OUTPUT"
 
@@ -34,5 +35,6 @@ jobs:
           OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
         run: |
           set -euo pipefail
-          base="${APP_URL%/}"
-          curl --fail-with-body --silent --show-error             --retry 2             --retry-all-errors             --max-time 55             -X POST             -H "Authorization: Bearer $OIDC_TOKEN"             -H "X-Scheduler-Source: github-actions-oidc"             "$base/api/scheduler/publish-social"
+          base="${SCHEDULER_APP_URL_OVERRIDE:-${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}}"
+          base="${base%/}"
+          curl --fail-with-body --silent --show-error --retry 2 --retry-all-errors --max-time 55 -X POST -H "Authorization: Bearer $OIDC_TOKEN" -H "X-Scheduler-Source: github-actions-oidc" "$base/api/scheduler/publish-social"
