@@ -27,17 +27,22 @@ jobs:
           set -euo pipefail
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
-          for attempt in $(seq 1 30); do
-            if body="$(curl -L --fail-with-body --silent --show-error --max-time 20 "$base/api/health" 2>/tmp/health-error)"; then
-              if echo "$body" | python3 -c 'import json,sys; data=json.load(sys.stdin); assert data.get("ok") is True; assert data.get("service") == "ai-marketing-os"'; then
-                echo "$body"
-                exit 0
-              fi
+          for attempt in $(seq 1 18); do
+            meta="$(curl -L --silent --show-error --max-time 20 -o /tmp/health-body -w '%{http_code}|%{url_effective}|%{content_type}' "$base/api/health" || true)"
+            code="${meta%%|*}"
+            rest="${meta#*|}"
+            effective="${rest%%|*}"
+            content_type="${rest#*|}"
+            if [ "$code" = "200" ] && python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); assert data.get("ok") is True; assert data.get("service") == "ai-marketing-os"' /tmp/health-body 2>/dev/null; then
+              echo "Production health passed: $effective"
+              cat /tmp/health-body
+              exit 0
             fi
-            echo "Production health not ready yet (attempt $attempt/30)."
+            echo "Health attempt $attempt/18: code=$code effective=$effective content-type=$content_type"
+            head -c 160 /tmp/health-body 2>/dev/null | tr '\n' ' ' || true
+            echo
             sleep 10
           done
-          cat /tmp/health-error || true
           exit 1
 
       - name: Check public authentication pages
@@ -53,6 +58,6 @@ jobs:
           set -euo pipefail
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
-          code="$(curl -L --silent --show-error --max-time 30 -o /tmp/protected.html -w "%{http_code}" "$base/operations")"
+          code="$(curl -L --silent --show-error --max-time 30 -o /tmp/protected.html -w '%{http_code}' "$base/operations")"
           test "$code" = "200"
           grep -Eq "Welcome back|SECURE ACCESS|login" /tmp/protected.html

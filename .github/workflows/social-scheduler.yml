@@ -58,4 +58,22 @@ jobs:
           SCHEDULER_ORIGIN: ${{ steps.target.outputs.origin }}
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error --retry 2 --retry-all-errors --max-time 55 -X POST -H "Authorization: Bearer $OIDC_TOKEN" -H "X-Scheduler-Source: github-actions-oidc" "$SCHEDULER_ORIGIN/api/scheduler/publish-social"
+          endpoint="$SCHEDULER_ORIGIN/api/scheduler/publish-social"
+          meta="$(curl --silent --show-error --max-time 55 -D /tmp/scheduler-headers -o /tmp/scheduler-body -w '%{http_code}|%{redirect_url}' -X POST -H "Authorization: Bearer $OIDC_TOKEN" -H "X-Scheduler-Source: github-actions-oidc" "$endpoint")"
+          code="${meta%%|*}"
+          redirect="${meta#*|}"
+          if [[ "$code" =~ ^30[1278]$ ]] && [ -n "$redirect" ]; then
+            redirect_host="$(python3 -c 'import sys; from urllib.parse import urlsplit; u=urlsplit(sys.argv[1]); assert u.scheme == "https"; print(u.hostname or "")' "$redirect")"
+            case "$redirect_host" in
+              *.vercel.app) ;;
+              *) echo "Refusing scheduler auth redirect to untrusted host: $redirect_host"; exit 1 ;;
+            esac
+            echo "Following trusted scheduler redirect to $redirect_host"
+            meta="$(curl --silent --show-error --max-time 55 -o /tmp/scheduler-body -w '%{http_code}|' -X POST -H "Authorization: Bearer $OIDC_TOKEN" -H "X-Scheduler-Source: github-actions-oidc" "$redirect")"
+            code="${meta%%|*}"
+          fi
+          echo "Scheduler HTTP status: $code"
+          cat /tmp/scheduler-body
+          echo
+          test "$code" = "200"
+          python3 -c 'import json; data=json.load(open("/tmp/scheduler-body")); assert data.get("ok") is True; assert data.get("source") == "github-actions-oidc"'
