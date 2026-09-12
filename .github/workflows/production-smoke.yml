@@ -28,7 +28,7 @@ jobs:
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
           for attempt in $(seq 1 30); do
-            if body="$(curl --fail-with-body --silent --show-error --max-time 20 "$base/api/health" 2>/tmp/health-error)"; then
+            if body="$(curl -L --fail-with-body --silent --show-error --max-time 20 "$base/api/health" 2>/tmp/health-error)"; then
               if echo "$body" | python3 -c 'import json,sys; data=json.load(sys.stdin); assert data.get("ok") is True; assert data.get("service") == "ai-marketing-os"'; then
                 echo "$body"
                 exit 0
@@ -45,16 +45,14 @@ jobs:
           set -euo pipefail
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
-          curl --fail-with-body --silent --show-error --max-time 30 "$base/login" | grep -q "Welcome back"
-          curl --fail-with-body --silent --show-error --max-time 30 "$base/signup" | grep -Eq "Create|account|workspace"
+          curl -L --fail-with-body --silent --show-error --max-time 30 "$base/login" | grep -q "Welcome back"
+          curl -L --fail-with-body --silent --show-error --max-time 30 "$base/signup" | grep -Eq "Create|account|workspace"
 
       - name: Verify protected workspace route
         run: |
           set -euo pipefail
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
-          code="$(curl --silent --show-error --max-time 30 -o /tmp/protected.html -w "%{http_code}" "$base/operations")"
-          test "$code" = "200" || test "$code" = "307" || test "$code" = "308"
-          if [ "$code" = "200" ]; then
-            grep -Eq "Welcome back|SECURE ACCESS|login" /tmp/protected.html
-          fi
+          code="$(curl -L --silent --show-error --max-time 30 -o /tmp/protected.html -w "%{http_code}" "$base/operations")"
+          test "$code" = "200"
+          grep -Eq "Welcome back|SECURE ACCESS|login" /tmp/protected.html

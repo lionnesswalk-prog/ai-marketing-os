@@ -62,7 +62,7 @@ export function validateGitHubSchedulerClaims(
   if (claims.repository !== GITHUB_REPOSITORY) return false;
   if (claims.ref !== GITHUB_MAIN_REF) return false;
   if (claims.workflow_ref !== GITHUB_SCHEDULER_WORKFLOW_REF) return false;
-  if (!["schedule", "workflow_dispatch"].includes(claims.event_name || "")) return false;
+  if (!["schedule", "workflow_dispatch", "push"].includes(claims.event_name || "")) return false;
   return true;
 }
 

@@ -20,6 +20,7 @@ const valid = {
 
 assert.equal(validateGitHubSchedulerClaims(valid, now), true);
 assert.equal(validateGitHubSchedulerClaims({ ...valid, event_name: "workflow_dispatch" }, now), true);
+assert.equal(validateGitHubSchedulerClaims({ ...valid, event_name: "push" }, now), true);
 assert.equal(validateGitHubSchedulerClaims({ ...valid, repository: "other/repo" }, now), false);
 assert.equal(validateGitHubSchedulerClaims({ ...valid, ref: "refs/heads/feature" }, now), false);
 assert.equal(validateGitHubSchedulerClaims({ ...valid, workflow_ref: "lionnesswalk-prog/ai-marketing-os/.github/workflows/ci.yml@refs/heads/main" }, now), false);
