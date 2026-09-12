@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "../../lib/auth";
 import { getSecurityOverview } from "../../lib/audit";
+import { canViewSecurity } from "../../lib/access-policy";
 
 function dateTime(value: string) {
   return new Date(value).toLocaleString("en-IN", {
@@ -11,7 +12,7 @@ function dateTime(value: string) {
 
 export default async function SecurityPage() {
   const session = await requireSession();
-  if (!session.platformAdmin && session.role !== "admin") redirect("/dashboard");
+  if (!canViewSecurity(session.role, Boolean(session.platformAdmin))) redirect("/dashboard");
 
   const overview = await getSecurityOverview(session);
 

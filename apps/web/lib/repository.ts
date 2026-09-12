@@ -5,6 +5,7 @@ import type { ApprovalView, CampaignView, DashboardView, LeadView, SocialPlatfor
 import { getPrisma } from "./prisma";
 import { getSession } from "./auth";
 import { recordAuditEvent } from "./audit";
+import { brandIsWorkspaceScope } from "./tenant-scope";
 
 function usePostgres() {
   return process.env.DATA_BACKEND === "postgres";
@@ -107,7 +108,7 @@ export async function listCampaigns(): Promise<CampaignView[]> {
   const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
   const rows = await prisma.campaign.findMany({
-    where: { brand: { is: { workspaceId } } },
+    where: brandIsWorkspaceScope(workspaceId),
     include: { metrics: { orderBy: { capturedAt: "desc" }, take: 1 } },
     orderBy: { createdAt: "asc" },
   });
@@ -136,7 +137,7 @@ export async function listLeads(): Promise<LeadView[]> {
   const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
   const rows = await prisma.lead.findMany({
-    where: { brand: { is: { workspaceId } } },
+    where: brandIsWorkspaceScope(workspaceId),
     orderBy: { updatedAt: "desc" },
   });
   return rows.map((row) => ({
@@ -155,7 +156,7 @@ export async function listSocialPosts(): Promise<SocialPostView[]> {
   const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
   const rows = await prisma.socialPost.findMany({
-    where: { brand: { is: { workspaceId } } },
+    where: brandIsWorkspaceScope(workspaceId),
     orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
   });
   return rows.map((row) => {
@@ -270,7 +271,7 @@ export async function getSocialPostById(id: string): Promise<SocialPostView | nu
 
   const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
-  const row = await prisma.socialPost.findFirst({ where: { id, brand: { is: { workspaceId } } } });
+  const row = await prisma.socialPost.findFirst({ where: { id, ...brandIsWorkspaceScope(workspaceId) } });
   if (!row) return null;
   const meta = row.metadataJson && typeof row.metadataJson === "object" ? row.metadataJson as Record<string, unknown> : {};
   return {
@@ -307,7 +308,7 @@ export async function updateSocialPostDelivery(
 
   const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
-  const post = await prisma.socialPost.findFirst({ where: { id, brand: { is: { workspaceId } } } });
+  const post = await prisma.socialPost.findFirst({ where: { id, ...brandIsWorkspaceScope(workspaceId) } });
   if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
   await prisma.socialPost.update({
     where: { id },
@@ -324,7 +325,7 @@ export async function listApprovals(): Promise<ApprovalView[]> {
   const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
   const rows = await prisma.approval.findMany({
-    where: { brand: { is: { workspaceId } } },
+    where: brandIsWorkspaceScope(workspaceId),
     include: { action: { include: { campaign: true } } },
     orderBy: { requestedAt: "desc" },
   });
@@ -356,7 +357,7 @@ export async function decideApproval(id: string, decision: "approved" | "rejecte
 
   const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
-  const existing = await prisma.approval.findFirst({ where: { id, brand: { is: { workspaceId } } } });
+  const existing = await prisma.approval.findFirst({ where: { id, ...brandIsWorkspaceScope(workspaceId) } });
   if (!existing) return null;
 
   const approval = await prisma.approval.update({

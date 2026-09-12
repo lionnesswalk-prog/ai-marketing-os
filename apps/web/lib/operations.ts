@@ -5,6 +5,7 @@ import { getPrisma } from "./prisma";
 import { getSocialPlatforms } from "./social-platforms";
 import { classifyQueueHealth } from "./operations-health";
 import { schedulerAuthReady, schedulerCadenceLabel, schedulerExternalEnabled } from "./scheduler-config";
+import { brandIsWorkspaceScope } from "./tenant-scope";
 
 function metadata(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -137,7 +138,7 @@ export async function getOperationsOverview(session: AppSession): Promise<Operat
   }
 
   const prisma = getPrisma();
-  const workspaceFilter = { brand: { is: { workspaceId: session.workspaceId } } };
+  const workspaceFilter = brandIsWorkspaceScope(session.workspaceId);
 
   const [
     draft,

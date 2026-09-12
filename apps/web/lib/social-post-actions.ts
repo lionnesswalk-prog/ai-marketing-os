@@ -3,6 +3,7 @@ import { memoryStore } from "./memory-store";
 import { getPrisma } from "./prisma";
 import { deliverSocialPost } from "./scheduled-publisher";
 import { getStoredSocialPostDeliveryIssues, socialDeliveryIssueMessage } from "./social-preflight";
+import { brandIsWorkspaceScope } from "./tenant-scope";
 
 function usePostgres() {
   return process.env.DATA_BACKEND === "postgres";
@@ -26,7 +27,7 @@ export async function retrySocialPostNow(id: string) {
   const prisma = getPrisma();
   const currentWorkspaceId = await workspaceId();
   const post = await prisma.socialPost.findFirst({
-    where: { id, brand: { is: { workspaceId: currentWorkspaceId } } },
+    where: { id, ...brandIsWorkspaceScope(currentWorkspaceId) },
   });
   if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
   if (post.status !== "failed") throw new Error("SOCIAL_POST_NOT_FAILED");
@@ -64,7 +65,7 @@ export async function rescheduleSocialPost(id: string, scheduledAt: string) {
   const prisma = getPrisma();
   const currentWorkspaceId = await workspaceId();
   const post = await prisma.socialPost.findFirst({
-    where: { id, brand: { is: { workspaceId: currentWorkspaceId } } },
+    where: { id, ...brandIsWorkspaceScope(currentWorkspaceId) },
   });
   if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
   if (!["failed", "draft", "scheduled"].includes(post.status)) throw new Error("SOCIAL_POST_NOT_RESCHEDULABLE");
@@ -104,7 +105,7 @@ export async function cancelSocialSchedule(id: string) {
   const prisma = getPrisma();
   const currentWorkspaceId = await workspaceId();
   const post = await prisma.socialPost.findFirst({
-    where: { id, brand: { is: { workspaceId: currentWorkspaceId } } },
+    where: { id, ...brandIsWorkspaceScope(currentWorkspaceId) },
   });
   if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
   if (post.status !== "scheduled") throw new Error("SOCIAL_POST_NOT_SCHEDULED");

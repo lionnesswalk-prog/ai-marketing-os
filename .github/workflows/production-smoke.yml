@@ -1,0 +1,44 @@
+name: Production Smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      APP_URL: ${{ vars.PRODUCTION_APP_URL || 'https://ai-marketing-os.vercel.app' }}
+    steps:
+      - name: Check health endpoint
+        run: |
+          set -euo pipefail
+          base="${APP_URL%/}"
+          body="$(curl --fail-with-body --silent --show-error --max-time 30 "$base/api/health")"
+          echo "$body" | python3 -c 'import json,sys; data=json.load(sys.stdin); assert data.get("ok") is True, data; assert data.get("service") == "ai-marketing-os", data'
+
+      - name: Check public authentication pages
+        run: |
+          set -euo pipefail
+          base="${APP_URL%/}"
+          curl --fail-with-body --silent --show-error --max-time 30 "$base/login" | grep -q "Welcome back"
+          curl --fail-with-body --silent --show-error --max-time 30 "$base/signup" | grep -Eq "Create|account|workspace"
+
+      - name: Verify protected workspace route
+        run: |
+          set -euo pipefail
+          base="${APP_URL%/}"
+          code="$(curl --silent --show-error --max-time 30 -o /tmp/protected.html -w "%{http_code}" "$base/operations")"
+          test "$code" = "200" || test "$code" = "307" || test "$code" = "308"
+          if [ "$code" = "200" ]; then
+            grep -Eq "Welcome back|SECURE ACCESS|login" /tmp/protected.html
+          fi

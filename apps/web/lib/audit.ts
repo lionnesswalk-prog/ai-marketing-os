@@ -1,6 +1,7 @@
 import type { AppSession } from "./auth";
 import { getPrisma } from "./prisma";
 import { canEncryptIntegrations } from "./integration-crypto";
+import { canViewSecurity } from "./access-policy";
 
 export type AuditEventView = {
   id: string;
@@ -192,7 +193,7 @@ export async function recordAuditEvent(input: {
 
 export async function getSecurityOverview(session: AppSession): Promise<SecurityOverview> {
   const platformAdmin = Boolean(session.platformAdmin);
-  if (!platformAdmin && session.role !== "admin") throw new Error("SECURITY_ACCESS_DENIED");
+  if (!canViewSecurity(session.role, platformAdmin)) throw new Error("SECURITY_ACCESS_DENIED");
 
   if (!databaseReady()) {
     return {

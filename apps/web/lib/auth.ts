@@ -2,8 +2,9 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPrisma } from "./prisma";
+import { roleCan, type AppRole } from "./access-policy";
 
-export type AppRole = "admin" | "marketing_manager" | "sales" | "viewer";
+export type { AppRole } from "./access-policy";
 
 export type AppSession = {
   email: string;
@@ -159,18 +160,17 @@ export async function requireSession(): Promise<AppSession> {
 }
 
 export function canDecideApprovals(role: AppRole) {
-  return role === "admin" || role === "marketing_manager";
+  return roleCan(role, "approvals.decide");
 }
 
-
 export function canManageMarketing(role: AppRole) {
-  return role === "admin" || role === "marketing_manager";
+  return roleCan(role, "marketing.manage");
 }
 
 export function canManageLeads(role: AppRole) {
-  return role === "admin" || role === "marketing_manager" || role === "sales";
+  return roleCan(role, "leads.manage");
 }
 
 export function canManageIntegrations(role: AppRole) {
-  return role === "admin" || role === "marketing_manager";
+  return roleCan(role, "integrations.manage");
 }

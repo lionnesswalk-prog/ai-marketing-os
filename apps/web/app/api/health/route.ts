@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { getPrisma } from "../../../lib/prisma";
+import { getRuntimeHealthSnapshot } from "../../../lib/runtime-health";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const databaseRequired = process.env.DATA_BACKEND === "postgres";
+  const runtime = getRuntimeHealthSnapshot();
+  const databaseRequired = runtime.dataBackend === "postgres";
   let database: "ready" | "preview" | "unavailable" = databaseRequired ? "unavailable" : "preview";
 
   if (databaseRequired) {
@@ -16,16 +18,27 @@ export async function GET() {
     }
   }
 
-  const ok = database !== "unavailable";
+  const coreReady =
+    database !== "unavailable" &&
+    runtime.checks.authSecret &&
+    runtime.checks.databaseConfigured &&
+    runtime.checks.integrationEncryption &&
+    runtime.checks.tenantIsolation &&
+    runtime.checks.aiRuntime;
+
   return NextResponse.json(
     {
-      ok,
+      ok: coreReady,
       service: "ai-marketing-os",
+      status: coreReady ? "ready" : "degraded",
       database,
+      environment: runtime.environment,
+      commit: runtime.commit,
+      checks: runtime.checks,
       timestamp: new Date().toISOString(),
     },
     {
-      status: ok ? 200 : 503,
+      status: coreReady ? 200 : 503,
       headers: { "cache-control": "no-store, max-age=0" },
     },
   );
