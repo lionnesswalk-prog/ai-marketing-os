@@ -385,8 +385,8 @@ export type TikTokPublishStatus = {
   downloadedBytes?: number;
 };
 
-export async function getTikTokPublishStatus(publishId: string): Promise<TikTokPublishStatus> {
-  const connection = await getTikTokConnection();
+export async function getTikTokPublishStatus(publishId: string, brandId?: string): Promise<TikTokPublishStatus> {
+  const connection = await getTikTokConnection(brandId);
   if (!connection) throw new Error("TIKTOK_NOT_CONNECTED");
 
   const response = await fetch("https://open.tiktokapis.com/v2/post/publish/status/fetch/", {

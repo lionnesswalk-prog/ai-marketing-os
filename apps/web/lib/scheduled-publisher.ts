@@ -1,5 +1,6 @@
 import { getPrisma } from "./prisma";
 import { getStoredSocialPostDeliveryIssues, socialDeliveryIssueMessage } from "./social-preflight";
+import { classifyTikTokPublishStatus, classifyYouTubePublishStatus } from "./provider-processing-status";
 
 type DeliveryStatus = "publishing" | "published" | "failed";
 
@@ -126,6 +127,72 @@ export async function runScheduledPublisher(limit = 3, options?: { workspaceId?:
   const workspaceFilter = options?.workspaceId
     ? { brand: { is: { workspaceId: options.workspaceId } } }
     : {};
+  const processingPosts = await prisma.socialPost.findMany({
+    where: {
+      ...workspaceFilter,
+      status: "publishing",
+      externalId: { not: null },
+      platform: { in: ["tiktok", "youtube"] },
+    },
+    orderBy: { updatedAt: "asc" },
+    take: 20,
+  });
+
+  let processingChecked = 0;
+  let processingCompleted = 0;
+  let processingFailed = 0;
+  let processingStillActive = 0;
+  let processingCheckErrors = 0;
+
+  for (const post of processingPosts) {
+    if (!post.externalId) continue;
+    processingChecked += 1;
+    try {
+      if (post.platform === "tiktok") {
+        const { getTikTokPublishStatus } = await import("./tiktok-integration");
+        const provider = await getTikTokPublishStatus(post.externalId, post.brandId);
+        const status = classifyTikTokPublishStatus(provider.status);
+        if (status === "published") {
+          await finish(post.id, "published", post.externalId);
+          processingCompleted += 1;
+        } else if (status === "failed") {
+          await finish(post.id, "failed", post.externalId, provider.failReason || "TikTok processing failed.");
+          processingFailed += 1;
+        } else {
+          processingStillActive += 1;
+        }
+        continue;
+      }
+
+      if (post.platform === "youtube") {
+        const { getYouTubeVideoStatus } = await import("./youtube-integration");
+        const provider = await getYouTubeVideoStatus(post.externalId, post.brandId);
+        const status = classifyYouTubePublishStatus(provider);
+        if (status === "published") {
+          await finish(post.id, "published", post.externalId);
+          processingCompleted += 1;
+        } else if (status === "failed") {
+          await finish(
+            post.id,
+            "failed",
+            post.externalId,
+            provider.failureReason || provider.rejectionReason || "YouTube processing failed.",
+          );
+          processingFailed += 1;
+        } else {
+          processingStillActive += 1;
+        }
+      }
+    } catch (error) {
+      processingCheckErrors += 1;
+      console.error("provider processing reconciliation failed", {
+        postId: post.id,
+        platform: post.platform,
+        error: error instanceof Error ? error.message : "unknown",
+      });
+    }
+  }
+
   const staleBefore = new Date(Date.now() - 15 * 60_000);
   const stale = await prisma.socialPost.findMany({
     where: {
@@ -199,5 +266,16 @@ export async function runScheduledPublisher(limit = 3, options?: { workspaceId?:
     else failed += 1;
   }
 
-  return { recovered, claimed, published, processing, failed };
+  return {
+    recovered,
+    claimed,
+    published,
+    processing,
+    failed,
+    processingChecked,
+    processingCompleted,
+    processingFailed,
+    processingStillActive,
+    processingCheckErrors,
+  };
 }

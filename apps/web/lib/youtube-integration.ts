@@ -393,8 +393,8 @@ export async function publishYouTube(input: {
   };
 }
 
-export async function getYouTubeVideoStatus(videoId: string) {
-  const connection = await getYouTubeConnection();
+export async function getYouTubeVideoStatus(videoId: string, brandId?: string) {
+  const connection = await getYouTubeConnection(brandId);
   if (!connection) throw new Error("YOUTUBE_NOT_CONNECTED");
 
   const url = new URL("https://www.googleapis.com/youtube/v3/videos");

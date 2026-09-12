@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSession } from "../../../../../lib/auth";
 import { getSocialPostById, updateSocialPostDelivery } from "../../../../../lib/repository";
 import { getTikTokPublishStatus } from "../../../../../lib/tiktok-integration";
+import { classifyTikTokPublishStatus } from "../../../../../lib/provider-processing-status";
 
 const schema = z.object({ postId: z.string().min(1) });
 
@@ -22,11 +23,7 @@ export async function POST(request: Request) {
 
   try {
     const provider = await getTikTokPublishStatus(post.externalId);
-    const nextStatus = provider.status === "PUBLISH_COMPLETE"
-      ? "published"
-      : provider.status === "FAILED"
-        ? "failed"
-        : "publishing";
+    const nextStatus = classifyTikTokPublishStatus(provider.status);
 
     await updateSocialPostDelivery(post.id, nextStatus, post.externalId);
 

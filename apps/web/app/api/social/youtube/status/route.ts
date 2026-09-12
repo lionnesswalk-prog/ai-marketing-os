@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSession } from "../../../../../lib/auth";
 import { getSocialPostById, updateSocialPostDelivery } from "../../../../../lib/repository";
 import { getYouTubeVideoStatus } from "../../../../../lib/youtube-integration";
+import { classifyYouTubePublishStatus } from "../../../../../lib/provider-processing-status";
 
 const schema = z.object({ postId: z.string().min(1) });
 
@@ -22,9 +23,7 @@ export async function POST(request: Request) {
 
   try {
     const provider = await getYouTubeVideoStatus(post.externalId);
-    const terminalFailure = provider.uploadStatus === "failed" || provider.uploadStatus === "rejected";
-    const processed = provider.uploadStatus === "processed" || provider.processingStatus === "succeeded";
-    const nextStatus = terminalFailure ? "failed" : processed ? "published" : "publishing";
+    const nextStatus = classifyYouTubePublishStatus(provider);
 
     await updateSocialPostDelivery(post.id, nextStatus, post.externalId);
 
