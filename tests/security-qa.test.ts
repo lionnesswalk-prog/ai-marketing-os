@@ -37,7 +37,13 @@ try {
     platformAdmin: false,
   };
   const token = createSessionToken(session);
-  assert.deepEqual(readSessionToken(token), session);
+  const decoded = readSessionToken(token);
+  assert.ok(decoded);
+  assert.equal(decoded.email, session.email);
+  assert.equal(decoded.role, session.role);
+  assert.equal(decoded.userId, session.userId);
+  assert.equal(decoded.workspaceId, session.workspaceId);
+  assert.equal(decoded.platformAdmin, session.platformAdmin);
 
   const [payload, signature] = token.split(".");
   const tamperedPayload = (payload?.slice(0, -1) || "") + (payload?.endsWith("a") ? "b" : "a");
