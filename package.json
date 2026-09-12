@@ -19,7 +19,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "postinstall": "prisma generate",
     "test:billing": "tsx tests/billing.test.ts",
-    "test": "npm run test:core && npm run test:billing && npm run test:operations && npm run test:runtime && npm run test:scheduler && npm run test:github-scheduler-oidc && npm run test:provider-diagnostics && npm run test:social-preflight && npm run test:provider-processing && npm run test:security-qa && npm run test:runtime-health",
+    "test": "npm run test:core && npm run test:billing && npm run test:operations && npm run test:runtime && npm run test:scheduler && npm run test:github-scheduler-oidc && npm run test:provider-diagnostics && npm run test:social-preflight && npm run test:provider-processing && npm run test:security-qa && npm run test:runtime-health && npm run test:observability",
     "test:operations": "tsx tests/operations.test.ts",
     "test:runtime": "tsx tests/runtime.test.ts",
     "test:scheduler": "tsx tests/scheduler.test.ts",
@@ -28,7 +28,8 @@
     "test:provider-processing": "tsx tests/provider-processing-status.test.ts",
     "test:security-qa": "tsx tests/security-qa.test.ts",
     "test:runtime-health": "tsx tests/runtime-health.test.ts",
-    "test:github-scheduler-oidc": "tsx tests/github-scheduler-oidc.test.ts"
+    "test:github-scheduler-oidc": "tsx tests/github-scheduler-oidc.test.ts",
+    "test:observability": "tsx tests/request-observability.test.ts"
   },
   "dependencies": {
     "@openai/agents": "latest",
