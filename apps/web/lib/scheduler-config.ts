@@ -5,18 +5,21 @@ export function schedulerBatchSize() {
 }
 
 export function schedulerCadenceLabel() {
-  const externalMinutes = Number(process.env.SCHEDULER_EXTERNAL_INTERVAL_MINUTES || "0");
-  if (Number.isFinite(externalMinutes) && externalMinutes >= 1) {
-    return "External scheduler · every " + Math.floor(externalMinutes) + " min";
-  }
-  return "Daily Vercel cron · 5-min external workflow available";
+  return "GitHub Actions OIDC scheduler · every 5 min";
 }
 
 export function schedulerExternalEnabled() {
-  const minutes = Number(process.env.SCHEDULER_EXTERNAL_INTERVAL_MINUTES || "0");
-  return Number.isFinite(minutes) && minutes >= 1;
+  return true;
+}
+
+export function schedulerSharedSecretReady() {
+  return Boolean(process.env.CRON_SECRET);
+}
+
+export function schedulerOidcReady() {
+  return true;
 }
 
 export function schedulerAuthReady() {
-  return Boolean(process.env.CRON_SECRET);
+  return schedulerOidcReady() || schedulerSharedSecretReady();
 }

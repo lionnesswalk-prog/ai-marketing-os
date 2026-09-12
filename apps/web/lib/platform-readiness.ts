@@ -6,7 +6,7 @@ import { getTikTokSetupState } from "./tiktok-integration";
 import { getYouTubeSetupState } from "./youtube-integration";
 import { getPinterestSetupState } from "./pinterest-integration";
 import { getBillingSetupState, verifyStripeProductionConfiguration } from "./billing";
-import { schedulerAuthReady, schedulerCadenceLabel } from "./scheduler-config";
+import { schedulerAuthReady, schedulerCadenceLabel, schedulerSharedSecretReady } from "./scheduler-config";
 
 export type PlatformCheck = {
   key: string;
@@ -101,8 +101,8 @@ export async function getPlatformReadiness() {
       label: "Scheduler authentication",
       ready: schedulerAuthReady(),
       detail: schedulerAuthReady()
-        ? "CRON_SECRET protects scheduler invocations. " + schedulerCadenceLabel() + "."
-        : "Set CRON_SECRET before enabling Vercel or external scheduled publishing.",
+        ? schedulerCadenceLabel() + ". GitHub OIDC verifies the exact repository, main branch and scheduler workflow. " + (schedulerSharedSecretReady() ? "CRON_SECRET is also configured for Vercel/shared-secret fallback." : "CRON_SECRET remains optional unless the daily Vercel cron fallback is required.")
+        : "Scheduler authentication is not available.",
     },
   ];
 

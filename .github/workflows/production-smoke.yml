@@ -1,6 +1,8 @@
 name: Production Smoke
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: "17 * * * *"
@@ -15,16 +17,27 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 7
     env:
       APP_URL: ${{ vars.PRODUCTION_APP_URL || 'https://ai-marketing-os.vercel.app' }}
     steps:
-      - name: Check health endpoint
+      - name: Wait for production health
         run: |
           set -euo pipefail
           base="${APP_URL%/}"
-          body="$(curl --fail-with-body --silent --show-error --max-time 30 "$base/api/health")"
-          echo "$body" | python3 -c 'import json,sys; data=json.load(sys.stdin); assert data.get("ok") is True, data; assert data.get("service") == "ai-marketing-os", data'
+          for attempt in $(seq 1 30); do
+            if body="$(curl --fail-with-body --silent --show-error --max-time 20 "$base/api/health" 2>/tmp/health-error)"; then
+              if printf '%s' "$body" | python3 -c 'import json,sys; data=json.load(sys.stdin); assert data.get("ok") is True; assert data.get("service") == "ai-marketing-os"'; then
+                printf '%s
+' "$body"
+                exit 0
+              fi
+            fi
+            echo "Production health not ready yet (attempt $attempt/30)."
+            sleep 10
+          done
+          cat /tmp/health-error || true
+          exit 1
 
       - name: Check public authentication pages
         run: |

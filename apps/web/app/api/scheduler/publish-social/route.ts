@@ -1,20 +1,33 @@
 import { NextResponse } from "next/server";
 import { schedulerBatchSize } from "../../../../lib/scheduler-config";
+import {
+  matchesSchedulerSharedSecret,
+  verifyGitHubSchedulerOidcToken,
+} from "../../../../lib/github-scheduler-oidc";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-function authorized(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const authorization = request.headers.get("authorization");
-  const userAgent = request.headers.get("user-agent") || "";
+async function authorize(request: Request) {
+  const authorization = request.headers.get("authorization") || "";
+  if (!authorization.startsWith("Bearer ")) return null;
+  const token = authorization.slice("Bearer ".length).trim();
+  if (!token) return null;
 
-  if (secret) return authorization === `Bearer ${secret}`;
-  return request.method === "GET" && userAgent.includes("vercel-cron/1.0");
+  if (matchesSchedulerSharedSecret(token, process.env.CRON_SECRET)) {
+    return { source: "shared-secret" };
+  }
+
+  if (await verifyGitHubSchedulerOidcToken(token)) {
+    return { source: "github-actions-oidc" };
+  }
+
+  return null;
 }
 
 async function run(request: Request) {
-  if (!authorized(request)) {
+  const authorization = await authorize(request);
+  if (!authorization) {
     return NextResponse.json({ error: "Unauthorized scheduler invocation." }, { status: 401 });
   }
 
@@ -24,7 +37,7 @@ async function run(request: Request) {
     const result = await runScheduledPublisher(schedulerBatchSize());
     return NextResponse.json({
       ok: true,
-      source: request.headers.get("x-scheduler-source") || (request.method === "POST" ? "external" : "vercel-cron"),
+      source: authorization.source,
       durationMs: Date.now() - startedAt,
       executedAt: new Date().toISOString(),
       ...result,

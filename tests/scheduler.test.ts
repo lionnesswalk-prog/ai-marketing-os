@@ -4,6 +4,8 @@ import {
   schedulerBatchSize,
   schedulerCadenceLabel,
   schedulerExternalEnabled,
+  schedulerOidcReady,
+  schedulerSharedSecretReady,
 } from "../apps/web/lib/scheduler-config";
 
 const previous = {
@@ -22,17 +24,17 @@ try {
   process.env.SCHEDULER_BATCH_SIZE = "invalid";
   assert.equal(schedulerBatchSize(), 5);
 
-  delete process.env.SCHEDULER_EXTERNAL_INTERVAL_MINUTES;
-  assert.equal(schedulerExternalEnabled(), false);
-  assert.match(schedulerCadenceLabel(), /Daily Vercel cron/);
-
-  process.env.SCHEDULER_EXTERNAL_INTERVAL_MINUTES = "5";
   assert.equal(schedulerExternalEnabled(), true);
-  assert.equal(schedulerCadenceLabel(), "External scheduler · every 5 min");
+  assert.equal(schedulerOidcReady(), true);
+  assert.equal(schedulerAuthReady(), true);
+  assert.match(schedulerCadenceLabel(), /OIDC scheduler/);
 
   delete process.env.CRON_SECRET;
-  assert.equal(schedulerAuthReady(), false);
+  assert.equal(schedulerSharedSecretReady(), false);
+  assert.equal(schedulerAuthReady(), true);
+
   process.env.CRON_SECRET = "scheduler-secret";
+  assert.equal(schedulerSharedSecretReady(), true);
   assert.equal(schedulerAuthReady(), true);
 } finally {
   if (previous.batch === undefined) delete process.env.SCHEDULER_BATCH_SIZE;
