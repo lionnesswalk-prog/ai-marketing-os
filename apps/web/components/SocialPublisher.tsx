@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { SocialPlatform, SocialContentType } from "../lib/domain";
 import type { SocialPlatformConfig } from "../lib/social-platforms";
+import { getSocialDeliveryIssues } from "../lib/social-preflight";
 
 type PinterestBoard = { id: string; name: string; privacy?: string };
 
@@ -52,6 +53,34 @@ export function SocialPublisher({ platforms, canManage = true }: { platforms: So
   const youtubeSelected = selected.includes("youtube");
   const pinterestConnected = Boolean(platforms.find((item) => item.id === "pinterest")?.connected);
   const pinterestSelected = selected.includes("pinterest");
+
+  const deliveryIssues = useMemo(() => selected.flatMap((channel) => getSocialDeliveryIssues({
+    platform: channel,
+    contentType,
+    caption,
+    hashtags,
+    cta,
+    mediaUrl: mediaUrl || undefined,
+    linkUrl: linkUrl || undefined,
+    tiktokPrivacyLevel: tiktokPrivacyLevel || undefined,
+    youtubePrivacyStatus: youtubePrivacyStatus,
+    pinterestBoardId: pinterestBoardId || undefined,
+  })), [
+    selected,
+    contentType,
+    caption,
+    hashtags,
+    cta,
+    mediaUrl,
+    linkUrl,
+    tiktokPrivacyLevel,
+    youtubePrivacyStatus,
+    pinterestBoardId,
+  ]);
+
+  const connectionIssues = selectedConfigs.filter((item) => !item.connected || item.connectionCheckFailed);
+  const scheduleReady = selected.length > 0 && deliveryIssues.length === 0 && connectionIssues.length === 0;
+  const publishWillQueue = deliveryIssues.length > 0 || connectionIssues.length > 0;
 
   useEffect(() => {
     if (!pinterestSelected || !pinterestConnected) {
@@ -129,6 +158,14 @@ export function SocialPublisher({ platforms, canManage = true }: { platforms: So
     }
     if ((action === "publish" || action === "schedule") && pinterestSelected && pinterestConnected && !pinterestBoardId) {
       setError("Choose a Pinterest board before publishing or scheduling.");
+      return;
+    }
+    if (action === "schedule" && !scheduleReady) {
+      const issueText = deliveryIssues.map((item) => item.message).join(" ");
+      const connectionText = connectionIssues.length
+        ? "Connect and verify " + connectionIssues.map((item) => item.name).join(", ") + " before scheduling."
+        : "";
+      setError([issueText, connectionText].filter(Boolean).join(" "));
       return;
     }
 
@@ -218,6 +255,20 @@ export function SocialPublisher({ platforms, canManage = true }: { platforms: So
           ))}
         </div>
 
+        {deliveryIssues.length > 0 && (
+          <div className="profile-notice social-notice error">
+            <strong>Delivery preflight</strong>
+            <div>{deliveryIssues.map((item) => item.message).join(" ")}</div>
+            <small>Draft remains available. Publish Now will send valid connected channels and keep blocked channels safely in the queue.</small>
+          </div>
+        )}
+        {connectionIssues.length > 0 && (
+          <div className="profile-notice social-notice">
+            <strong>Connection readiness</strong>
+            <div>{connectionIssues.map((item) => item.connectionCheckFailed ? item.name + " health check failed." : item.name + " is not connected.").join(" ")}</div>
+          </div>
+        )}
+
         <div className="social-form-grid">
           <label>Post title<input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} /></label>
           <label>Format<select value={contentType} onChange={(e) => setContentType(e.target.value as SocialContentType)}><option value="static">Static</option><option value="carousel">Carousel</option><option value="reel">Reel</option><option value="story">Story</option><option value="video">Video</option><option value="short">Short</option></select></label>
@@ -293,8 +344,8 @@ export function SocialPublisher({ platforms, canManage = true }: { platforms: So
 
         <div className="social-actions">
           <button className="btn secondary" type="button" disabled={!canManage || busy !== null || selected.length === 0} onClick={() => submit("draft")}>{busy === "draft" ? "Saving…" : "Save draft"}</button>
-          <button className="btn secondary" type="button" disabled={!canManage || busy !== null || selected.length === 0 || !scheduledAt} onClick={() => submit("schedule")}>{busy === "schedule" ? "Scheduling…" : "Schedule"}</button>
-          <button className="btn" type="button" disabled={!canManage || busy !== null || selected.length === 0 || (tiktokSelected && tiktokConnected && (tiktokLoading || !tiktokPrivacyLevel)) || (pinterestSelected && pinterestConnected && (pinterestLoading || !pinterestBoardId))} onClick={() => submit("publish")}>{busy === "publish" ? "Publishing…" : "Publish now"}</button>
+          <button className="btn secondary" type="button" disabled={!canManage || busy !== null || !scheduledAt || !scheduleReady} onClick={() => submit("schedule")}>{busy === "schedule" ? "Scheduling…" : "Schedule"}</button>
+          <button className="btn" type="button" disabled={!canManage || busy !== null || selected.length === 0 || (tiktokSelected && tiktokConnected && tiktokLoading) || (pinterestSelected && pinterestConnected && pinterestLoading)} onClick={() => submit("publish")}>{busy === "publish" ? "Publishing…" : publishWillQueue ? "Publish ready channels" : "Publish now"}</button>
         </div>
       </form>
     </div>
