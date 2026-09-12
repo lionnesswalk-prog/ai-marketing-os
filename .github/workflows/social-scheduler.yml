@@ -25,6 +25,7 @@ jobs:
     env:
       SCHEDULER_APP_URL_OVERRIDE: ${{ vars.SCHEDULER_APP_URL }}
       PRODUCTION_APP_URL_OVERRIDE: ${{ vars.PRODUCTION_APP_URL }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - name: Resolve production scheduler origin
         id: target
@@ -32,7 +33,24 @@ jobs:
           set -euo pipefail
           base="${SCHEDULER_APP_URL_OVERRIDE:-${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}}"
           base="${base%/}"
-          effective="$(curl -L --silent --show-error --max-time 30 -o /tmp/scheduler-health -w '%{url_effective}' "$base/api/health")"
+          headers=()
+          if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            headers+=(-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
+            headers+=(-H "x-vercel-set-bypass-cookie: true")
+          fi
+
+          effective="$(curl -L --silent --show-error --max-time 30 "${headers[@]}" -o /tmp/scheduler-health -w '%{url_effective}' "$base/api/health")"
+          effective_path="$(python3 -c 'import sys; from urllib.parse import urlsplit; print(urlsplit(sys.argv[1]).path)' "$effective")"
+          if [ "$effective_path" = "/signin" ]; then
+            echo "Vercel Deployment Protection is blocking the external scheduler."
+            if [ -z "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+              echo "Create a Vercel Protection Bypass for Automation value and add it to GitHub as VERCEL_AUTOMATION_BYPASS_SECRET."
+            else
+              echo "The configured Vercel automation bypass secret was rejected or is stale."
+            fi
+            exit 1
+          fi
+
           origin="$(python3 -c 'import sys; from urllib.parse import urlsplit; u=urlsplit(sys.argv[1]); assert u.scheme == "https" and u.netloc; print(f"{u.scheme}://{u.netloc}")' "$effective")"
           if [ -z "$SCHEDULER_APP_URL_OVERRIDE" ] && [ -z "$PRODUCTION_APP_URL_OVERRIDE" ]; then
             host="$(python3 -c 'import sys; from urllib.parse import urlsplit; print(urlsplit(sys.argv[1]).hostname or "")' "$origin")"
@@ -59,20 +77,14 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="$SCHEDULER_ORIGIN/api/scheduler/publish-social"
-          meta="$(curl --silent --show-error --max-time 55 -D /tmp/scheduler-headers -o /tmp/scheduler-body -w '%{http_code}|%{redirect_url}' -X POST -H "Authorization: Bearer $OIDC_TOKEN" -H "X-Scheduler-Source: github-actions-oidc" "$endpoint")"
-          code="${meta%%|*}"
-          redirect="${meta#*|}"
-          if [[ "$code" =~ ^30[1278]$ ]] && [ -n "$redirect" ]; then
-            redirect_host="$(python3 -c 'import sys; from urllib.parse import urlsplit; u=urlsplit(sys.argv[1]); assert u.scheme == "https"; print(u.hostname or "")' "$redirect")"
-            case "$redirect_host" in
-              *.vercel.app) ;;
-              *) echo "Refusing scheduler auth redirect to untrusted host: $redirect_host"; exit 1 ;;
-            esac
-            echo "Following trusted scheduler redirect to $redirect_host"
-            meta="$(curl --silent --show-error --max-time 55 -o /tmp/scheduler-body -w '%{http_code}|' -X POST -H "Authorization: Bearer $OIDC_TOKEN" -H "X-Scheduler-Source: github-actions-oidc" "$redirect")"
-            code="${meta%%|*}"
+          headers=(-H "Authorization: Bearer $OIDC_TOKEN" -H "X-Scheduler-Source: github-actions-oidc")
+          if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            headers+=(-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
           fi
-          echo "Scheduler HTTP status: $code"
+          meta="$(curl --silent --show-error --max-time 55 -o /tmp/scheduler-body -w '%{http_code}|%{url_effective}' -X POST "${headers[@]}" "$endpoint")"
+          code="${meta%%|*}"
+          effective="${meta#*|}"
+          echo "Scheduler HTTP status: $code effective=$effective"
           cat /tmp/scheduler-body
           echo
           test "$code" = "200"

@@ -18,27 +18,47 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 5
     env:
       PRODUCTION_APP_URL_OVERRIDE: ${{ vars.PRODUCTION_APP_URL }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
-      - name: Wait for production health
+      - name: Check production health
         run: |
           set -euo pipefail
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
-          for attempt in $(seq 1 18); do
-            meta="$(curl -L --silent --show-error --max-time 20 -o /tmp/health-body -w '%{http_code}|%{url_effective}|%{content_type}' "$base/api/health" || true)"
+          headers=()
+          if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            headers+=(-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
+            headers+=(-H "x-vercel-set-bypass-cookie: true")
+          fi
+
+          for attempt in $(seq 1 12); do
+            meta="$(curl -L --silent --show-error --max-time 20 "${headers[@]}" -o /tmp/health-body -w '%{http_code}|%{url_effective}|%{content_type}' "$base/api/health" || true)"
             code="${meta%%|*}"
             rest="${meta#*|}"
             effective="${rest%%|*}"
             content_type="${rest#*|}"
+
+            effective_path="$(python3 -c 'import sys; from urllib.parse import urlsplit; print(urlsplit(sys.argv[1]).path)' "$effective")"
+            if [ "$effective_path" = "/signin" ]; then
+              echo "Vercel Deployment Protection is blocking production automation at $effective."
+              if [ -z "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+                echo "Create a Vercel Protection Bypass for Automation value and add it to GitHub as VERCEL_AUTOMATION_BYPASS_SECRET."
+              else
+                echo "The configured Vercel automation bypass secret was rejected or is stale."
+              fi
+              exit 1
+            fi
+
             if [ "$code" = "200" ] && python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); assert data.get("ok") is True; assert data.get("service") == "ai-marketing-os"' /tmp/health-body 2>/dev/null; then
               echo "Production health passed: $effective"
               cat /tmp/health-body
               exit 0
             fi
-            echo "Health attempt $attempt/18: code=$code effective=$effective content-type=$content_type"
+
+            echo "Health attempt $attempt/12: code=$code effective=$effective content-type=$content_type"
             head -c 160 /tmp/health-body 2>/dev/null | tr '\n' ' ' || true
             echo
             sleep 10
@@ -50,14 +70,24 @@ jobs:
           set -euo pipefail
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
-          curl -L --fail-with-body --silent --show-error --max-time 30 "$base/login" | grep -q "Welcome back"
-          curl -L --fail-with-body --silent --show-error --max-time 30 "$base/signup" | grep -Eq "Create|account|workspace"
+          headers=()
+          if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            headers+=(-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
+            headers+=(-H "x-vercel-set-bypass-cookie: true")
+          fi
+          curl -L --fail-with-body --silent --show-error --max-time 30 "${headers[@]}" "$base/login" | grep -q "Welcome back"
+          curl -L --fail-with-body --silent --show-error --max-time 30 "${headers[@]}" "$base/signup" | grep -Eq "Create|account|workspace"
 
       - name: Verify protected workspace route
         run: |
           set -euo pipefail
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
-          code="$(curl -L --silent --show-error --max-time 30 -o /tmp/protected.html -w '%{http_code}' "$base/operations")"
+          headers=()
+          if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            headers+=(-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
+            headers+=(-H "x-vercel-set-bypass-cookie: true")
+          fi
+          code="$(curl -L --silent --show-error --max-time 30 "${headers[@]}" -o /tmp/protected.html -w '%{http_code}' "$base/operations")"
           test "$code" = "200"
           grep -Eq "Welcome back|SECURE ACCESS|login" /tmp/protected.html
