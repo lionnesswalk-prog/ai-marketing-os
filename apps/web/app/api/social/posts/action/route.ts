@@ -25,6 +25,9 @@ function friendlyError(error: unknown) {
   if (message === "SOCIAL_POST_NOT_RESCHEDULABLE") return { status: 409, text: "This post cannot be rescheduled in its current state." };
   if (message === "SOCIAL_POST_SCHEDULE_INVALID") return { status: 400, text: "Choose a future date and time." };
   if (message === "SOCIAL_POST_RETRY_CONFLICT") return { status: 409, text: "This post is already being retried." };
+  if (message.startsWith("SOCIAL_POST_PREFLIGHT_FAILED::")) {
+    return { status: 400, text: message.slice("SOCIAL_POST_PREFLIGHT_FAILED::".length) || "Fix the post delivery requirements before retrying." };
+  }
   return { status: 400, text: message };
 }
 

@@ -19,11 +19,12 @@
     "db:seed": "tsx scripts/seed.ts",
     "postinstall": "prisma generate",
     "test:billing": "tsx tests/billing.test.ts",
-    "test": "npm run test:core && npm run test:billing && npm run test:operations && npm run test:runtime && npm run test:scheduler && npm run test:provider-diagnostics",
+    "test": "npm run test:core && npm run test:billing && npm run test:operations && npm run test:runtime && npm run test:scheduler && npm run test:provider-diagnostics && npm run test:social-preflight",
     "test:operations": "tsx tests/operations.test.ts",
     "test:runtime": "tsx tests/runtime.test.ts",
     "test:scheduler": "tsx tests/scheduler.test.ts",
-    "test:provider-diagnostics": "tsx tests/provider-diagnostics.test.ts"
+    "test:provider-diagnostics": "tsx tests/provider-diagnostics.test.ts",
+    "test:social-preflight": "tsx tests/social-preflight.test.ts"
   },
   "dependencies": {
     "@openai/agents": "latest",

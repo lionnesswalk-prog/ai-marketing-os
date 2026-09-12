@@ -2,6 +2,7 @@ import { getSession } from "./auth";
 import { memoryStore } from "./memory-store";
 import { getPrisma } from "./prisma";
 import { deliverSocialPost } from "./scheduled-publisher";
+import { getStoredSocialPostDeliveryIssues, socialDeliveryIssueMessage } from "./social-preflight";
 
 function usePostgres() {
   return process.env.DATA_BACKEND === "postgres";
@@ -29,6 +30,11 @@ export async function retrySocialPostNow(id: string) {
   });
   if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
   if (post.status !== "failed") throw new Error("SOCIAL_POST_NOT_FAILED");
+
+  const retryIssues = getStoredSocialPostDeliveryIssues(post);
+  if (retryIssues.length) {
+    throw new Error("SOCIAL_POST_PREFLIGHT_FAILED::" + socialDeliveryIssueMessage(retryIssues));
+  }
 
   const claim = await prisma.socialPost.updateMany({
     where: { id, status: "failed" },
@@ -62,6 +68,11 @@ export async function rescheduleSocialPost(id: string, scheduledAt: string) {
   });
   if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
   if (!["failed", "draft", "scheduled"].includes(post.status)) throw new Error("SOCIAL_POST_NOT_RESCHEDULABLE");
+
+  const scheduleIssues = getStoredSocialPostDeliveryIssues(post);
+  if (scheduleIssues.length) {
+    throw new Error("SOCIAL_POST_PREFLIGHT_FAILED::" + socialDeliveryIssueMessage(scheduleIssues));
+  }
 
   return prisma.socialPost.update({
     where: { id },

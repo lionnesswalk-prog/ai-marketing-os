@@ -1,4 +1,5 @@
 import { getPrisma } from "./prisma";
+import { getStoredSocialPostDeliveryIssues, socialDeliveryIssueMessage } from "./social-preflight";
 
 type DeliveryStatus = "publishing" | "published" | "failed";
 
@@ -171,6 +172,13 @@ export async function runScheduledPublisher(limit = 3, options?: { workspaceId?:
 
   for (const post of due) {
     const metadata = meta(post.metadataJson);
+    const preflightIssues = getStoredSocialPostDeliveryIssues(post);
+    if (preflightIssues.length) {
+      await finish(post.id, "failed", undefined, "Preflight blocked delivery: " + socialDeliveryIssueMessage(preflightIssues));
+      failed += 1;
+      continue;
+    }
+
     const claim = await prisma.socialPost.updateMany({
       where: { id: post.id, status: "scheduled" },
       data: {

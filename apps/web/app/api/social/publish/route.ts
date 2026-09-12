@@ -9,6 +9,12 @@ import { publishTikTok } from "../../../../lib/tiktok-integration";
 import { publishYouTube } from "../../../../lib/youtube-integration";
 import { publishPinterest } from "../../../../lib/pinterest-integration";
 import { assertBillingFeature, assertBillingSocialPostCapacity } from "../../../../lib/billing";
+import { getSocialPlatforms } from "../../../../lib/social-platforms";
+import {
+  socialDeliveryIssueMessage,
+  socialDeliveryIssuesByPlatform,
+  type SocialDeliveryInput,
+} from "../../../../lib/social-preflight";
 
 const platform = z.enum(["instagram", "facebook", "linkedin", "x", "tiktok", "youtube", "pinterest"]);
 const contentType = z.enum(["reel", "carousel", "static", "story", "video", "short"]);
@@ -71,6 +77,12 @@ export async function POST(request: Request) {
   if (input.action === "schedule" && !input.scheduledAt) {
     return NextResponse.json({ error: "Choose a schedule date and time first." }, { status: 400 });
   }
+  if (input.action === "schedule" && input.scheduledAt) {
+    const scheduledAt = new Date(input.scheduledAt);
+    if (!Number.isFinite(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now()) {
+      return NextResponse.json({ error: "Choose a future schedule date and time." }, { status: 400 });
+    }
+  }
 
   try {
     await assertBillingFeature(session.workspaceId, "socialPublishing");
@@ -101,6 +113,42 @@ export async function POST(request: Request) {
     altText: input.altText || undefined,
   };
 
+  const deliveryInputs: SocialDeliveryInput[] = input.platforms.map((channel) => ({
+    platform: channel,
+    contentType: input.contentType,
+    caption: input.caption,
+    hashtags: input.hashtags,
+    cta: input.cta,
+    mediaUrl: input.mediaUrl || undefined,
+    linkUrl: input.linkUrl || undefined,
+    tiktokPrivacyLevel: input.tiktokPrivacyLevel,
+    youtubePrivacyStatus: input.youtubePrivacyStatus,
+    pinterestBoardId: input.pinterestBoardId,
+  }));
+  const preflightByPlatform = socialDeliveryIssuesByPlatform(deliveryInputs);
+  const platformStates = input.action === "draft" ? [] : await getSocialPlatforms();
+  const platformStateById = new Map(platformStates.map((item) => [item.id, item]));
+
+  if (input.action === "schedule") {
+    const issues = input.platforms.flatMap((channel) => preflightByPlatform.get(channel) || []);
+    const unavailable = input.platforms
+      .map((channel) => platformStateById.get(channel))
+      .filter((item) => !item?.connected || item.connectionCheckFailed);
+
+    if (issues.length) {
+      return NextResponse.json({
+        error: socialDeliveryIssueMessage(issues),
+        issues,
+      }, { status: 400 });
+    }
+    if (unavailable.length) {
+      const labels = unavailable.map((item) => item?.name || "Selected channel");
+      return NextResponse.json({
+        error: "Connect and verify " + labels.join(", ") + " before scheduling. Draft mode remains available.",
+      }, { status: 409 });
+    }
+  }
+
   try {
     if (input.action !== "publish") {
       const posts = await createSocialPosts({
@@ -130,6 +178,27 @@ export async function POST(request: Request) {
       let status: "draft" | "publishing" | "published" = "draft";
       let externalId: string | undefined;
       const label = channel === "x" ? "X" : channel.charAt(0).toUpperCase() + channel.slice(1);
+      const structuralIssues = preflightByPlatform.get(channel) || [];
+      const platformState = platformStateById.get(channel);
+
+      if (structuralIssues.length || !platformState?.connected || platformState.connectionCheckFailed) {
+        queued.push(label);
+        if (structuralIssues.length) warnings.push(socialDeliveryIssueMessage(structuralIssues));
+        else if (platformState?.connectionCheckFailed) warnings.push(label + " connection health could not be verified, so the post stayed safely in the queue.");
+        else warnings.push(label + " is not connected yet.");
+
+        const [created] = await createSocialPosts({
+          ...common,
+          platforms: [channel],
+          status: "draft",
+          tiktokPrivacyLevel: input.tiktokPrivacyLevel,
+          youtubePrivacyStatus: input.youtubePrivacyStatus,
+          youtubeMadeForKids: input.youtubeMadeForKids,
+          pinterestBoardId: input.pinterestBoardId,
+        });
+        posts.push(created);
+        continue;
+      }
 
       if (channel === "facebook") {
         try {
