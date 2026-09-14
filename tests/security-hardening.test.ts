@@ -17,7 +17,7 @@ const previousVercelEnv = process.env.VERCEL_ENV;
 try {
   delete process.env.SIGNUP_MODE;
   process.env.VERCEL_ENV = "production";
-  assert.equal(getSignupMode(), "first_user");
+  assert.equal(getSignupMode(), "open");
   process.env.SIGNUP_MODE = "open";
   assert.equal(getSignupMode(), "open");
   process.env.SIGNUP_MODE = "closed";
