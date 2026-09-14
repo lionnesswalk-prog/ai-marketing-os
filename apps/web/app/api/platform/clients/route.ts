@@ -47,7 +47,8 @@ export async function POST(request: Request) {
           link: new URL(request.url).origin + "/invite/" + createdInvite.token,
         };
       } catch (error) {
-        warning = error instanceof Error ? error.message : "Workspace created, but the owner invite could not be generated.";
+        console.error("client owner invite creation failed", { workspaceId: created.id, error });
+        warning = "Workspace created, but the owner invite could not be generated.";
       }
     }
 
