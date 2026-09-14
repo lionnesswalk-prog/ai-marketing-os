@@ -43,11 +43,11 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
     <div className="dashboard-hero billing-hero">
       <div className="hero-copy">
         <p className="eyebrow">WORKSPACE BILLING</p>
-        <h1>Subscription & usage</h1>
+        <h1>{setup.paymentsEnabled ? "Subscription & usage" : "Free beta access"}</h1>
         <p className="muted large">{setup.paymentsEnabled ? "Hosted checkout keeps payment data outside AI Marketing OS. The portal stores only billing identifiers and subscription state." : "Track workspace usage, plan capacity and feature entitlements now. A production payment gateway will be connected separately."}</p>
       </div>
       <div className="hero-badges">
-        <span className={"pill "+((billing.subscription?.status==="active"||billing.subscription?.status==="trialing")?"accent":"")}>{billing.subscription?.status||"No paid plan"}</span>
+        <span className={"pill "+((billing.subscription?.status==="active"||billing.subscription?.status==="trialing")?"accent":"")}>{setup.paymentsEnabled ? (billing.subscription?.status||"No paid plan") : "Free beta"}</span>
         <span className="pill">{canManage?"Admin billing access":"Read only"}</span>
       </div>
     </div>
@@ -55,7 +55,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
     {message&&<div className={"profile-notice "+message.tone}>{message.text}</div>}
     {billingStateNotice&&<div className={"profile-notice "+billingStateNotice.tone}>{billingStateNotice.text}</div>}
     {!setup.paymentsEnabled
-      ? <div className="profile-notice">Payment gateway is deferred for now. Usage, plan definitions and feature entitlements remain active; checkout is intentionally disabled.</div>
+      ? <div className="profile-notice">Free beta is active. No payment method is required and paid-plan enforcement is disabled. Payment infrastructure can be enabled in a future release without changing workspace data.</div>
       : !setup.webhookConfigured&&<div className="profile-notice error">Payment webhook secret is not configured yet. Automatic subscription synchronization is not production-ready.</div>}
 
     <section>
@@ -77,7 +77,7 @@ export default async function BillingPage({searchParams}:{searchParams?:Promise<
     </section>
 
     <section>
-      <div className="section-head"><div><p className="eyebrow">PLANS</p><h2>Choose workspace capacity</h2></div><div className="meta-row"><span className={limitsEnforced ? "pill accent" : "pill"}>{limitsEnforced ? "Plan limits enforced" : "Limits informational · enforcement off"}</span><span className={entitlementsEnforced ? "pill accent" : "pill"}>{entitlementsEnforced ? "Feature entitlements enforced" : "Entitlements informational · enforcement off"}</span></div></div>
+      <div className="section-head"><div><p className="eyebrow">{setup.paymentsEnabled ? "PLANS" : "FREE BETA"}</p><h2>{setup.paymentsEnabled ? "Choose workspace capacity" : "Current access"}</h2></div><div className="meta-row"><span className={limitsEnforced ? "pill accent" : "pill"}>{limitsEnforced ? "Plan limits enforced" : "Limits informational · enforcement off"}</span><span className={entitlementsEnforced ? "pill accent" : "pill"}>{entitlementsEnforced ? "Feature entitlements enforced" : "Entitlements informational · enforcement off"}</span></div></div>
       <div className="billing-plan-grid">
         {plans.map((plan)=>{
           const active=currentPlan===plan.key&&Boolean(billing.subscription);
