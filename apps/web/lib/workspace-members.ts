@@ -370,6 +370,7 @@ export async function registerFromWorkspaceInvite(input: {
     email: created.email,
     name: created.name ?? undefined,
     role: acceptedRole,
+    sessionVersion: created.sessionVersion,
   };
   await setSession(session);
   return session;
