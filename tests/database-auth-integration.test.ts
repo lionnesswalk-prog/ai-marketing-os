@@ -31,15 +31,32 @@ const access = await prisma.workspaceAccess.findUnique({
 assert.ok(access);
 assert.equal(access.role, "admin");
 
-await assert.rejects(
-  () => registerAccount({
-    name: "Second User",
-    brandName: "Second Brand",
-    email: "second-user@example.com",
-    password,
-  }),
-  /SIGNUP_CLOSED/,
-);
+const second = await registerAccount({
+  name: "Second User",
+  brandName: "Second Brand",
+  email: "second-user@example.com",
+  password,
+});
+assert.equal(second.role, "admin");
+assert.equal(second.platformAdmin, false);
+assert.notEqual(second.workspaceId, first.workspaceId);
+
+const previousFreeBetaMode = process.env.FREE_BETA_MODE;
+process.env.FREE_BETA_MODE = "false";
+try {
+  await assert.rejects(
+    () => registerAccount({
+      name: "Third User",
+      brandName: "Third Brand",
+      email: "third-user@example.com",
+      password,
+    }),
+    /SIGNUP_CLOSED/,
+  );
+} finally {
+  if (previousFreeBetaMode === undefined) delete process.env.FREE_BETA_MODE;
+  else process.env.FREE_BETA_MODE = previousFreeBetaMode;
+}
 
 const authenticated = await authenticateAccount({ email, password });
 assert.equal(authenticated.userId, first.userId);
