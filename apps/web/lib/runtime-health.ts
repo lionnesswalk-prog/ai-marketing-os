@@ -20,14 +20,14 @@ export type RuntimeHealthSnapshot = {
 
 export function getRuntimeHealthSnapshot(): RuntimeHealthSnapshot {
   const environment = process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown";
-  const authMode = process.env.AUTH_MODE || (environment === "production" ? "database" : "preview");
-  const dataBackend = process.env.DATA_BACKEND || (environment === "production" ? "postgres" : "memory");
+  const authMode = process.env.AUTH_MODE === "database" ? "database" : "preview";
+  const dataBackend = process.env.DATA_BACKEND === "postgres" ? "postgres" : "memory";
   const databaseRequired = dataBackend === "postgres";
   const authSecretRequired = authMode === "database";
   const productionModeSafe =
     environment !== "production" ||
     (authMode === "database" && dataBackend === "postgres") ||
-    process.env.ALLOW_PREVIEW_AUTH_IN_PRODUCTION === "true";
+    authMode === "preview";
 
   return {
     environment,
