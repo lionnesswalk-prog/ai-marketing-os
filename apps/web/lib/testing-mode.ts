@@ -1,5 +1,7 @@
 export function previewTestingMode() {
-  return process.env.VERCEL_ENV === "production" || process.env.PREVIEW_TESTING_MODE === "true";
+  if (process.env.PREVIEW_TESTING_MODE === "true") return true;
+  if (process.env.PREVIEW_TESTING_MODE === "false") return false;
+  return process.env.VERCEL_ENV === "production";
 }
 
 export function shouldUsePostgresRuntime() {
