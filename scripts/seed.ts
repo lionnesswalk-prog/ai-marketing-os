@@ -32,18 +32,14 @@ async function main() {
     const admin = await prisma.workspaceUser.upsert({
       where: { email: adminEmail },
       update: {
-        workspaceId: workspace.id,
-        role: "admin",
         passwordHash,
         isPlatformAdmin: true,
         sessionVersion: { increment: 1 },
       },
       create: {
-        workspaceId: workspace.id,
         email: adminEmail,
         name: process.env.INITIAL_ADMIN_NAME ?? "Workspace Admin",
         passwordHash,
-        role: "admin",
         isPlatformAdmin: true,
       },
     });
