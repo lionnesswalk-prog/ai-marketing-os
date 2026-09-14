@@ -10,6 +10,10 @@ const PREVIEW_ACCOUNT_TTL = 60 * 60 * 24 * 30;
 const PREVIEW_USER_ID = "preview_user";
 const PREVIEW_WORKSPACE_ID = "preview_workspace";
 
+const SHARED_TEST_EMAIL = "tester@example.com";
+const SHARED_TEST_PASSWORD = "Test@AI2026!";
+const SHARED_TEST_NAME = "AI Marketing OS Tester";
+
 type PreviewAccount = {
   email: string;
   name: string;
@@ -195,6 +199,14 @@ export async function authenticateAccount(input: { email: string; password: stri
   const email = normalizeEmail(input.email);
 
   if (authMode() === "preview") {
+    if (email === SHARED_TEST_EMAIL && input.password === SHARED_TEST_PASSWORD) {
+      return previewSession({
+        email: SHARED_TEST_EMAIL,
+        name: SHARED_TEST_NAME,
+        role: "admin",
+      });
+    }
+
     const account = await readPreviewAccount();
     if (!account || account.email !== email || !(await verifyPassword(input.password, account.passwordHash))) {
       throw new Error("INVALID_CREDENTIALS");
@@ -226,6 +238,15 @@ export async function authenticateAccount(input: { email: string; password: stri
 
 export async function getAccountProfile(session: AppSession): Promise<AccountProfile> {
   if (authMode() === "preview") {
+    if (session.email === SHARED_TEST_EMAIL) {
+      return {
+        email: SHARED_TEST_EMAIL,
+        name: SHARED_TEST_NAME,
+        role: "admin",
+        workspaceName: process.env.DEFAULT_WORKSPACE_NAME ?? "AI Marketing OS",
+      };
+    }
+
     const account = await readPreviewAccount();
     if (!account || account.email !== session.email) {
       return {
@@ -268,6 +289,7 @@ export async function updateAccountProfile(
   const email = normalizeEmail(input.email);
 
   if (authMode() === "preview") {
+    if (session.email === SHARED_TEST_EMAIL) throw new Error("SHARED_TEST_ACCOUNT_LOCKED");
     const account = await readPreviewAccount();
     if (!account || account.email !== session.email) throw new Error("ACCOUNT_NOT_FOUND");
     const updated: PreviewAccount = { ...account, name, email };
@@ -306,6 +328,7 @@ export async function changeAccountPassword(
   input: { currentPassword: string; newPassword: string },
 ) {
   if (authMode() === "preview") {
+    if (session.email === SHARED_TEST_EMAIL) throw new Error("SHARED_TEST_ACCOUNT_LOCKED");
     const account = await readPreviewAccount();
     if (!account || account.email !== session.email) throw new Error("ACCOUNT_NOT_FOUND");
     if (!(await verifyPassword(input.currentPassword, account.passwordHash))) throw new Error("INVALID_PASSWORD");
