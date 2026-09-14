@@ -10,7 +10,8 @@ import { getPrisma } from "../apps/web/lib/prisma";
 
 const prisma = getPrisma();
 const email = "first-user@example.com";
-const password = "VeryStrongPassword123!";
+const password = process.env.TEST_ACCOUNT_PASSWORD;
+assert.ok(password && password.length >= 12);
 
 const first = await registerAccount({
   name: "First User",
