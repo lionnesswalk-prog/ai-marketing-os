@@ -6,6 +6,7 @@ import {
   rescheduleSocialPost,
   retrySocialPostNow,
 } from "../../../../../lib/social-post-actions";
+import { startScheduledSocialPostWorkflow } from "../../../../../lib/social-workflow";
 
 const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("retry"), postId: z.string().min(1) }),
@@ -57,7 +58,17 @@ export async function POST(request: Request) {
 
     if (parsed.data.action === "reschedule") {
       await rescheduleSocialPost(parsed.data.postId, parsed.data.scheduledAt);
-      return NextResponse.json({ ok: true, message: "Post rescheduled successfully." });
+      try {
+        await startScheduledSocialPostWorkflow(parsed.data.postId, parsed.data.scheduledAt);
+        return NextResponse.json({ ok: true, message: "Post rescheduled with durable exact-time delivery." });
+      } catch (error) {
+        console.error("durable reschedule activation failed", { postId: parsed.data.postId, error });
+        return NextResponse.json({
+          ok: true,
+          message: "Post rescheduled successfully.",
+          warning: "Durable delivery could not be armed, so the daily recovery scheduler remains the fallback.",
+        });
+      }
     }
 
     await cancelSocialSchedule(parsed.data.postId);
