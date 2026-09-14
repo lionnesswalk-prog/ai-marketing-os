@@ -1,6 +1,7 @@
 import { canManageMarketing, requireSession } from "../../lib/auth";
 import { CampaignBuilder } from "../../components/CampaignBuilder";
 import { getCurrentBrandProfile } from "../../lib/brand-profile";
+import { CampaignImporter } from "../../components/CampaignImporter";
 import { listCampaigns } from "../../lib/repository";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
@@ -29,6 +30,7 @@ export default async function Campaigns() {
       </div>
 
       <CampaignBuilder brandName={profile.name} canManage={canManageMarketing(session.role)} />
+      <CampaignImporter canManage={canManageMarketing(session.role)} />
 
       <section>
         <div className="section-head">
