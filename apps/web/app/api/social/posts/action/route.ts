@@ -28,7 +28,7 @@ function friendlyError(error: unknown) {
   if (message.startsWith("SOCIAL_POST_PREFLIGHT_FAILED::")) {
     return { status: 400, text: message.slice("SOCIAL_POST_PREFLIGHT_FAILED::".length) || "Fix the post delivery requirements before retrying." };
   }
-  return { status: 400, text: message };
+  return { status: 400, text: "Unable to complete this post action." };
 }
 
 export async function POST(request: Request) {
@@ -64,6 +64,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, message: "Schedule cancelled. The post is back in drafts." });
   } catch (error) {
     const response = friendlyError(error);
+    if (response.text === "Unable to complete this post action.") console.error("social post action failed", error);
     return NextResponse.json({ error: response.text }, { status: response.status });
   }
 }
