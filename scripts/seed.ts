@@ -29,16 +29,29 @@ async function main() {
   if (adminEmail && adminPassword) {
     if (adminPassword.length < 12) throw new Error("INITIAL_ADMIN_PASSWORD must be at least 12 characters");
     const passwordHash = await hashPassword(adminPassword);
-    await prisma.workspaceUser.upsert({
+    const admin = await prisma.workspaceUser.upsert({
       where: { email: adminEmail },
-      update: { workspaceId: workspace.id, role: "admin", passwordHash },
+      update: {
+        workspaceId: workspace.id,
+        role: "admin",
+        passwordHash,
+        isPlatformAdmin: true,
+        sessionVersion: { increment: 1 },
+      },
       create: {
         workspaceId: workspace.id,
         email: adminEmail,
         name: process.env.INITIAL_ADMIN_NAME ?? "Workspace Admin",
         passwordHash,
         role: "admin",
+        isPlatformAdmin: true,
       },
+    });
+
+    await prisma.workspaceAccess.upsert({
+      where: { userId_workspaceId: { userId: admin.id, workspaceId: workspace.id } },
+      update: { role: "admin" },
+      create: { userId: admin.id, workspaceId: workspace.id, role: "admin" },
     });
   }
 
@@ -77,7 +90,7 @@ async function main() {
     });
   }
 
-  console.log(`Seeded workspace ${workspace.id} and brand ${brand.id}${adminEmail ? " with admin account" : ""}`);
+  console.log(`Seeded workspace ${workspace.id} and brand ${brand.id}${adminEmail ? " with platform admin access" : ""}`);
 }
 
 main().finally(async () => {
