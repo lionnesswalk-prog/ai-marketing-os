@@ -4,6 +4,8 @@ import { buildBrandAIContext, getCurrentBrandProfile } from "../../../../lib/bra
 import { z } from "zod";
 import { draftInquiryReply } from "../../../../../../packages/agents/src/runtime";
 import { assertBillingFeature } from "../../../../lib/billing";
+import { buildWorkspaceKnowledgeContext } from "../../../../lib/knowledge";
+import { consumeAiRequest } from "../../../../lib/ai-rate-limit";
 
 const inquiryRequest = z.object({
   message: z.string().min(1).max(4000),
@@ -24,14 +26,19 @@ export async function POST(request: Request) {
 
   try {
     await assertBillingFeature(session.workspaceId, "leadWorkspace");
+    await consumeAiRequest(session.workspaceId, "inquiry");
     const profile = await getCurrentBrandProfile(session);
+    const knowledgeContext = await buildWorkspaceKnowledgeContext(session);
     const draft = await draftInquiryReply({
       ...parsed.data,
       brandName: profile.name,
-      brandContext: buildBrandAIContext(profile),
+      brandContext: [buildBrandAIContext(profile), knowledgeContext].join("\n\n"),
     });
     return NextResponse.json({ mode: process.env.AI_MODE === "live" ? "live" : "mock", draft });
   } catch (error) {
+    if (error instanceof Error && error.message === "AI_RATE_LIMITED") {
+      return NextResponse.json({ error: "Free beta AI usage limit reached for this hour. Try again shortly." }, { status: 429 });
+    }
     if (error instanceof Error && error.message === "BILLING_FEATURE_NOT_ENTITLED") {
       return NextResponse.json({ error: "Lead workspace is not included in the current plan." }, { status: 403 });
     }

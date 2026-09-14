@@ -9,6 +9,7 @@ import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 const nav = [
   ["/dashboard", "Dashboard"],
   ["/brand", "Brand Profile"],
+  ["/knowledge", "Knowledge"],
   ["/campaigns", "Campaigns"],
   ["/strategy", "AI Strategy"],
   ["/social", "Social Hub"],
@@ -45,9 +46,11 @@ export function AppChrome({
   workspaces: WorkspaceOption[];
 }) {
   const pathname = usePathname();
-  const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname.startsWith("/invite/");
+  const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password" || pathname === "/reset-password" || pathname === "/verify-email" || pathname.startsWith("/invite/");
+  const isPublicPage = pathname === "/privacy" || pathname === "/terms" || pathname === "/data-deletion" || pathname === "/support";
 
   if (isAuthPage) return <main className="auth-shell">{children}</main>;
+  if (isPublicPage && !session) return <main className="shell" style={{ marginLeft: 0, width: "100%", maxWidth: 1100, margin: "0 auto" }}>{children}</main>;
 
   const displayName = session?.name?.trim() || session?.email.split("@")[0] || "Your profile";
 

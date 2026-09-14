@@ -19,6 +19,9 @@ export function BrandProfileEditor({
     const fields = [
       profile.name,
       profile.industry,
+      profile.market,
+      profile.businessModel,
+      profile.primaryGoal,
       profile.audience,
       profile.positioning,
       profile.voice,
@@ -46,6 +49,9 @@ export function BrandProfileEditor({
           name: profile.name,
           website: profile.website,
           industry: profile.industry,
+          market: profile.market,
+          businessModel: profile.businessModel,
+          primaryGoal: profile.primaryGoal,
           audience: profile.audience,
           positioning: profile.positioning,
           voice: profile.voice,
@@ -80,6 +86,9 @@ export function BrandProfileEditor({
           <label>Brand name<input disabled={!canEdit} value={profile.name} onChange={(e) => field("name", e.target.value)} /></label>
           <label>Website<input disabled={!canEdit} type="url" value={profile.website} onChange={(e) => field("website", e.target.value)} placeholder="https://yourbrand.com" /></label>
           <label>Industry / category<input disabled={!canEdit} value={profile.industry} onChange={(e) => field("industry", e.target.value)} placeholder="Luxury fashion, SaaS, hospitality..." /></label>
+          <label>Primary market<input disabled={!canEdit} value={profile.market} onChange={(e) => field("market", e.target.value)} placeholder="India, UAE, UK, global..." /></label>
+          <label>Business model<input disabled={!canEdit} value={profile.businessModel} onChange={(e) => field("businessModel", e.target.value)} placeholder="D2C, B2B SaaS, local service..." /></label>
+          <label>Primary business goal<input disabled={!canEdit} value={profile.primaryGoal} onChange={(e) => field("primaryGoal", e.target.value)} placeholder="Profitable growth, qualified leads, bookings..." /></label>
         </div>
 
         <label>Core audience<textarea disabled={!canEdit} rows={4} value={profile.audience} onChange={(e) => field("audience", e.target.value)} placeholder="Who the brand is for, their needs, motivations and buying context." /></label>
@@ -103,7 +112,7 @@ export function BrandProfileEditor({
       <aside className="card brand-ai-card">
         <p className="eyebrow">AI CONTEXT</p>
         <h2>Used automatically</h2>
-        <p className="muted">This profile is injected server-side into AI Strategy, Social Content and Inquiry drafting. Users do not need to paste brand instructions into every prompt.</p>
+        <p className="muted">This profile is injected server-side into AI Strategy, Social Content and Inquiry drafting. Industry, market and business-model context are used to select the right funnel, KPIs and channel priorities instead of generic advice.</p>
         <div className="brand-ai-list">
           <div><span>01</span><strong>Strategy</strong><p>Audience, positioning and proof influence campaign angles and assumptions.</p></div>
           <div><span>02</span><strong>Social</strong><p>Voice, proof points and avoid-list guide hooks, captions and CTAs.</p></div>

@@ -25,7 +25,7 @@ function databaseReady() {
 
 export async function getWorkspaceReadiness(session: AppSession): Promise<WorkspaceReadiness> {
   const profile = await getCurrentBrandProfile(session);
-  const brandReady = [profile.industry, profile.audience, profile.positioning, profile.voice]
+  const brandReady = [profile.industry, profile.market, profile.businessModel, profile.primaryGoal, profile.audience, profile.positioning, profile.voice]
     .every((value) => value.trim().length > 0);
 
   let connected = 0;
@@ -33,10 +33,11 @@ export async function getWorkspaceReadiness(session: AppSession): Promise<Worksp
   let members = 1;
   let pendingInvites = 0;
   let campaigns = 0;
+  let verifiedKnowledge = 0;
 
   if (databaseReady()) {
     const prisma = getPrisma();
-    [connected, posts, members, pendingInvites, campaigns] = await Promise.all([
+    [connected, posts, members, pendingInvites, campaigns, verifiedKnowledge] = await Promise.all([
       prisma.integrationConnection.count({
         where: { brandId: profile.brandId, status: "connected" },
       }),
@@ -57,6 +58,9 @@ export async function getWorkspaceReadiness(session: AppSession): Promise<Worksp
       prisma.campaign.count({
         where: { brandId: profile.brandId },
       }),
+      prisma.knowledgeItem.count({
+        where: { brandId: profile.brandId, verified: true },
+      }),
     ]);
   }
 
@@ -65,12 +69,23 @@ export async function getWorkspaceReadiness(session: AppSession): Promise<Worksp
       key: "brand",
       title: "Complete Brand Profile",
       detail: brandReady
-        ? "Audience, positioning, category and voice are ready for AI."
-        : "Add audience, positioning, category and voice so AI has trusted brand context.",
+        ? "Industry, market, business model, audience, positioning and voice are ready for AI."
+        : "Add industry, market, business model, audience, positioning and voice so AI has the right operating context.",
       done: brandReady,
       optional: false,
       href: "/brand",
       action: brandReady ? "Review profile" : "Complete profile",
+    },
+    {
+      key: "knowledge",
+      title: "Add Verified Knowledge",
+      detail: verifiedKnowledge > 0
+        ? `${verifiedKnowledge} verified knowledge item${verifiedKnowledge === 1 ? "" : "s"} available to AI.`
+        : "Add at least one verified product, policy, proof or operating fact so AI has a workspace source of truth.",
+      done: verifiedKnowledge > 0,
+      optional: false,
+      href: "/knowledge",
+      action: verifiedKnowledge > 0 ? "Review knowledge" : "Add knowledge",
     },
     {
       key: "social",

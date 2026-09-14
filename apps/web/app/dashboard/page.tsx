@@ -2,12 +2,14 @@ import { requireSession } from "../../lib/auth";
 import { dashboardData } from "../../lib/repository";
 import { getCurrentBrandProfile } from "../../lib/brand-profile";
 import { getWorkspaceReadiness } from "../../lib/workspace-readiness";
+import { getIndustryPlaybook } from "../../lib/industry-intelligence";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
 export default async function Dashboard() {
   const session = await requireSession();
   const [data, profile, setup] = await Promise.all([dashboardData(), getCurrentBrandProfile(session), getWorkspaceReadiness(session)]);
+  const industry = getIndustryPlaybook(profile.industry);
   const metrics = [
     ["Tracked spend", money.format(data.spend)],
     ["Tracked revenue", money.format(data.revenue)],
@@ -79,6 +81,46 @@ export default async function Dashboard() {
           </div>
         ))}
       </div>
+
+
+      <section>
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">INDUSTRY INTELLIGENCE</p>
+            <h2>{industry.label} operating view</h2>
+          </div>
+          <a className="text-link" href="/brand">Edit business context →</a>
+        </div>
+        <div className="metric-grid">
+          <article className="card">
+            <p className="eyebrow">FUNNEL</p>
+            <h3>What to measure</h3>
+            <p className="muted large">{industry.primaryFunnel.join(" → ")}</p>
+          </article>
+          <article className="card">
+            <p className="eyebrow">PRIORITY KPI FAMILIES</p>
+            <h3>Decision metrics</h3>
+            <ul className="clean-list">{industry.priorityKpis.slice(0, 6).map((item) => <li key={item}>{item}</li>)}</ul>
+          </article>
+          <article className="card">
+            <p className="eyebrow">CHANNELS TO EVALUATE</p>
+            <h3>Industry-relevant mix</h3>
+            <ul className="clean-list">{industry.channelPriorities.slice(0, 6).map((item) => <li key={item}>{item}</li>)}</ul>
+          </article>
+        </div>
+        <div className="card" style={{ marginTop: 14 }}>
+          <div className="row-between top-align">
+            <div>
+              <p className="eyebrow">DATA QUALITY</p>
+              <h3>Verify before strong recommendations</h3>
+              <p className="muted">AI will not invent these values. Add them to Brand Profile, Knowledge, campaign data or connected providers when available.</p>
+            </div>
+            <div className="meta-row">
+              {industry.dataToVerify.slice(0, 6).map((item) => <span className="pill" key={item}>{item}</span>)}
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section>
         <div className="section-head">

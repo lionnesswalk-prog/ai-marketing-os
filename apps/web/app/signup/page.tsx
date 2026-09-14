@@ -1,11 +1,15 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getAuthMode, registerAccount } from "../../lib/auth-service";
 import { setSession } from "../../lib/auth";
+import { sendVerificationEmail } from "../../lib/account-security";
+import { assertAuthAllowed, authIpFromHeaders, clearAuthAttempts, recordAuthAttempt, signupThrottleKeysFromValues } from "../../lib/auth-rate-limit";
 
 function errorMessage(code?: string) {
   if (code === "invalid") return "Please enter a valid name, email and password of at least 8 characters.";
   if (code === "exists") return "An account with this email already exists.";
   if (code === "failed") return "Signup failed. Please try again.";
+  if (code === "rate") return "Too many signup attempts. Try again in 15 minutes.";
   return "";
 }
 
@@ -16,16 +20,26 @@ async function signupAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const brandName = String(formData.get("brandName") ?? "").trim();
+  const acceptTerms = String(formData.get("acceptTerms") ?? "") === "on";
 
-  if (name.length < 2 || brandName.length < 2 || !email.includes("@") || password.length < 8) {
+  if (name.length < 2 || brandName.length < 2 || !email.includes("@") || password.length < 8 || !acceptTerms) {
     redirect("/signup?error=invalid");
   }
 
-  let destination = "/dashboard";
+  const h = await headers();
+  const throttleKeys = signupThrottleKeysFromValues(authIpFromHeaders(h), email);
+  let destination = "/onboarding";
   try {
+    await assertAuthAllowed(throttleKeys);
+    await recordAuthAttempt(throttleKeys);
     const session = await registerAccount({ name, email, password, brandName });
+    await clearAuthAttempts(throttleKeys);
     await setSession(session);
+    await sendVerificationEmail(session, h.get("origin") || undefined).catch(() => undefined);
   } catch (error) {
+    if (error instanceof Error && error.message === "AUTH_RATE_LIMITED") {
+      redirect("/signup?error=rate");
+    }
     destination = error instanceof Error && error.message === "ACCOUNT_EXISTS"
       ? "/signup?error=exists"
       : "/signup?error=failed";
@@ -55,10 +69,15 @@ export default async function SignupPage({
         <label>Brand / company name<input name="brandName" minLength={2} required placeholder="Your brand name" /></label>
         <label>Email address<input name="email" type="email" autoComplete="email" required placeholder="you@company.com" /></label>
         <label>Password<input name="password" type="password" autoComplete="new-password" minLength={8} required placeholder="Minimum 8 characters" /></label>
+        <label style={{ display: "flex", gridTemplateColumns: "auto 1fr", alignItems: "start", gap: 10 }}>
+          <input name="acceptTerms" type="checkbox" required style={{ width: 18, marginTop: 2 }} />
+          <span>I agree to the <a href="/terms" target="_blank">Terms of Use</a> and <a href="/privacy" target="_blank">Privacy Policy</a>.</span>
+        </label>
         {message && <div className="error-box" role="alert">{message}</div>}
         <button className="btn auth-submit" type="submit">Create account</button>
       </form>
       <p className="auth-switch">Already have an account? <a href="/login">Sign in</a></p>
+      <p className="muted" style={{ textAlign: "center" }}>Free beta · no payment method required.</p>
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { buildBrandAIContext, getCurrentBrandProfile } from "../../../lib/brand-
 import { z } from "zod";
 import { buildStrategy } from "../../../../../packages/agents/src/runtime";
 import { assertBillingFeature } from "../../../lib/billing";
+import { buildWorkspaceKnowledgeContext } from "../../../lib/knowledge";
+import { consumeAiRequest } from "../../../lib/ai-rate-limit";
 
 const strategyRequest = z.object({
   budget: z.coerce.number().positive().max(100000000),
@@ -26,14 +28,19 @@ export async function POST(request: Request) {
 
   try {
     await assertBillingFeature(session.workspaceId, "aiStrategy");
+    await consumeAiRequest(session.workspaceId, "strategy");
     const profile = await getCurrentBrandProfile(session);
+    const knowledgeContext = await buildWorkspaceKnowledgeContext(session);
     const plan = await buildStrategy({
       ...parsed.data,
       brandName: profile.name,
-      brandContext: buildBrandAIContext(profile),
+      brandContext: [buildBrandAIContext(profile), knowledgeContext].join("\n\n"),
     });
     return NextResponse.json({ mode: process.env.AI_MODE === "live" ? "live" : "mock", plan });
   } catch (error) {
+    if (error instanceof Error && error.message === "AI_RATE_LIMITED") {
+      return NextResponse.json({ error: "Free beta AI usage limit reached for this hour. Try again shortly." }, { status: 429 });
+    }
     if (error instanceof Error && error.message === "BILLING_FEATURE_NOT_ENTITLED") {
       return NextResponse.json({ error: "AI Strategy is not included in the current plan." }, { status: 403 });
     }

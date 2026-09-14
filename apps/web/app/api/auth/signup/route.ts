@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { registerAccount, getAuthMode } from "../../../../lib/auth-service";
 import { setSession } from "../../../../lib/auth";
+import { sendVerificationEmail } from "../../../../lib/account-security";
 import {
   assertAuthAllowed,
   recordAuthAttempt,
@@ -13,12 +14,13 @@ const schema = z.object({
   brandName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(200),
   password: z.string().min(8).max(200),
+  acceptTerms: z.literal(true),
 });
 
 export async function POST(request: Request) {
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Please enter a valid name, brand, email and password of at least 8 characters." }, { status: 400 });
+    return NextResponse.json({ error: "Please enter valid account details and accept the Terms and Privacy Policy." }, { status: 400 });
   }
 
   const throttleKeys = signupThrottleKeys(request, parsed.data.email);
@@ -34,8 +36,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const session = await registerAccount(parsed.data);
+    const session = await registerAccount({
+      name: parsed.data.name,
+      brandName: parsed.data.brandName,
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
     await setSession(session);
+    await sendVerificationEmail(session, new URL(request.url).origin).catch(() => undefined);
     return NextResponse.json({ ok: true, mode: getAuthMode(), user: session });
   } catch (error) {
     if (error instanceof Error && error.message === "ACCOUNT_EXISTS") {

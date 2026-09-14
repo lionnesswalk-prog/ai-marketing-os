@@ -31,6 +31,7 @@ model Brand {
   integrations IntegrationConnection[]
   auditLogs    AuditLog[]
   insights     MarketingInsight[]
+  knowledgeItems KnowledgeItem[]
 
   @@index([workspaceId])
 }
@@ -43,8 +44,23 @@ model WorkspaceUser {
   isPlatformAdmin Boolean           @default(false)
   sessionVersion  Int               @default(0)
   lastLoginAt     DateTime?
+  emailVerifiedAt DateTime?
   createdAt       DateTime          @default(now())
   accesses        WorkspaceAccess[]
+  accountTokens   AccountToken[]
+}
+
+model AccountToken {
+  id        String        @id @default(cuid())
+  userId    String
+  type      String
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+  user      WorkspaceUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, expiresAt])
 }
 
 model WorkspaceAccess {
@@ -198,6 +214,22 @@ model MarketingInsight {
   brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId, resolvedAt, createdAt])
+}
+
+model KnowledgeItem {
+  id         String   @id @default(cuid())
+  brandId    String
+  title      String
+  kind       String   @default("reference")
+  content    String
+  sourceUrl  String?
+  verified   Boolean  @default(false)
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, verified, updatedAt])
 }
 
 model IntegrationConnection {

@@ -21,6 +21,7 @@ export type AccountProfile = {
   name: string;
   role: AppRole;
   workspaceName: string;
+  emailVerified: boolean;
 };
 
 function authMode() {
@@ -36,7 +37,7 @@ export type SignupMode = "open" | "closed" | "first_user";
 export function getSignupMode(): SignupMode {
   const configured = process.env.SIGNUP_MODE;
   if (configured === "open" || configured === "closed" || configured === "first_user") return configured;
-  return process.env.VERCEL_ENV === "production" ? "first_user" : "open";
+  return "open";
 }
 
 function normalizeEmail(email: string) {
@@ -235,6 +236,7 @@ export async function getAccountProfile(session: AppSession): Promise<AccountPro
         name: session.name ?? session.email.split("@")[0],
         role: session.role,
         workspaceName: process.env.DEFAULT_WORKSPACE_NAME ?? "AI Marketing OS",
+        emailVerified: true,
       };
     }
     return {
@@ -242,6 +244,7 @@ export async function getAccountProfile(session: AppSession): Promise<AccountPro
       name: account.name,
       role: account.role,
       workspaceName: process.env.DEFAULT_WORKSPACE_NAME ?? "AI Marketing OS",
+      emailVerified: true,
     };
   }
 
@@ -259,6 +262,7 @@ export async function getAccountProfile(session: AppSession): Promise<AccountPro
     name: user.name ?? user.email.split("@")[0],
     role: access.role as AppRole,
     workspaceName: workspace.name,
+    emailVerified: Boolean(user.emailVerifiedAt),
   };
 }
 
@@ -290,9 +294,10 @@ export async function updateAccountProfile(
     if (duplicate && duplicate.id !== user.id) throw new Error("ACCOUNT_EXISTS");
   }
 
+  const emailChanged = email !== user.email;
   const updated = await prisma.workspaceUser.update({
     where: { id: user.id },
-    data: { name, email },
+    data: { name, email, ...(emailChanged ? { emailVerifiedAt: null } : {}) },
   });
   const nextSession: AppSession = {
     ...session,

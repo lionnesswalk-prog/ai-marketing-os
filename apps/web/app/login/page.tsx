@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { authenticateAccount, getAuthMode } from "../../lib/auth-service";
 import { setSession } from "../../lib/auth";
+import { assertAuthAllowed, authIpFromHeaders, clearAuthAttempts, loginThrottleKeysFromValues, recordAuthAttempt } from "../../lib/auth-rate-limit";
 
 function errorMessage(code?: string) {
   if (code === "invalid") return "Enter a valid email and password.";
   if (code === "credentials") return "Email or password is incorrect.";
   if (code === "failed") return "Sign in failed. Please try again.";
+  if (code === "rate") return "Too many sign-in attempts. Try again in 15 minutes.";
   return "";
 }
 
@@ -25,11 +28,19 @@ async function loginAction(formData: FormData) {
     redirect("/login?error=invalid");
   }
 
+  const h = await headers();
+  const throttleKeys = loginThrottleKeysFromValues(authIpFromHeaders(h), email);
   let destination = invite ? "/invite/" + encodeURIComponent(invite) : next;
   try {
+    await assertAuthAllowed(throttleKeys);
+    await recordAuthAttempt(throttleKeys);
     const session = await authenticateAccount({ email, password });
+    await clearAuthAttempts(throttleKeys);
     await setSession(session);
   } catch (error) {
+    if (error instanceof Error && error.message === "AUTH_RATE_LIMITED") {
+      redirect("/login?error=rate");
+    }
     const retrySuffix = invite
       ? `&invite=${encodeURIComponent(invite)}`
       : next !== "/dashboard"
@@ -46,7 +57,7 @@ async function loginAction(formData: FormData) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string; invite?: string; next?: string }>;
+  searchParams?: Promise<{ error?: string; invite?: string; next?: string; reset?: string }>;
 }) {
   const mode = getAuthMode();
   const params = searchParams ? await searchParams : undefined;
@@ -60,11 +71,13 @@ export default async function LoginPage({
       <h1>Welcome back</h1>
       <p className="muted large">Sign in to your marketing command center.</p>
       {mode === "preview" && <div className="preview-note">Preview mode · use the same browser and credentials you used on signup.</div>}
+      {params?.reset === "success" && <div className="profile-notice success">Password updated. You can sign in now.</div>}
       <form className="auth-form" action={loginAction}>
         <input type="hidden" name="next" value={next} />
         {params?.invite && <input type="hidden" name="invite" value={params.invite} />}
         <label>Email address<input name="email" type="email" autoComplete="email" required placeholder="you@company.com" /></label>
         <label>Password<input name="password" type="password" autoComplete="current-password" minLength={8} required placeholder="Minimum 8 characters" /></label>
+        <div style={{ textAlign: "right", marginTop: -6, marginBottom: 10 }}><a className="text-link" href="/forgot-password">Forgot password?</a></div>
         {message && <div className="error-box" role="alert">{message}</div>}
         <button className="btn auth-submit" type="submit">Sign in</button>
       </form>

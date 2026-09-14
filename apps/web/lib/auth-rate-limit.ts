@@ -18,12 +18,29 @@ function requestIp(request: Request) {
   return forwarded || request.headers.get("x-real-ip")?.trim() || "unknown";
 }
 
+export function authIpFromHeaders(headers: { get(name: string): string | null }) {
+  const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwarded || headers.get("x-real-ip")?.trim() || "unknown";
+}
+
+export function loginThrottleKeysFromValues(ip: string, email: string) {
+  return [hash("login-ip", ip), hash("login-email", email)];
+}
+
+export function signupThrottleKeysFromValues(ip: string, email: string) {
+  return [hash("signup-ip", ip), hash("signup-email", email)];
+}
+
+export function recoveryThrottleKeysFromValues(ip: string, email: string) {
+  return [hash("recovery-ip", ip), hash("recovery-email", email)];
+}
+
 export function loginThrottleKeys(request: Request, email: string) {
-  return [hash("login-ip", requestIp(request)), hash("login-email", email)];
+  return loginThrottleKeysFromValues(requestIp(request), email);
 }
 
 export function signupThrottleKeys(request: Request, email: string) {
-  return [hash("signup-ip", requestIp(request)), hash("signup-email", email)];
+  return signupThrottleKeysFromValues(requestIp(request), email);
 }
 
 export async function assertAuthAllowed(keys: string[]) {

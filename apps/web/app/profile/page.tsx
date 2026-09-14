@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { requireSession } from "../../lib/auth";
 import {
   changeAccountPassword,
   getAccountProfile,
   updateAccountProfile,
 } from "../../lib/auth-service";
+import { deleteAccountAndOwnedData, sendVerificationEmail } from "../../lib/account-security";
 
 function roleLabel(role: string) {
   return role.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
@@ -19,6 +21,11 @@ function initials(name: string, email: string) {
 function notice(status?: string) {
   if (status === "saved") return { tone: "success", text: "Profile updated successfully." };
   if (status === "password") return { tone: "success", text: "Password changed successfully." };
+  if (status === "verified") return { tone: "success", text: "Email verified successfully." };
+  if (status === "verification-sent") return { tone: "success", text: "Verification email sent. Open the link in your inbox to confirm this address." };
+  if (status === "verification-unavailable") return { tone: "error", text: "Email delivery is not configured yet. Platform admin must finish transactional email setup." };
+  if (status === "delete-confirm") return { tone: "error", text: "Type DELETE exactly to confirm account deletion." };
+  if (status === "delete-blocked") return { tone: "error", text: "Platform administrator accounts cannot self-delete from this screen." };
   if (status === "exists") return { tone: "error", text: "That email address is already in use." };
   if (status === "invalid") return { tone: "error", text: "Please enter a valid name and email address." };
   if (status === "password-invalid") return { tone: "error", text: "Current password is incorrect." };
@@ -44,6 +51,37 @@ async function updateProfileAction(formData: FormData) {
       : "/profile?status=failed";
   }
   redirect(destination);
+}
+
+async function sendVerificationAction() {
+  "use server";
+  const session = await requireSession();
+  const h = await headers();
+  try {
+    await sendVerificationEmail(session, h.get("origin") || undefined);
+    redirect("/profile?status=verification-sent");
+  } catch (error) {
+    if (error instanceof Error && error.message === "EMAIL_PROVIDER_NOT_CONFIGURED") {
+      redirect("/profile?status=verification-unavailable");
+    }
+    redirect("/profile?status=failed");
+  }
+}
+
+async function deleteAccountAction(formData: FormData) {
+  "use server";
+  const session = await requireSession();
+  const confirmation = String(formData.get("confirmation") ?? "").trim();
+  if (confirmation !== "DELETE") redirect("/profile?status=delete-confirm");
+  try {
+    await deleteAccountAndOwnedData(session);
+    redirect("/signup?deleted=1");
+  } catch (error) {
+    if (error instanceof Error && error.message === "PLATFORM_ADMIN_DELETE_BLOCKED") {
+      redirect("/profile?status=delete-blocked");
+    }
+    redirect("/profile?status=failed");
+  }
 }
 
 async function changePasswordAction(formData: FormData) {
@@ -100,6 +138,7 @@ export default async function ProfilePage({
             <div><span>Role</span><strong>{roleLabel(profile.role)}</strong></div>
             <div><span>Workspace</span><strong>{profile.workspaceName}</strong></div>
             <div><span>Status</span><strong className="profile-active"><i /> Active</strong></div>
+            <div><span>Email</span><strong>{profile.emailVerified ? "Verified" : "Not verified"}</strong></div>
           </div>
         </aside>
 
@@ -118,6 +157,12 @@ export default async function ProfilePage({
               </div>
               <div className="profile-actions"><button className="btn" type="submit">Save changes</button></div>
             </form>
+            {!profile.emailVerified && (
+              <form action={sendVerificationAction} className="profile-form">
+                <div className="profile-notice">Verify your email so password recovery and account security can use this address confidently.</div>
+                <div className="profile-actions"><button className="btn secondary" type="submit">Send verification email</button></div>
+              </form>
+            )}
           </section>
 
           <section className="card profile-panel">
@@ -133,6 +178,18 @@ export default async function ProfilePage({
                 <label>Confirm password<input name="confirmPassword" type="password" minLength={8} required autoComplete="new-password" /></label>
               </div>
               <div className="profile-actions"><button className="btn secondary" type="submit">Update password</button></div>
+            </form>
+          </section>
+
+          <section className="card profile-panel">
+            <div className="profile-panel-head">
+              <div><p className="eyebrow">DATA & ACCOUNT</p><h2>Delete account</h2></div>
+              <span className="profile-section-number">03</span>
+            </div>
+            <p className="muted">If you are the only member of a workspace, deleting your account also deletes that workspace and its brand data. Shared workspaces remain and your access is removed.</p>
+            <form action={deleteAccountAction} className="profile-form">
+              <label>Type DELETE to confirm<input name="confirmation" autoComplete="off" placeholder="DELETE" /></label>
+              <div className="profile-actions"><button className="btn secondary" type="submit">Delete my account and owned data</button></div>
             </form>
           </section>
         </div>

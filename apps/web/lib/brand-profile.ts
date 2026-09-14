@@ -2,12 +2,16 @@ import type { AppSession } from "./auth";
 import { canManageMarketing } from "./auth";
 import { getPrisma } from "./prisma";
 import { recordAuditEvent } from "./audit";
+import { buildIndustryAIContext } from "./industry-intelligence";
 
 export type BrandProfile = {
   brandId: string;
   name: string;
   website: string;
   industry: string;
+  market: string;
+  businessModel: string;
+  primaryGoal: string;
   audience: string;
   positioning: string;
   voice: string;
@@ -58,6 +62,9 @@ function profileFromBrand(brand: { id: string; name: string; voiceJson: unknown 
     name: brand.name,
     website: textValue(meta.website),
     industry: textValue(meta.industry),
+    market: textValue(meta.market),
+    businessModel: textValue(meta.businessModel),
+    primaryGoal: textValue(meta.primaryGoal),
     audience: textValue(meta.audience),
     positioning: textValue(meta.positioning),
     voice: textValue(meta.voice) || personality,
@@ -74,6 +81,9 @@ export async function getCurrentBrandProfile(session: AppSession): Promise<Brand
       name: process.env.DEFAULT_BRAND_NAME || "Your Brand",
       website: "",
       industry: "",
+      market: "",
+      businessModel: "",
+      primaryGoal: "",
       audience: "",
       positioning: "",
       voice: "Clear, specific, credible and consistent with the brand.",
@@ -97,6 +107,15 @@ export function buildBrandAIContext(profile: BrandProfile) {
     `Brand: ${profile.name}`,
     profile.website ? `Website: ${profile.website}` : "",
     profile.industry ? `Industry/category: ${profile.industry}` : "",
+    profile.market ? `Primary market: ${profile.market}` : "",
+    profile.businessModel ? `Business model: ${profile.businessModel}` : "",
+    profile.primaryGoal ? `Primary business goal: ${profile.primaryGoal}` : "",
+    buildIndustryAIContext({
+      industry: profile.industry,
+      market: profile.market,
+      businessModel: profile.businessModel,
+      primaryGoal: profile.primaryGoal,
+    }),
     profile.audience ? `Core audience: ${profile.audience}` : "",
     profile.positioning ? `Positioning: ${profile.positioning}` : "",
     profile.voice ? `Voice: ${profile.voice}` : "",
@@ -124,6 +143,9 @@ export async function updateBrandProfile(session: AppSession, input: BrandProfil
     ...existing,
     website: input.website.trim(),
     industry: input.industry.trim(),
+    market: input.market.trim(),
+    businessModel: input.businessModel.trim(),
+    primaryGoal: input.primaryGoal.trim(),
     audience: input.audience.trim(),
     positioning: input.positioning.trim(),
     voice,
@@ -155,6 +177,9 @@ export async function updateBrandProfile(session: AppSession, input: BrandProfil
     payload: {
       brandName: name,
       industry: input.industry.trim(),
+      market: input.market.trim(),
+      businessModel: input.businessModel.trim(),
+      primaryGoal: input.primaryGoal.trim(),
     },
   });
 

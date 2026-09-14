@@ -7,6 +7,8 @@ import { getYouTubeSetupState } from "./youtube-integration";
 import { getPinterestSetupState } from "./pinterest-integration";
 import { getBillingSetupState, verifyStripeProductionConfiguration } from "./billing";
 import { schedulerCadenceLabel, schedulerDurableEnabled, schedulerSharedSecretReady } from "./scheduler-config";
+import { emailDeliveryConfigured, emailProviderLabel } from "./email";
+import { aiRateLimitLabel } from "./ai-rate-limit";
 
 export type PlatformCheck = {
   key: string;
@@ -34,7 +36,7 @@ function publicOrigin() {
   if (explicit) return explicit;
   const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
   if (vercelHost) return "https://" + vercelHost.replace(/^https?:\/\//, "").replace(/\/$/, "");
-  return "https://ai-marketing-os.vercel.app";
+  return "https://ai-marketing-os-ashy.vercel.app";
 }
 
 function callback(path: string) {
@@ -93,8 +95,30 @@ export async function getPlatformReadiness() {
       label: "AI runtime",
       ready: process.env.AI_MODE === "live" && Boolean(process.env.OPENAI_API_KEY),
       detail: process.env.AI_MODE === "live" && process.env.OPENAI_API_KEY
-        ? "Live AI mode is configured with a server-side API key."
+        ? "Live AI mode is configured with a server-side API key. " + aiRateLimitLabel() + "."
         : "Set AI_MODE=live and configure OPENAI_API_KEY before relying on production AI generation.",
+    },
+    {
+      key: "transactional-email",
+      label: "Transactional email",
+      ready: emailDeliveryConfigured(),
+      detail: emailProviderLabel() + ". Required for email verification and password recovery.",
+    },
+    {
+      key: "support-contact",
+      label: "Support contact",
+      ready: Boolean(process.env.SUPPORT_EMAIL),
+      detail: process.env.SUPPORT_EMAIL
+        ? "Public support and privacy contact is configured."
+        : "Set SUPPORT_EMAIL before public launch.",
+    },
+    {
+      key: "free-beta",
+      label: "Free beta access",
+      ready: process.env.PAYMENTS_ENABLED !== "true" && process.env.BILLING_ENFORCE_LIMITS !== "true" && process.env.BILLING_ENFORCE_ENTITLEMENTS !== "true",
+      detail: process.env.PAYMENTS_ENABLED === "true"
+        ? "Payments are enabled; disable them for the current free-beta launch."
+        : "Payments and paid entitlements are disabled for free beta.",
     },
     {
       key: "durable-scheduler",
