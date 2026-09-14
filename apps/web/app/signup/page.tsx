@@ -3,11 +3,13 @@ import { headers } from "next/headers";
 import { getAuthMode, registerAccount } from "../../lib/auth-service";
 import { setSession } from "../../lib/auth";
 import { sendVerificationEmail } from "../../lib/account-security";
+import { assertAuthAllowed, authIpFromHeaders, clearAuthAttempts, recordAuthAttempt, signupThrottleKeysFromValues } from "../../lib/auth-rate-limit";
 
 function errorMessage(code?: string) {
   if (code === "invalid") return "Please enter a valid name, email and password of at least 8 characters.";
   if (code === "exists") return "An account with this email already exists.";
   if (code === "failed") return "Signup failed. Please try again.";
+  if (code === "rate") return "Too many signup attempts. Try again in 15 minutes.";
   return "";
 }
 
@@ -24,13 +26,20 @@ async function signupAction(formData: FormData) {
     redirect("/signup?error=invalid");
   }
 
+  const h = await headers();
+  const throttleKeys = signupThrottleKeysFromValues(authIpFromHeaders(h), email);
   let destination = "/onboarding";
   try {
+    await assertAuthAllowed(throttleKeys);
+    await recordAuthAttempt(throttleKeys);
     const session = await registerAccount({ name, email, password, brandName });
+    await clearAuthAttempts(throttleKeys);
     await setSession(session);
-    const h = await headers();
     await sendVerificationEmail(session, h.get("origin") || undefined).catch(() => undefined);
   } catch (error) {
+    if (error instanceof Error && error.message === "AUTH_RATE_LIMITED") {
+      redirect("/signup?error=rate");
+    }
     destination = error instanceof Error && error.message === "ACCOUNT_EXISTS"
       ? "/signup?error=exists"
       : "/signup?error=failed";
