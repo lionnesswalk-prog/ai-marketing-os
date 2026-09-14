@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const next = await switchWorkspace(session, parsed.data.workspaceId);
     return NextResponse.json({ ok: true, workspaceId: next.workspaceId, role: next.role });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "WORKSPACE_ACCESS_DENIED";
-    return NextResponse.json({ error: message }, { status: 403 });
+    console.error("workspace switch denied", { userId: session.userId, error });
+    return NextResponse.json({ error: "You do not have access to that workspace." }, { status: 403 });
   }
 }
