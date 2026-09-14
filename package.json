@@ -32,7 +32,8 @@
     "test:observability": "tsx tests/request-observability.test.ts",
     "test:security-hardening": "tsx tests/security-hardening.test.ts",
     "test:database-auth": "tsx tests/database-auth-integration.test.ts",
-    "test:seed-bootstrap": "tsx tests/seed-bootstrap.test.ts"
+    "test:seed-bootstrap": "tsx tests/seed-bootstrap.test.ts",
+    "test:durable-scheduler-db": "tsx tests/durable-scheduler-db.test.ts"
   },
   "dependencies": {
     "@openai/agents": "0.18.0",
