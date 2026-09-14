@@ -38,6 +38,8 @@ async function currentBrand(brandId?: string) {
   if (brandId) {
     const brand = await prisma.brand.findUnique({ where: { id: brandId } });
     if (!brand) throw new Error("BRAND_NOT_FOUND");
+    const session = await getSession();
+    if (session?.workspaceId && brand.workspaceId !== session.workspaceId) throw new Error("BRAND_WORKSPACE_MISMATCH");
     return brand;
   }
   const session = await getSession();
