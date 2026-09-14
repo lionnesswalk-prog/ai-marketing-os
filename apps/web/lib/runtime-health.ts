@@ -1,4 +1,5 @@
 import { canEncryptIntegrations } from "./integration-crypto";
+import { previewTestingMode } from "./testing-mode";
 import { schedulerAuthReady, schedulerExternalEnabled } from "./scheduler-config";
 
 export type RuntimeHealthSnapshot = {
@@ -20,8 +21,8 @@ export type RuntimeHealthSnapshot = {
 
 export function getRuntimeHealthSnapshot(): RuntimeHealthSnapshot {
   const environment = process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown";
-  const authMode = process.env.AUTH_MODE === "database" ? "database" : "preview";
-  const dataBackend = process.env.DATA_BACKEND === "postgres" ? "postgres" : "memory";
+  const authMode = previewTestingMode() ? "preview" : process.env.AUTH_MODE === "database" ? "database" : "preview";
+  const dataBackend = previewTestingMode() ? "memory" : process.env.DATA_BACKEND === "postgres" ? "postgres" : "memory";
   const databaseRequired = dataBackend === "postgres";
   const authSecretRequired = authMode === "database";
   const productionModeSafe =
