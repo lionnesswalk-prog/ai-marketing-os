@@ -32,7 +32,7 @@ export default async function OperationsPage() {
         <div className="hero-badges">
           <span className={"health " + healthClass}>{data.queueHealth.label}</span>
           <span className={data.scheduler.authenticated ? "pill accent" : "pill"}>
-            {data.scheduler.authenticated ? "Scheduler auth ready" : "Scheduler secret missing"}
+            {data.scheduler.authenticated ? "Durable scheduler ready" : "Durable scheduler disabled"}
           </span>
         </div>
       </div>
