@@ -31,6 +31,9 @@ export async function buildStrategy(input: StrategyInput) {
         "Channel budget percentages must sum to 100.",
         "Do not fabricate historical performance, customer proof or product facts.",
         "Mark assumptions explicitly.",
+        "Use verified workspace knowledge as factual source-of-truth and label reference notes as unverified.",
+        "Do not invent numeric industry benchmarks, market sizes, conversion rates, CAC, ROAS or growth rates. If a number is not supplied by verified context, describe the metric qualitatively or ask for data.",
+        "Match funnel logic, KPIs and channel priorities to the supplied industry, market and business model.",
       ],
     }),
   );
@@ -74,6 +77,8 @@ export async function buildContentPlan(input: ContentPlanInput) {
     rules: [
       "Use the supplied brand context as the source of truth.",
       "Never invent proof points, product features, stock, pricing or policies.",
+      "Use verified workspace knowledge as factual source-of-truth. Treat reference notes as unverified context.",
+      "Do not invent performance benchmarks or market statistics.",
       "If a fact is not supplied, keep the copy general rather than guessing.",
     ],
   }));
@@ -104,6 +109,7 @@ export async function draftInquiryReply(input: {
       "Use the supplied brand context for tone and terminology.",
       "Verified facts in this request override general brand context.",
       "Never invent stock, delivery, discounts, refunds, pricing or exclusivity.",
+      "Use verified workspace knowledge as factual source-of-truth and say when required facts are missing.",
     ],
   }));
   return result.finalOutput;
