@@ -10,6 +10,7 @@ import { publishYouTube } from "../../../../lib/youtube-integration";
 import { publishPinterest } from "../../../../lib/pinterest-integration";
 import { assertBillingFeature, assertBillingSocialPostCapacity } from "../../../../lib/billing";
 import { getSocialPlatforms } from "../../../../lib/social-platforms";
+import { startScheduledSocialPostWorkflow } from "../../../../lib/social-workflow";
 import {
   socialDeliveryIssueMessage,
   socialDeliveryIssuesByPlatform,
@@ -161,11 +162,32 @@ export async function POST(request: Request) {
         youtubeMadeForKids: input.youtubeMadeForKids,
         pinterestBoardId: input.pinterestBoardId,
       });
+
+      let workflowWarning: string | undefined;
+      if (input.action === "schedule" && input.scheduledAt) {
+        const starts = await Promise.allSettled(
+          posts.map((post) => startScheduledSocialPostWorkflow(post.id, input.scheduledAt!)),
+        );
+        const failures = starts.filter((result) => result.status === "rejected");
+        if (failures.length) {
+          console.error("durable social schedule activation failed", {
+            failed: failures.length,
+            total: starts.length,
+          });
+          workflowWarning = "The post is saved in the schedule queue, but durable delivery could not be armed for every channel. The daily recovery scheduler remains available.";
+        }
+      }
+
       return NextResponse.json({
         ok: true,
         posts,
         mode: "queue",
-        message: input.action === "schedule" ? "Post scheduled in the portal queue." : "Draft saved for the selected channels.",
+        message: input.action === "schedule"
+          ? workflowWarning
+            ? "Post scheduled with recovery protection."
+            : "Post scheduled with durable exact-time delivery."
+          : "Draft saved for the selected channels.",
+        warning: workflowWarning,
       });
     }
 
