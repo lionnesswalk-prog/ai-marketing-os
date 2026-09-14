@@ -1,4 +1,5 @@
 import type { AppSession } from "./auth";
+import { previewTestingMode, shouldUsePostgresRuntime } from "./testing-mode";
 import { getPrisma } from "./prisma";
 import { canEncryptIntegrations } from "./integration-crypto";
 import { canViewSecurity } from "./access-policy";
@@ -35,7 +36,7 @@ export type SecurityOverview = {
 };
 
 function databaseReady() {
-  return process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres";
+  return shouldUsePostgresRuntime();
 }
 
 function payloadObject(value: unknown): Record<string, unknown> {
