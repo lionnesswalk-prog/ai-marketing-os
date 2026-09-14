@@ -31,6 +31,10 @@ export function signupThrottleKeysFromValues(ip: string, email: string) {
   return [hash("signup-ip", ip), hash("signup-email", email)];
 }
 
+export function recoveryThrottleKeysFromValues(ip: string, email: string) {
+  return [hash("recovery-ip", ip), hash("recovery-email", email)];
+}
+
 export function loginThrottleKeys(request: Request, email: string) {
   return loginThrottleKeysFromValues(requestIp(request), email);
 }
