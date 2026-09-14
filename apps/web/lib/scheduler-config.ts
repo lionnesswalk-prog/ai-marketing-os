@@ -5,11 +5,15 @@ export function schedulerBatchSize() {
 }
 
 export function schedulerCadenceLabel() {
-  return "GitHub Actions OIDC scheduler · every 5 min";
+  return "Durable exact-time delivery · daily Vercel recovery";
+}
+
+export function schedulerDurableEnabled() {
+  return process.env.DURABLE_SOCIAL_SCHEDULER_ENABLED !== "false";
 }
 
 export function schedulerExternalEnabled() {
-  return process.env.SCHEDULER_EXTERNAL_ENABLED === "true";
+  return schedulerDurableEnabled();
 }
 
 export function schedulerSharedSecretReady() {
@@ -21,5 +25,5 @@ export function schedulerOidcReady() {
 }
 
 export function schedulerAuthReady() {
-  return schedulerOidcReady() || schedulerSharedSecretReady();
+  return schedulerDurableEnabled();
 }
