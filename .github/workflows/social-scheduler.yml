@@ -1,13 +1,6 @@
-name: Social Scheduler
+name: Scheduler Endpoint Diagnostic
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/social-scheduler.yml'
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 
 permissions:
