@@ -46,7 +46,7 @@ async function loginAction(formData: FormData) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string; invite?: string; next?: string }>;
+  searchParams?: Promise<{ error?: string; invite?: string; next?: string; reset?: string }>;
 }) {
   const mode = getAuthMode();
   const params = searchParams ? await searchParams : undefined;
@@ -60,11 +60,13 @@ export default async function LoginPage({
       <h1>Welcome back</h1>
       <p className="muted large">Sign in to your marketing command center.</p>
       {mode === "preview" && <div className="preview-note">Preview mode · use the same browser and credentials you used on signup.</div>}
+      {params?.reset === "success" && <div className="profile-notice success">Password updated. You can sign in now.</div>}
       <form className="auth-form" action={loginAction}>
         <input type="hidden" name="next" value={next} />
         {params?.invite && <input type="hidden" name="invite" value={params.invite} />}
         <label>Email address<input name="email" type="email" autoComplete="email" required placeholder="you@company.com" /></label>
         <label>Password<input name="password" type="password" autoComplete="current-password" minLength={8} required placeholder="Minimum 8 characters" /></label>
+        <div style={{ textAlign: "right", marginTop: -6, marginBottom: 10 }}><a className="text-link" href="/forgot-password">Forgot password?</a></div>
         {message && <div className="error-box" role="alert">{message}</div>}
         <button className="btn auth-submit" type="submit">Sign in</button>
       </form>
