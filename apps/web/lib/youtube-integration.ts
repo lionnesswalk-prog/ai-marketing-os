@@ -1,6 +1,7 @@
 import { getPrisma } from "./prisma";
 import { getSession } from "./auth";
 import { canEncryptIntegrations, decryptIntegrationSecret, encryptIntegrationSecret } from "./integration-crypto";
+import { fetchPublicMedia } from "./public-media";
 
 type GoogleTokenResponse = {
   access_token: string;
@@ -313,7 +314,7 @@ export async function publishYouTube(input: {
   if (!["video", "short", "reel"].includes(input.contentType)) throw new Error("YOUTUBE_FORMAT_NOT_READY");
   if (!input.privacyStatus) throw new Error("YOUTUBE_PRIVACY_REQUIRED");
 
-  const source = await fetch(input.mediaUrl, { cache: "no-store" });
+  const source = await fetchPublicMedia(input.mediaUrl, { cache: "no-store" });
   if (!source.ok) throw new Error(`YOUTUBE_MEDIA_FETCH_FAILED_${source.status}`);
 
   const contentType = source.headers.get("content-type") || "application/octet-stream";
