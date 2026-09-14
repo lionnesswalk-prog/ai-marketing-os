@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { shouldUsePostgresRuntime } from "./testing-mode";
 import { getPrisma } from "./prisma";
 
 const WINDOW_MS = 15 * 60 * 1000;
@@ -6,7 +7,7 @@ const BLOCK_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
 function enabled() {
-  return process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres";
+  return shouldUsePostgresRuntime();
 }
 
 function hash(kind: string, value: string) {
