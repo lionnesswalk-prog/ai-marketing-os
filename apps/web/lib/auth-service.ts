@@ -37,7 +37,7 @@ export type SignupMode = "open" | "closed" | "first_user";
 export function getSignupMode(): SignupMode {
   const configured = process.env.SIGNUP_MODE;
   if (configured === "open" || configured === "closed" || configured === "first_user") return configured;
-  return process.env.VERCEL_ENV === "production" ? "first_user" : "open";
+  return "open";
 }
 
 function normalizeEmail(email: string) {
