@@ -279,3 +279,68 @@ export async function runScheduledPublisher(limit = 3, options?: { workspaceId?:
     processingCheckErrors,
   };
 }
+
+
+export async function publishScheduledPostById(postId: string, expectedScheduledAt: string) {
+  if (process.env.DATA_BACKEND !== "postgres") {
+    return { status: "skipped" as const, reason: "postgres-required" };
+  }
+
+  const expected = new Date(expectedScheduledAt);
+  if (!Number.isFinite(expected.getTime())) {
+    return { status: "skipped" as const, reason: "invalid-schedule" };
+  }
+
+  const prisma = getPrisma();
+  const post = await prisma.socialPost.findUnique({ where: { id: postId } });
+  if (!post) return { status: "skipped" as const, reason: "post-not-found" };
+  if (post.status !== "scheduled") {
+    return { status: "skipped" as const, reason: "status-changed", currentStatus: post.status };
+  }
+
+  const currentSchedule = post.scheduledAt?.toISOString();
+  if (!currentSchedule || currentSchedule !== expected.toISOString()) {
+    return { status: "skipped" as const, reason: "schedule-changed", currentSchedule };
+  }
+
+  const remainingMs = post.scheduledAt.getTime() - Date.now();
+  if (remainingMs > 500) {
+    return { status: "not_due" as const, delayMs: remainingMs };
+  }
+
+  const preflightIssues = getStoredSocialPostDeliveryIssues(post);
+  if (preflightIssues.length) {
+    await finish(
+      post.id,
+      "failed",
+      undefined,
+      "Preflight blocked delivery: " + socialDeliveryIssueMessage(preflightIssues),
+    );
+    return { status: "failed" as const, reason: "preflight" };
+  }
+
+  const metadata = meta(post.metadataJson);
+  const claim = await prisma.socialPost.updateMany({
+    where: {
+      id: post.id,
+      status: "scheduled",
+      scheduledAt: post.scheduledAt,
+    },
+    data: {
+      status: "publishing",
+      metadataJson: {
+        ...metadata,
+        deliveryClaimedAt: new Date().toISOString(),
+        deliveryAttemptCount: Number(metadata.deliveryAttemptCount || 0) + 1,
+        durableDeliveryTriggeredAt: new Date().toISOString(),
+      } as any,
+    },
+  });
+
+  if (claim.count !== 1) {
+    return { status: "skipped" as const, reason: "claim-conflict" };
+  }
+
+  const deliveryStatus = await deliverSocialPost(post);
+  return { status: deliveryStatus };
+}
