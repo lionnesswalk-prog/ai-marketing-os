@@ -9,6 +9,7 @@ import { getBillingSetupState, verifyStripeProductionConfiguration } from "./bil
 import { schedulerCadenceLabel, schedulerDurableEnabled, schedulerSharedSecretReady } from "./scheduler-config";
 import { emailDeliveryConfigured, emailProviderLabel } from "./email";
 import { aiRateLimitLabel } from "./ai-rate-limit";
+import { getSignupMode } from "./auth-service";
 
 export type PlatformCheck = {
   key: string;
@@ -87,7 +88,7 @@ export async function getPlatformReadiness() {
     {
       key: "signup",
       label: "Client onboarding",
-      ready: (process.env.SIGNUP_MODE || "open") === "open",
+      ready: getSignupMode() === "open",
       detail: "Open SaaS signup creates a separate workspace and brand for every new client.",
     },
     {
