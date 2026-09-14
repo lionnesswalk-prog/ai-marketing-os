@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: production-smoke
@@ -23,12 +24,23 @@ jobs:
       PRODUCTION_APP_URL_OVERRIDE: ${{ vars.PRODUCTION_APP_URL }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
+      - name: Request Vercel trusted-source OIDC token
+        uses: actions/github-script@v7
+        id: vercel-oidc
+        with:
+          script: |
+            const token = await core.getIDToken();
+            core.setSecret(token);
+            core.setOutput('token', token);
+
       - name: Check production health
+        env:
+          VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: |
           set -euo pipefail
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
-          headers=()
+          headers=(-H "x-vercel-trusted-oidc-idp-token: $VERCEL_TRUSTED_OIDC_TOKEN")
           if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
             headers+=(-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
             headers+=(-H "x-vercel-set-bypass-cookie: true")
@@ -43,12 +55,7 @@ jobs:
 
             effective_path="$(python3 -c 'import sys; from urllib.parse import urlsplit; print(urlsplit(sys.argv[1]).path)' "$effective")"
             if [ "$effective_path" = "/signin" ]; then
-              echo "Vercel Deployment Protection is blocking production automation at $effective."
-              if [ -z "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
-                echo "Create a Vercel Protection Bypass for Automation value and add it to GitHub as VERCEL_AUTOMATION_BYPASS_SECRET."
-              else
-                echo "The configured Vercel automation bypass secret was rejected or is stale."
-              fi
+              echo "Vercel Deployment Protection still rejected GitHub trusted-source OIDC at $effective."
               exit 1
             fi
 
@@ -66,11 +73,13 @@ jobs:
           exit 1
 
       - name: Check public authentication pages
+        env:
+          VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: |
           set -euo pipefail
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
-          headers=()
+          headers=(-H "x-vercel-trusted-oidc-idp-token: $VERCEL_TRUSTED_OIDC_TOKEN")
           if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
             headers+=(-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
             headers+=(-H "x-vercel-set-bypass-cookie: true")
@@ -79,11 +88,13 @@ jobs:
           curl -L --fail-with-body --silent --show-error --max-time 30 "${headers[@]}" "$base/signup" | grep -Eq "Create|account|workspace"
 
       - name: Verify protected workspace route
+        env:
+          VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: |
           set -euo pipefail
           base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
           base="${base%/}"
-          headers=()
+          headers=(-H "x-vercel-trusted-oidc-idp-token: $VERCEL_TRUSTED_OIDC_TOKEN")
           if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
             headers+=(-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET")
             headers+=(-H "x-vercel-set-bypass-cookie: true")
