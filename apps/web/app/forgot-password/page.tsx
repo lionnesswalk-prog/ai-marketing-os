@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { requestPasswordReset } from "../../lib/account-security";
+import { assertAuthAllowed, authIpFromHeaders, recordAuthAttempt, recoveryThrottleKeysFromValues } from "../../lib/auth-rate-limit";
 
 async function requestAction(formData: FormData) {
   "use server";
@@ -9,10 +10,16 @@ async function requestAction(formData: FormData) {
 
   const h = await headers();
   const origin = h.get("origin") || undefined;
+  const throttleKeys = recoveryThrottleKeysFromValues(authIpFromHeaders(h), email);
   try {
+    await assertAuthAllowed(throttleKeys);
+    await recordAuthAttempt(throttleKeys);
     await requestPasswordReset(email, origin);
     redirect("/forgot-password?status=sent");
   } catch (error) {
+    if (error instanceof Error && error.message === "AUTH_RATE_LIMITED") {
+      redirect("/forgot-password?status=rate");
+    }
     if (error instanceof Error && error.message === "EMAIL_PROVIDER_NOT_CONFIGURED") {
       redirect("/forgot-password?status=unavailable");
     }
@@ -36,6 +43,7 @@ export default async function ForgotPasswordPage({
         <label>Email address<input name="email" type="email" required autoComplete="email" placeholder="you@company.com" /></label>
         {params?.status === "sent" && <div className="profile-notice success">If an account exists for that email, a reset link has been sent.</div>}
         {params?.status === "invalid" && <div className="error-box">Enter a valid email address.</div>}
+        {params?.status === "rate" && <div className="error-box">Too many recovery requests. Try again in 15 minutes.</div>}
         {params?.status === "unavailable" && <div className="error-box">Email recovery is temporarily unavailable. Contact support.</div>}
         <button className="btn auth-submit" type="submit">Send reset link</button>
       </form>
