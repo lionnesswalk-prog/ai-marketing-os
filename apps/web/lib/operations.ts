@@ -51,6 +51,9 @@ export type OperationsOverview = {
     cadence: string;
     externalEnabled: boolean;
     manualRunAvailable: boolean;
+    lastRunAt?: string;
+    lastSource?: string;
+    lastStatus?: string;
   };
   providers: Array<{
     id: string;
@@ -153,6 +156,7 @@ export async function getOperationsOverview(session: AppSession): Promise<Operat
     nextScheduled,
     oldestOverdue,
     issueRows,
+    lastSchedulerRun,
   ] = await Promise.all([
     prisma.socialPost.count({ where: { ...workspaceFilter, status: "draft" } }),
     prisma.socialPost.count({ where: { ...workspaceFilter, status: "scheduled" } }),
@@ -188,6 +192,10 @@ export async function getOperationsOverview(session: AppSession): Promise<Operat
         metadataJson: true,
       },
     }),
+    prisma.schedulerInvocation.findFirst({
+      orderBy: { startedAt: "desc" },
+      select: { startedAt: true, source: true, status: true },
+    }),
   ]);
 
   const counts = {
@@ -212,6 +220,9 @@ export async function getOperationsOverview(session: AppSession): Promise<Operat
       cadence: schedulerCadenceLabel(),
       externalEnabled: schedulerExternalEnabled(),
       manualRunAvailable: true,
+      lastRunAt: iso(lastSchedulerRun?.startedAt),
+      lastSource: lastSchedulerRun?.source,
+      lastStatus: lastSchedulerRun?.status,
     },
     providers,
     recentIssues: issueRows.map((row): OperationsIssue => {
