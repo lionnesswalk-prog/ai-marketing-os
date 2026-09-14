@@ -30,7 +30,9 @@
     "test:runtime-health": "tsx tests/runtime-health.test.ts",
     "test:github-scheduler-oidc": "tsx tests/github-scheduler-oidc.test.ts",
     "test:observability": "tsx tests/request-observability.test.ts",
-    "test:security-hardening": "tsx tests/security-hardening.test.ts"
+    "test:security-hardening": "tsx tests/security-hardening.test.ts",
+    "test:database-auth": "tsx tests/database-auth-integration.test.ts",
+    "test:seed-bootstrap": "tsx tests/seed-bootstrap.test.ts"
   },
   "dependencies": {
     "@openai/agents": "0.18.0",
