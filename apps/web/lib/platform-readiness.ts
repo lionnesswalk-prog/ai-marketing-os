@@ -6,7 +6,7 @@ import { getTikTokSetupState } from "./tiktok-integration";
 import { getYouTubeSetupState } from "./youtube-integration";
 import { getPinterestSetupState } from "./pinterest-integration";
 import { getBillingSetupState, verifyStripeProductionConfiguration } from "./billing";
-import { schedulerAuthReady, schedulerCadenceLabel, schedulerExternalEnabled, schedulerSharedSecretReady } from "./scheduler-config";
+import { schedulerCadenceLabel, schedulerDurableEnabled, schedulerSharedSecretReady } from "./scheduler-config";
 
 export type PlatformCheck = {
   key: string;
@@ -97,20 +97,12 @@ export async function getPlatformReadiness() {
         : "Set AI_MODE=live and configure OPENAI_API_KEY before relying on production AI generation.",
     },
     {
-      key: "scheduler-auth",
-      label: "Scheduler authentication",
-      ready: schedulerAuthReady(),
-      detail: schedulerAuthReady()
-        ? schedulerCadenceLabel() + ". GitHub OIDC verifies the exact repository, main branch and scheduler workflow. " + (schedulerSharedSecretReady() ? "CRON_SECRET is also configured for Vercel/shared-secret fallback." : "CRON_SECRET remains optional unless the daily Vercel cron fallback is required.")
-        : "Scheduler authentication is not available.",
-    },
-    {
-      key: "scheduler-trigger",
-      label: "Scheduler trigger",
-      ready: schedulerExternalEnabled(),
-      detail: schedulerExternalEnabled()
-        ? "External scheduler activation is explicitly declared in production."
-        : "Set SCHEDULER_EXTERNAL_ENABLED=true only after the external scheduler can reach production successfully.",
+      key: "durable-scheduler",
+      label: "Durable social scheduling",
+      ready: schedulerDurableEnabled(),
+      detail: schedulerDurableEnabled()
+        ? schedulerCadenceLabel() + ". Each scheduled post gets a durable Workflow run that sleeps until its exact delivery time. " + (schedulerSharedSecretReady() ? "CRON_SECRET also protects the daily Vercel recovery cron." : "The daily Vercel recovery cron remains optional until CRON_SECRET is configured.")
+        : "Durable social scheduling has been explicitly disabled.",
     },
   ];
 
