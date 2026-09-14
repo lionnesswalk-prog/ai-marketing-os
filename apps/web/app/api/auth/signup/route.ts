@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { registerAccount, getAuthMode } from "../../../../lib/auth-service";
 import { setSession } from "../../../../lib/auth";
+import {
+  assertAuthAllowed,
+  recordAuthAttempt,
+  signupThrottleKeys,
+} from "../../../../lib/auth-rate-limit";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -16,6 +21,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Please enter a valid name, brand, email and password of at least 8 characters." }, { status: 400 });
   }
 
+  const throttleKeys = signupThrottleKeys(request, parsed.data.email);
+  try {
+    await assertAuthAllowed(throttleKeys);
+    await recordAuthAttempt(throttleKeys);
+  } catch (error) {
+    if (error instanceof Error && error.message === "AUTH_RATE_LIMITED") {
+      return NextResponse.json({ error: "Too many signup attempts. Try again in 15 minutes." }, { status: 429 });
+    }
+    console.error("signup throttle failed", error);
+    return NextResponse.json({ error: "Signup temporarily unavailable. Please try again." }, { status: 503 });
+  }
+
   try {
     const session = await registerAccount(parsed.data);
     await setSession(session);
@@ -25,7 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "SIGNUP_CLOSED") {
-      return NextResponse.json({ error: "Public signup is closed for this workspace. Ask an administrator to add you." }, { status: 403 });
+      return NextResponse.json({ error: "Public signup is closed. Ask an administrator for an invite." }, { status: 403 });
     }
     console.error("signup failed", error);
     return NextResponse.json({ error: "Signup failed. Please try again." }, { status: 500 });
