@@ -1,4 +1,5 @@
 import type { AppRole, AppSession } from "./auth";
+import { previewTestingMode, shouldUsePostgresRuntime } from "./testing-mode";
 import { setSession } from "./auth";
 import { getPrisma } from "./prisma";
 
@@ -11,7 +12,7 @@ export type WorkspaceOption = {
 };
 
 function isDatabaseMode() {
-  return process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres";
+  return shouldUsePostgresRuntime();
 }
 
 function role(value: string): AppRole {
