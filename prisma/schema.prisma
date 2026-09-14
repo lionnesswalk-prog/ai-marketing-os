@@ -12,7 +12,6 @@ model Workspace {
   name      String
   createdAt DateTime        @default(now())
   brands    Brand[]
-  users     WorkspaceUser[]
   accesses  WorkspaceAccess[]
   invites   WorkspaceInvite[]
   subscription WorkspaceSubscription?
@@ -37,21 +36,15 @@ model Brand {
 }
 
 model WorkspaceUser {
-  id           String    @id @default(cuid())
-  workspaceId  String
-  email        String    @unique
-  name         String?
-  passwordHash String?
-  role         String
-  isPlatformAdmin Boolean @default(false)
-  sessionVersion Int      @default(0)
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  accesses     WorkspaceAccess[]
-
-  @@unique([workspaceId, email])
-  @@index([workspaceId])
+  id              String            @id @default(cuid())
+  email           String            @unique
+  name            String?
+  passwordHash    String?
+  isPlatformAdmin Boolean           @default(false)
+  sessionVersion  Int               @default(0)
+  lastLoginAt     DateTime?
+  createdAt       DateTime          @default(now())
+  accesses        WorkspaceAccess[]
 }
 
 model WorkspaceAccess {
