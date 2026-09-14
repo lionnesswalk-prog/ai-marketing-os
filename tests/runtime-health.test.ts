@@ -15,11 +15,13 @@ const keys = [
   "AI_MODE",
   "OPENAI_API_KEY",
   "VERCEL_ENV",
+  "PREVIEW_TESTING_MODE",
 ] as const;
 const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
 
 try {
   process.env.VERCEL_ENV = "production";
+  process.env.PREVIEW_TESTING_MODE = "false";
   process.env.AUTH_MODE = "database";
   process.env.DATA_BACKEND = "postgres";
   process.env.AUTH_SECRET = "secret";
@@ -41,6 +43,15 @@ try {
   assert.equal(ready.checks.externalSchedulerDeclared, true);
   assert.equal(ready.checks.aiRuntime, true);
 
+  process.env.PREVIEW_TESTING_MODE = "true";
+  process.env.AUTH_MODE = "database";
+  process.env.DATA_BACKEND = "postgres";
+  const testingMode = getRuntimeHealthSnapshot();
+  assert.equal(testingMode.authMode, "preview");
+  assert.equal(testingMode.dataBackend, "memory");
+  assert.equal(testingMode.checks.productionModeSafe, true);
+
+  process.env.PREVIEW_TESTING_MODE = "false";
   process.env.AUTH_MODE = "preview";
   process.env.DATA_BACKEND = "memory";
   const unsafeMode = getRuntimeHealthSnapshot();
