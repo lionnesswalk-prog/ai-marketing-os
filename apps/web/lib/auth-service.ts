@@ -24,11 +24,7 @@ export type AccountProfile = {
 };
 
 function authMode() {
-  if (process.env.AUTH_MODE === "database") return "database";
-  if (process.env.VERCEL_ENV === "production" && process.env.ALLOW_PREVIEW_AUTH_IN_PRODUCTION !== "true") {
-    return "database";
-  }
-  return "preview";
+  return process.env.AUTH_MODE === "database" ? "database" : "preview";
 }
 
 export type SignupMode = "open" | "closed" | "first_user";
