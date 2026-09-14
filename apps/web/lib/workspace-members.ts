@@ -332,11 +332,9 @@ export async function registerFromWorkspaceInvite(input: {
   const created = await prisma.$transaction(async (tx) => {
     const user = await tx.workspaceUser.create({
       data: {
-        workspaceId: invite.workspaceId,
         email: invite.email,
         name,
         passwordHash,
-        role: acceptedRole,
         lastLoginAt: new Date(),
       },
     });
