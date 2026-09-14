@@ -35,6 +35,11 @@ function authMode() {
 export type SignupMode = "open" | "closed" | "first_user";
 
 export function getSignupMode(): SignupMode {
+  // The current product release is a free public beta. Keep signup open even if
+  // an older Vercel environment still contains SIGNUP_MODE=closed/first_user.
+  // A future paid/private release can explicitly opt out with FREE_BETA_MODE=false.
+  if (process.env.FREE_BETA_MODE !== "false") return "open";
+
   const configured = process.env.SIGNUP_MODE;
   if (configured === "open" || configured === "closed" || configured === "first_user") return configured;
   return "open";

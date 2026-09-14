@@ -14,10 +14,19 @@ assert.equal(isPrivateNetworkAddress("2001:4860:4860::8888"), false);
 
 const previousSignupMode = process.env.SIGNUP_MODE;
 const previousVercelEnv = process.env.VERCEL_ENV;
+const previousFreeBetaMode = process.env.FREE_BETA_MODE;
 try {
   delete process.env.SIGNUP_MODE;
+  delete process.env.FREE_BETA_MODE;
   process.env.VERCEL_ENV = "production";
   assert.equal(getSignupMode(), "open");
+
+  process.env.SIGNUP_MODE = "closed";
+  assert.equal(getSignupMode(), "open");
+  process.env.SIGNUP_MODE = "first_user";
+  assert.equal(getSignupMode(), "open");
+
+  process.env.FREE_BETA_MODE = "false";
   process.env.SIGNUP_MODE = "open";
   assert.equal(getSignupMode(), "open");
   process.env.SIGNUP_MODE = "closed";
@@ -29,6 +38,8 @@ try {
   else process.env.SIGNUP_MODE = previousSignupMode;
   if (previousVercelEnv === undefined) delete process.env.VERCEL_ENV;
   else process.env.VERCEL_ENV = previousVercelEnv;
+  if (previousFreeBetaMode === undefined) delete process.env.FREE_BETA_MODE;
+  else process.env.FREE_BETA_MODE = previousFreeBetaMode;
 }
 
 console.log("security hardening tests passed");

@@ -5,6 +5,7 @@ import { setSession } from "../../../../lib/auth";
 import { sendVerificationEmail } from "../../../../lib/account-security";
 import {
   assertAuthAllowed,
+  clearAuthAttempts,
   recordAuthAttempt,
   signupThrottleKeys,
 } from "../../../../lib/auth-rate-limit";
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
       email: parsed.data.email,
       password: parsed.data.password,
     });
+    await clearAuthAttempts(throttleKeys);
     await setSession(session);
     await sendVerificationEmail(session, new URL(request.url).origin).catch(() => undefined);
     return NextResponse.json({ ok: true, mode: getAuthMode(), user: session });
