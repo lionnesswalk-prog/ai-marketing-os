@@ -31,6 +31,7 @@ model Brand {
   integrations IntegrationConnection[]
   auditLogs    AuditLog[]
   insights     MarketingInsight[]
+  knowledgeItems KnowledgeItem[]
 
   @@index([workspaceId])
 }
@@ -198,6 +199,22 @@ model MarketingInsight {
   brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId, resolvedAt, createdAt])
+}
+
+model KnowledgeItem {
+  id         String   @id @default(cuid())
+  brandId    String
+  title      String
+  kind       String   @default("reference")
+  content    String
+  sourceUrl  String?
+  verified   Boolean  @default(false)
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, verified, updatedAt])
 }
 
 model IntegrationConnection {
