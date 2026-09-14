@@ -1,4 +1,5 @@
 import type { AppSession } from "./auth";
+import { shouldUsePostgresRuntime } from "./testing-mode";
 import { canManageMarketing } from "./auth";
 import { memoryStore } from "./memory-store";
 import { getPrisma } from "./prisma";
@@ -84,7 +85,7 @@ export async function getOperationsOverview(session: AppSession): Promise<Operat
   const longBefore = new Date(now.getTime() - 60 * 60_000);
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60_000);
 
-  if (process.env.DATA_BACKEND !== "postgres") {
+  if (!shouldUsePostgresRuntime()) {
     const posts = memoryStore.socialPosts;
     const overdue = posts.filter((post) => post.status === "scheduled" && post.scheduledAt && new Date(post.scheduledAt) <= now);
     const publishing = posts.filter((post) => post.status === "publishing");
