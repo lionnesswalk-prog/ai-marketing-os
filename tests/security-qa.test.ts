@@ -35,6 +35,7 @@ try {
     userId: "user_a",
     workspaceId: "workspace_a",
     platformAdmin: false,
+    sessionVersion: 2,
   };
   const token = createSessionToken(session);
   const decoded = readSessionToken(token);
@@ -44,6 +45,7 @@ try {
   assert.equal(decoded.userId, session.userId);
   assert.equal(decoded.workspaceId, session.workspaceId);
   assert.equal(decoded.platformAdmin, session.platformAdmin);
+  assert.equal(decoded.sessionVersion, session.sessionVersion);
 
   const [payload, signature] = token.split(".");
   const tamperedPayload = (payload?.slice(0, -1) || "") + (payload?.endsWith("a") ? "b" : "a");
