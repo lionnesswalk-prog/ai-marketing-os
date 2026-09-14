@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { previewTestingMode, shouldUsePostgresRuntime } from "./testing-mode";
 import type { AppRole, AppSession } from "./auth";
 import { createSessionToken, readSessionToken, setSession } from "./auth";
 import { hashPassword, verifyPassword } from "./password";
@@ -24,6 +25,7 @@ export type AccountProfile = {
 };
 
 function authMode() {
+  if (previewTestingMode()) return "preview";
   return process.env.AUTH_MODE === "database" ? "database" : "preview";
 }
 
