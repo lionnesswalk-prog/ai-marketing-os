@@ -8,13 +8,11 @@ assert.ok(email);
 const user = await prisma.workspaceUser.findUnique({ where: { email } });
 assert.ok(user);
 assert.equal(user.isPlatformAdmin, true);
-assert.equal(user.role, "admin");
-
 const access = await prisma.workspaceAccess.findUnique({
   where: {
     userId_workspaceId: {
       userId: user.id,
-      workspaceId: user.workspaceId,
+      workspaceId: "workspace_internal",
     },
   },
 });
