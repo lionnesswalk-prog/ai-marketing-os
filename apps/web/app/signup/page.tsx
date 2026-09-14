@@ -16,8 +16,9 @@ async function signupAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const brandName = String(formData.get("brandName") ?? "").trim();
+  const acceptTerms = String(formData.get("acceptTerms") ?? "") === "on";
 
-  if (name.length < 2 || brandName.length < 2 || !email.includes("@") || password.length < 8) {
+  if (name.length < 2 || brandName.length < 2 || !email.includes("@") || password.length < 8 || !acceptTerms) {
     redirect("/signup?error=invalid");
   }
 
@@ -55,10 +56,15 @@ export default async function SignupPage({
         <label>Brand / company name<input name="brandName" minLength={2} required placeholder="Your brand name" /></label>
         <label>Email address<input name="email" type="email" autoComplete="email" required placeholder="you@company.com" /></label>
         <label>Password<input name="password" type="password" autoComplete="new-password" minLength={8} required placeholder="Minimum 8 characters" /></label>
+        <label style={{ display: "flex", gridTemplateColumns: "auto 1fr", alignItems: "start", gap: 10 }}>
+          <input name="acceptTerms" type="checkbox" required style={{ width: 18, marginTop: 2 }} />
+          <span>I agree to the <a href="/terms" target="_blank">Terms of Use</a> and <a href="/privacy" target="_blank">Privacy Policy</a>.</span>
+        </label>
         {message && <div className="error-box" role="alert">{message}</div>}
         <button className="btn auth-submit" type="submit">Create account</button>
       </form>
       <p className="auth-switch">Already have an account? <a href="/login">Sign in</a></p>
+      <p className="muted" style={{ textAlign: "center" }}>Free beta · no payment method required.</p>
     </div>
   );
 }
