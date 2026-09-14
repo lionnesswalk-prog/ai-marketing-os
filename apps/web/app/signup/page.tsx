@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getAuthMode, registerAccount } from "../../lib/auth-service";
 import { setSession } from "../../lib/auth";
+import { sendVerificationEmail } from "../../lib/account-security";
 
 function errorMessage(code?: string) {
   if (code === "invalid") return "Please enter a valid name, email and password of at least 8 characters.";
@@ -26,6 +28,8 @@ async function signupAction(formData: FormData) {
   try {
     const session = await registerAccount({ name, email, password, brandName });
     await setSession(session);
+    const h = await headers();
+    await sendVerificationEmail(session, h.get("origin") || undefined).catch(() => undefined);
   } catch (error) {
     destination = error instanceof Error && error.message === "ACCOUNT_EXISTS"
       ? "/signup?error=exists"
