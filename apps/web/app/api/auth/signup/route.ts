@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { registerAccount, getAuthMode } from "../../../../lib/auth-service";
 import { setSession } from "../../../../lib/auth";
+import { sendVerificationEmail } from "../../../../lib/account-security";
 import {
   assertAuthAllowed,
   recordAuthAttempt,
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
       password: parsed.data.password,
     });
     await setSession(session);
+    await sendVerificationEmail(session, new URL(request.url).origin).catch(() => undefined);
     return NextResponse.json({ ok: true, mode: getAuthMode(), user: session });
   } catch (error) {
     if (error instanceof Error && error.message === "ACCOUNT_EXISTS") {
