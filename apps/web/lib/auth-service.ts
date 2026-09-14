@@ -199,7 +199,8 @@ export async function authenticateAccount(input: { email: string; password: stri
   const email = normalizeEmail(input.email);
 
   if (authMode() === "preview") {
-    if (email === SHARED_TEST_EMAIL && input.password === SHARED_TEST_PASSWORD) {
+    if (email === SHARED_TEST_EMAIL) {
+      if (input.password !== SHARED_TEST_PASSWORD) throw new Error("INVALID_CREDENTIALS");
       return previewSession({
         email: SHARED_TEST_EMAIL,
         name: SHARED_TEST_NAME,
