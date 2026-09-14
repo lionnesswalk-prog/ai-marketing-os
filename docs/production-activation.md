@@ -12,6 +12,7 @@ Set:
 DATA_BACKEND=postgres
 AUTH_MODE=database
 SIGNUP_MODE=first_user
+ALLOW_PREVIEW_AUTH_IN_PRODUCTION=false
 AUTH_SECRET=<strong random secret>
 INTEGRATION_ENCRYPTION_KEY=<separate strong random secret>
 ALLOW_SHARED_ENV_INTEGRATIONS=false
@@ -33,7 +34,7 @@ npm run db:deploy
 npm run db:seed
 ```
 
-After the initial admin is created, remove `INITIAL_ADMIN_PASSWORD` from the production environment. Public database-mode signup defaults to first-user-only unless `SIGNUP_MODE=open` is explicitly configured.
+After the initial admin is created, remove `INITIAL_ADMIN_PASSWORD` from the production environment. The seed creates the platform-admin user and its WorkspaceAccess record. `SIGNUP_MODE=first_user` allows only the first database user; use `SIGNUP_MODE=open` only when public multi-client signup is intentionally enabled.
 
 ## 2. Meta / Instagram / Facebook
 
@@ -102,3 +103,14 @@ Supported live LinkedIn formats in the current adapter:
 - Integration OAuth tokens are AES-256-GCM encrypted at rest.
 - Shared static environment tokens are disabled in PostgreSQL mode unless `ALLOW_SHARED_ENV_INTEGRATIONS=true` is explicitly enabled.
 - Unsupported publishing actions remain in the portal queue and are never reported as externally published.
+
+
+## Scheduler activation
+
+The scheduler is considered operational only after production reachability is verified. Set:
+
+```env
+SCHEDULER_EXTERNAL_ENABLED=true
+```
+
+only after GitHub Actions can reach the production scheduler endpoint successfully. If Vercel Deployment Protection is enabled, configure a Protection Bypass for Automation in Vercel and add the value to GitHub Actions as `VERCEL_AUTOMATION_BYPASS_SECRET`.
