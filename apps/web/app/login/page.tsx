@@ -13,6 +13,19 @@ function safeNext(value: string) {
   return value.startsWith("/") && !value.startsWith("//") ? value : "/dashboard";
 }
 
+async function testerLoginAction(formData: FormData) {
+  "use server";
+
+  const next = safeNext(String(formData.get("next") ?? "/dashboard"));
+  const invite = String(formData.get("invite") ?? "").trim();
+  const session = await authenticateAccount({
+    email: "tester@example.com",
+    password: "Test@AI2026!",
+  });
+  await setSession(session);
+  redirect(invite ? "/invite/" + encodeURIComponent(invite) : next);
+}
+
 async function loginAction(formData: FormData) {
   "use server";
 
@@ -59,7 +72,18 @@ export default async function LoginPage({
       <p className="eyebrow">SECURE ACCESS</p>
       <h1>Welcome back</h1>
       <p className="muted large">Sign in to your marketing command center.</p>
-      {mode === "preview" && <div className="preview-note">Preview mode · use the same browser and credentials you used on signup.</div>}
+      {mode === "preview" && (
+        <div className="preview-note">
+          <strong>Tester access</strong>
+          <div>Email: tester@example.com</div>
+          <div>Password: Test@AI2026!</div>
+          <form action={testerLoginAction} style={{ marginTop: 10 }}>
+            <input type="hidden" name="next" value={next} />
+            {params?.invite && <input type="hidden" name="invite" value={params.invite} />}
+            <button className="btn secondary" type="submit">Sign in as tester</button>
+          </form>
+        </div>
+      )}
       <form className="auth-form" action={loginAction}>
         <input type="hidden" name="next" value={next} />
         {params?.invite && <input type="hidden" name="invite" value={params.invite} />}
