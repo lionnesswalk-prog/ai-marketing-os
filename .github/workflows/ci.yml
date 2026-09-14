@@ -21,3 +21,47 @@ jobs:
           AUTH_MODE: preview
           DATA_BACKEND: memory
           AI_MODE: mock
+
+  production-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: marketing_os
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d marketing_os"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres@localhost:5432/marketing_os
+      DATA_BACKEND: postgres
+      AUTH_MODE: database
+      SIGNUP_MODE: first_user
+      AUTH_SECRET: ${{ github.sha }}
+      INTEGRATION_ENCRYPTION_KEY: ${{ github.sha }}
+      TEST_ACCOUNT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-Test!
+      ALLOW_SHARED_ENV_INTEGRATIONS: "false"
+      AI_MODE: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx prisma migrate deploy
+      - run: npm run test:database-auth
+      - run: npm run db:seed
+        env:
+          INITIAL_ADMIN_EMAIL: seed-admin@example.com
+          INITIAL_ADMIN_PASSWORD: ${{ github.sha }}Aa!
+          INITIAL_ADMIN_NAME: Seed Admin
+      - run: npm run test:seed-bootstrap
+        env:
+          INITIAL_ADMIN_EMAIL: seed-admin@example.com
