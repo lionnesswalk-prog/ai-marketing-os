@@ -24,6 +24,7 @@ export async function GET() {
     runtime.checks.databaseConfigured &&
     runtime.checks.integrationEncryption &&
     runtime.checks.tenantIsolation &&
+    runtime.checks.productionModeSafe &&
     runtime.checks.aiRuntime;
 
   return NextResponse.json(
