@@ -60,7 +60,8 @@ function friendlyPublishError(error: unknown, platformName: string) {
   if (message.includes("unaudited_client")) return "TikTok app audit is required for broader public posting; unaudited clients are restricted.";
   if (message.endsWith("FORMAT_NOT_READY")) return `${platformName} publishing for this format is still queued.`;
   if (message === "INSTAGRAM_MEDIA_STILL_PROCESSING") return "Instagram is still processing the video. The post was kept in the queue so it can be retried safely.";
-  return `${platformName}: ${message}`;
+  console.error("provider publishing failed", { platform: platformName, error });
+  return `${platformName} could not publish this post. It stayed safely in the queue.`;
 }
 
 export async function POST(request: Request) {
