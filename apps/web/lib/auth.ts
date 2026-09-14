@@ -13,6 +13,7 @@ export type AppSession = {
   userId: string;
   workspaceId: string;
   platformAdmin?: boolean;
+  sessionVersion?: number;
 };
 
 type SessionTokenPayload = Partial<AppSession> & {
@@ -133,17 +134,20 @@ export async function getSession(): Promise<AppSession | null> {
               email: true,
               name: true,
               isPlatformAdmin: true,
+              sessionVersion: true,
             },
           },
         },
       });
       if (!access) return null;
+      if (typeof session.sessionVersion !== "number" || session.sessionVersion !== access.user.sessionVersion) return null;
       return {
         ...session,
         email: access.user.email,
         name: access.user.name ?? undefined,
         role: access.role as AppRole,
         platformAdmin: access.user.isPlatformAdmin,
+        sessionVersion: access.user.sessionVersion,
       };
     } catch {
       return null;
