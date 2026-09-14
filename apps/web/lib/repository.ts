@@ -1,4 +1,5 @@
 import { diagnoseCampaign } from "../../../packages/core/src/diagnostics";
+import { previewTestingMode, shouldUsePostgresRuntime } from "./testing-mode";
 import type { CampaignSnapshot, Lead } from "../../../packages/core/src/types";
 import { memoryStore } from "./memory-store";
 import type { ApprovalView, CampaignView, DashboardView, LeadView, SocialPlatform, SocialContentType, SocialPostView } from "./domain";
@@ -8,7 +9,7 @@ import { recordAuditEvent } from "./audit";
 import { brandIsWorkspaceScope } from "./tenant-scope";
 
 function usePostgres() {
-  return process.env.DATA_BACKEND === "postgres";
+  return shouldUsePostgresRuntime();
 }
 
 async function databaseWorkspaceId() {
