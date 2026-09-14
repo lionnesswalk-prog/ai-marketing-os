@@ -30,8 +30,6 @@ export async function POST() {
       return NextResponse.json({ error: "Social publishing is not included in the current plan." }, { status: 403 });
     }
     console.error("manual workspace scheduler failed", error);
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Unable to run the workspace scheduler.",
-    }, { status: 500 });
+    return NextResponse.json({ error: "Unable to run the workspace scheduler." }, { status: 500 });
   }
 }
