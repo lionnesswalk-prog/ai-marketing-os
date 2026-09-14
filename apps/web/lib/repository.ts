@@ -100,6 +100,96 @@ export async function createCampaignDraft(input: {
   return { ...snapshot, diagnosis: diagnoseCampaign(snapshot) };
 }
 
+
+export type CampaignPerformanceImport = {
+  channel: "meta" | "google";
+  externalId: string;
+  name: string;
+  status: string;
+  dailyBudget?: number;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  frequency?: number;
+  capturedAt?: string;
+};
+
+export async function importCampaignPerformance(rows: CampaignPerformanceImport[]) {
+  if (!usePostgres()) throw new Error("DATABASE_MODE_REQUIRED");
+  if (!rows.length) return { campaigns: 0, metrics: 0 };
+
+  const session = await getSession();
+  if (!session?.workspaceId) throw new Error("WORKSPACE_SESSION_REQUIRED");
+  const prisma = getPrisma();
+  const brand = await prisma.brand.findFirst({
+    where: { workspaceId: session.workspaceId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (!brand) throw new Error("BRAND_NOT_FOUND");
+
+  let metrics = 0;
+  const campaignIds = new Set<string>();
+
+  for (const row of rows) {
+    const campaign = await prisma.campaign.upsert({
+      where: {
+        brandId_channel_externalId: {
+          brandId: brand.id,
+          channel: row.channel,
+          externalId: row.externalId,
+        },
+      },
+      create: {
+        brandId: brand.id,
+        externalId: row.externalId,
+        channel: row.channel,
+        name: row.name,
+        status: row.status || "active",
+        dailyBudget: row.dailyBudget ?? null,
+      },
+      update: {
+        name: row.name,
+        status: row.status || "active",
+        ...(row.dailyBudget == null ? {} : { dailyBudget: row.dailyBudget }),
+      },
+    });
+
+    await prisma.campaignMetric.create({
+      data: {
+        campaignId: campaign.id,
+        capturedAt: row.capturedAt ? new Date(row.capturedAt) : new Date(),
+        spend: row.spend,
+        impressions: Math.max(0, Math.round(row.impressions)),
+        clicks: Math.max(0, Math.round(row.clicks)),
+        conversions: Math.max(0, Math.round(row.conversions)),
+        revenue: row.revenue,
+        frequency: row.frequency ?? null,
+      },
+    });
+
+    campaignIds.add(campaign.id);
+    metrics += 1;
+  }
+
+  await recordAuditEvent({
+    workspaceId: session.workspaceId,
+    actorType: session.platformAdmin ? "platform_admin" : "workspace_user",
+    actorId: session.userId,
+    action: "campaign_performance_imported",
+    entityType: "CampaignMetric",
+    payload: {
+      campaigns: campaignIds.size,
+      metrics,
+      channels: Array.from(new Set(rows.map((row) => row.channel))),
+    },
+  });
+
+  return { campaigns: campaignIds.size, metrics };
+}
+
 export async function listCampaigns(): Promise<CampaignView[]> {
   if (!usePostgres()) {
     return memoryStore.campaigns.map((campaign) => ({ ...campaign, diagnosis: diagnoseCampaign(campaign) }));
