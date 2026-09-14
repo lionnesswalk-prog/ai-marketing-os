@@ -52,6 +52,13 @@ export default async function OperationsPage() {
             <span className="pill">{data.scheduler.cadence}</span>
           </div>
           <p className="muted large">{data.queueHealth.detail}</p>
+          <div className="meta-row">
+            <span className="pill">Last scheduler run · {displayTime(data.scheduler.lastRunAt)}</span>
+            <span className="pill">{data.scheduler.lastSource || "No invocation recorded"}</span>
+            <span className={data.scheduler.lastStatus === "success" ? "health healthy" : data.scheduler.lastStatus ? "health needs_action" : "pill"}>
+              {data.scheduler.lastStatus || "Awaiting first run"}
+            </span>
+          </div>
         </div>
 
         <div className="metric-grid">
