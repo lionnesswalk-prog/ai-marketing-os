@@ -44,8 +44,23 @@ model WorkspaceUser {
   isPlatformAdmin Boolean           @default(false)
   sessionVersion  Int               @default(0)
   lastLoginAt     DateTime?
+  emailVerifiedAt DateTime?
   createdAt       DateTime          @default(now())
   accesses        WorkspaceAccess[]
+  accountTokens   AccountToken[]
+}
+
+model AccountToken {
+  id        String        @id @default(cuid())
+  userId    String
+  type      String
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+  user      WorkspaceUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, expiresAt])
 }
 
 model WorkspaceAccess {
