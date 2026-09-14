@@ -9,7 +9,7 @@ export function schedulerCadenceLabel() {
 }
 
 export function schedulerExternalEnabled() {
-  return true;
+  return process.env.SCHEDULER_EXTERNAL_ENABLED === "true";
 }
 
 export function schedulerSharedSecretReady() {
@@ -17,7 +17,7 @@ export function schedulerSharedSecretReady() {
 }
 
 export function schedulerOidcReady() {
-  return true;
+  return process.env.GITHUB_SCHEDULER_OIDC_ENABLED !== "false";
 }
 
 export function schedulerAuthReady() {
