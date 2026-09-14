@@ -21,7 +21,7 @@ async function signupAction(formData: FormData) {
     redirect("/signup?error=invalid");
   }
 
-  let destination = "/dashboard";
+  let destination = "/onboarding";
   try {
     const session = await registerAccount({ name, email, password, brandName });
     await setSession(session);
