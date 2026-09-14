@@ -8,8 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "next dev apps/web",
-    "build": "next build apps/web",
+    "dev": "cd apps/web && next dev",
+    "build": "cd apps/web && next build",
     "typecheck": "tsc --noEmit",
     "test:core": "tsx tests/core.test.ts",
     "prisma:generate": "prisma generate",
