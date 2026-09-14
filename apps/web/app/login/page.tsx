@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { authenticateAccount, getAuthMode } from "../../lib/auth-service";
 import { setSession } from "../../lib/auth";
+import { assertAuthAllowed, authIpFromHeaders, clearAuthAttempts, loginThrottleKeysFromValues, recordAuthAttempt } from "../../lib/auth-rate-limit";
 
 function errorMessage(code?: string) {
   if (code === "invalid") return "Enter a valid email and password.";
   if (code === "credentials") return "Email or password is incorrect.";
   if (code === "failed") return "Sign in failed. Please try again.";
+  if (code === "rate") return "Too many sign-in attempts. Try again in 15 minutes.";
   return "";
 }
 
@@ -25,11 +28,19 @@ async function loginAction(formData: FormData) {
     redirect("/login?error=invalid");
   }
 
+  const h = await headers();
+  const throttleKeys = loginThrottleKeysFromValues(authIpFromHeaders(h), email);
   let destination = invite ? "/invite/" + encodeURIComponent(invite) : next;
   try {
+    await assertAuthAllowed(throttleKeys);
+    await recordAuthAttempt(throttleKeys);
     const session = await authenticateAccount({ email, password });
+    await clearAuthAttempts(throttleKeys);
     await setSession(session);
   } catch (error) {
+    if (error instanceof Error && error.message === "AUTH_RATE_LIMITED") {
+      redirect("/login?error=rate");
+    }
     const retrySuffix = invite
       ? `&invite=${encodeURIComponent(invite)}`
       : next !== "/dashboard"
