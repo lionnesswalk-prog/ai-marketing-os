@@ -85,6 +85,7 @@ export function readSessionToken(token: string | undefined): AppSession | null {
       userId: payload.userId,
       workspaceId: payload.workspaceId,
       platformAdmin: Boolean(payload.platformAdmin),
+      sessionVersion: payload.sessionVersion,
     };
   } catch {
     return null;
