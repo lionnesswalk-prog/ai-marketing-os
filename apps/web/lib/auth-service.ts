@@ -98,21 +98,23 @@ async function ensureDefaultWorkspace() {
   });
 }
 
-function sessionFromDatabaseUser(user: {
-  id: string;
-  workspaceId: string;
-  email: string;
-  name: string | null;
-  role: string;
-  isPlatformAdmin: boolean;
-  sessionVersion: number;
-}): AppSession {
+function sessionFromDatabaseUser(
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    isPlatformAdmin: boolean;
+    sessionVersion: number;
+  },
+  workspaceId: string,
+  role: AppRole,
+): AppSession {
   return {
     userId: user.id,
-    workspaceId: user.workspaceId,
+    workspaceId,
     email: user.email,
     name: user.name ?? undefined,
-    role: user.role as AppRole,
+    role,
     platformAdmin: user.isPlatformAdmin,
     sessionVersion: user.sessionVersion,
   };
@@ -132,7 +134,7 @@ export async function registerAccount(input: { name: string; email: string; pass
 
   const prisma = getPrisma();
   const signupMode = getSignupMode();
-  let created: Awaited<ReturnType<typeof prisma.workspaceUser.create>> | undefined;
+  let created: { user: Awaited<ReturnType<typeof prisma.workspaceUser.create>>; workspaceId: string } | undefined;
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -162,11 +164,9 @@ export async function registerAccount(input: { name: string; email: string; pass
 
         const user = await tx.workspaceUser.create({
           data: {
-            workspaceId: workspace.id,
             email,
             name,
             passwordHash,
-            role: "admin",
             isPlatformAdmin: userCount === 0,
             lastLoginAt: new Date(),
           },
@@ -180,7 +180,7 @@ export async function registerAccount(input: { name: string; email: string; pass
           },
         });
 
-        return user;
+        return { user, workspaceId: workspace.id };
       }, { isolationLevel: "Serializable" });
       break;
     } catch (error) {
@@ -190,7 +190,7 @@ export async function registerAccount(input: { name: string; email: string; pass
   }
 
   if (!created) throw new Error("SIGNUP_RETRY_EXHAUSTED");
-  return sessionFromDatabaseUser(created);
+  return sessionFromDatabaseUser(created.user, created.workspaceId, "admin");
 }
 
 export async function authenticateAccount(input: { email: string; password: string }): Promise<AppSession> {
