@@ -65,3 +65,4 @@ jobs:
       - run: npm run test:seed-bootstrap
         env:
           INITIAL_ADMIN_EMAIL: seed-admin@example.com
+      - run: npm run test:durable-scheduler-db
