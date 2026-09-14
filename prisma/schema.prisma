@@ -44,6 +44,7 @@ model WorkspaceUser {
   passwordHash String?
   role         String
   isPlatformAdmin Boolean @default(false)
+  sessionVersion Int      @default(0)
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -260,4 +261,15 @@ model BillingWebhookEvent {
   processedAt DateTime?
 
   @@index([receivedAt])
+}
+
+
+model AuthThrottle {
+  key          String    @id
+  attempts     Int       @default(0)
+  windowStart  DateTime  @default(now())
+  blockedUntil DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  @@index([blockedUntil])
 }
