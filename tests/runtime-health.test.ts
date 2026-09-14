@@ -10,7 +10,7 @@ const keys = [
   "ALLOW_SHARED_ENV_INTEGRATIONS",
   "ALLOW_PREVIEW_AUTH_IN_PRODUCTION",
   "CRON_SECRET",
-  "SCHEDULER_EXTERNAL_ENABLED",
+  "DURABLE_SOCIAL_SCHEDULER_ENABLED",
   "GITHUB_SCHEDULER_OIDC_ENABLED",
   "AI_MODE",
   "OPENAI_API_KEY",
@@ -28,7 +28,7 @@ try {
   process.env.ALLOW_SHARED_ENV_INTEGRATIONS = "false";
   process.env.ALLOW_PREVIEW_AUTH_IN_PRODUCTION = "false";
   process.env.CRON_SECRET = "cron";
-  process.env.SCHEDULER_EXTERNAL_ENABLED = "true";
+  process.env.DURABLE_SOCIAL_SCHEDULER_ENABLED = "true";
   process.env.AI_MODE = "live";
   process.env.OPENAI_API_KEY = "test";
 
@@ -51,7 +51,7 @@ try {
   delete process.env.AUTH_SECRET;
   process.env.ALLOW_SHARED_ENV_INTEGRATIONS = "true";
   delete process.env.OPENAI_API_KEY;
-  delete process.env.SCHEDULER_EXTERNAL_ENABLED;
+  process.env.DURABLE_SOCIAL_SCHEDULER_ENABLED = "false";
   const unsafe = getRuntimeHealthSnapshot();
   assert.equal(unsafe.checks.authSecret, false);
   assert.equal(unsafe.checks.tenantIsolation, false);
