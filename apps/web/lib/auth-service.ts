@@ -24,7 +24,19 @@ export type AccountProfile = {
 };
 
 function authMode() {
-  return process.env.AUTH_MODE === "database" ? "database" : "preview";
+  if (process.env.AUTH_MODE === "database") return "database";
+  if (process.env.VERCEL_ENV === "production" && process.env.ALLOW_PREVIEW_AUTH_IN_PRODUCTION !== "true") {
+    return "database";
+  }
+  return "preview";
+}
+
+export type SignupMode = "open" | "closed" | "first_user";
+
+export function getSignupMode(): SignupMode {
+  const configured = process.env.SIGNUP_MODE;
+  if (configured === "open" || configured === "closed" || configured === "first_user") return configured;
+  return process.env.VERCEL_ENV === "production" ? "first_user" : "open";
 }
 
 function normalizeEmail(email: string) {
@@ -93,6 +105,7 @@ function sessionFromDatabaseUser(user: {
   name: string | null;
   role: string;
   isPlatformAdmin: boolean;
+  sessionVersion: number;
 }): AppSession {
   return {
     userId: user.id,
@@ -101,6 +114,7 @@ function sessionFromDatabaseUser(user: {
     name: user.name ?? undefined,
     role: user.role as AppRole,
     platformAdmin: user.isPlatformAdmin,
+    sessionVersion: user.sessionVersion,
   };
 }
 
@@ -117,52 +131,65 @@ export async function registerAccount(input: { name: string; email: string; pass
   }
 
   const prisma = getPrisma();
-  const duplicate = await prisma.workspaceUser.findUnique({ where: { email } });
-  if (duplicate) throw new Error("ACCOUNT_EXISTS");
-  const userCount = await prisma.workspaceUser.count();
+  const signupMode = getSignupMode();
+  let created: Awaited<ReturnType<typeof prisma.workspaceUser.create>> | undefined;
 
-  const signupMode = process.env.SIGNUP_MODE ?? "open";
-  if (signupMode === "closed") throw new Error("SIGNUP_CLOSED");
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      created = await prisma.$transaction(async (tx) => {
+        const duplicate = await tx.workspaceUser.findUnique({ where: { email } });
+        if (duplicate) throw new Error("ACCOUNT_EXISTS");
 
-  const created = await prisma.$transaction(async (tx) => {
-    const workspace = await tx.workspace.create({
-      data: {
-        name: `${brandName} Workspace`,
-        brands: {
-          create: {
-            name: brandName,
-            voiceJson: {
-              personality: ["intentional", "clear", "brand-specific"],
-              avoid: ["unsupported claims", "fake urgency"],
+        const userCount = await tx.workspaceUser.count();
+        if (signupMode === "closed" || (signupMode === "first_user" && userCount > 0)) {
+          throw new Error("SIGNUP_CLOSED");
+        }
+
+        const workspace = await tx.workspace.create({
+          data: {
+            name: `${brandName} Workspace`,
+            brands: {
+              create: {
+                name: brandName,
+                voiceJson: {
+                  personality: ["intentional", "clear", "brand-specific"],
+                  avoid: ["unsupported claims", "fake urgency"],
+                },
+              },
             },
           },
-        },
-      },
-    });
+        });
 
-    const user = await tx.workspaceUser.create({
-      data: {
-        workspaceId: workspace.id,
-        email,
-        name,
-        passwordHash,
-        role: "admin",
-        isPlatformAdmin: userCount === 0,
-        lastLoginAt: new Date(),
-      },
-    });
+        const user = await tx.workspaceUser.create({
+          data: {
+            workspaceId: workspace.id,
+            email,
+            name,
+            passwordHash,
+            role: "admin",
+            isPlatformAdmin: userCount === 0,
+            lastLoginAt: new Date(),
+          },
+        });
 
-    await tx.workspaceAccess.create({
-      data: {
-        userId: user.id,
-        workspaceId: workspace.id,
-        role: "admin",
-      },
-    });
+        await tx.workspaceAccess.create({
+          data: {
+            userId: user.id,
+            workspaceId: workspace.id,
+            role: "admin",
+          },
+        });
 
-    return user;
-  });
+        return user;
+      }, { isolationLevel: "Serializable" });
+      break;
+    } catch (error) {
+      if ((error as { code?: string }).code === "P2034" && attempt < 2) continue;
+      throw error;
+    }
+  }
 
+  if (!created) throw new Error("SIGNUP_RETRY_EXHAUSTED");
   return sessionFromDatabaseUser(created);
 }
 
@@ -195,6 +222,7 @@ export async function authenticateAccount(input: { email: string; password: stri
     name: user.name ?? undefined,
     role: access.role as AppRole,
     platformAdmin: user.isPlatformAdmin,
+    sessionVersion: user.sessionVersion,
   };
 }
 
@@ -293,10 +321,14 @@ export async function changeAccountPassword(
   });
   if (!user?.passwordHash) throw new Error("ACCOUNT_NOT_FOUND");
   if (!(await verifyPassword(input.currentPassword, user.passwordHash))) throw new Error("INVALID_PASSWORD");
-  await prisma.workspaceUser.update({
+  const updated = await prisma.workspaceUser.update({
     where: { id: user.id },
-    data: { passwordHash: await hashPassword(input.newPassword) },
+    data: {
+      passwordHash: await hashPassword(input.newPassword),
+      sessionVersion: { increment: 1 },
+    },
   });
+  await setSession({ ...session, sessionVersion: updated.sessionVersion });
 }
 
 export function getAuthMode() {
