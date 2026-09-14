@@ -107,10 +107,24 @@ Supported live LinkedIn formats in the current adapter:
 
 ## Scheduler activation
 
-The scheduler is considered operational only after production reachability is verified. Set:
+Scheduled social publishing now uses Vercel Workflow DevKit instead of five-minute polling.
+
+When a post is scheduled or rescheduled:
+
+1. The post is saved in PostgreSQL with its exact `scheduledAt`.
+2. A durable Workflow run starts and sleeps until that exact delivery time without consuming active compute.
+3. On wake, the workflow re-reads the post and only publishes if its status and schedule still match.
+4. Rescheduled or cancelled posts make older workflow runs exit safely without publishing.
+5. The daily native Vercel Cron remains a reconciliation/recovery fallback.
+
+Set:
 
 ```env
-SCHEDULER_EXTERNAL_ENABLED=true
+DURABLE_SOCIAL_SCHEDULER_ENABLED=true
 ```
 
-only after GitHub Actions can reach the production scheduler endpoint successfully. If Vercel Deployment Protection is enabled, configure a Protection Bypass for Automation in Vercel and add the value to GitHub Actions as `VERCEL_AUTOMATION_BYPASS_SECRET`.
+For the optional daily recovery cron, configure a strong `CRON_SECRET`. The former five-minute GitHub Actions scheduler is retained only as a manual endpoint diagnostic because Vercel Deployment Protection currently blocks external automated requests until the project enables a trusted source or protection bypass.
+
+## Production smoke diagnostics
+
+The GitHub Production Smoke workflow is manual-only while Vercel Deployment Protection requires project-side trusted-source configuration. Once Vercel project access is restored, enable either GitHub as a Vercel Trusted Source or a Protection Bypass for Automation, then recurring smoke checks can be re-enabled.
