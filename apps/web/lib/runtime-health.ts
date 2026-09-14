@@ -28,7 +28,7 @@ export function getRuntimeHealthSnapshot(): RuntimeHealthSnapshot {
   const productionModeSafe =
     environment !== "production" ||
     (authMode === "database" && dataBackend === "postgres") ||
-    authMode === "preview";
+    previewTestingMode();
 
   return {
     environment,
