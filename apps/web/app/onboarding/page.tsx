@@ -21,20 +21,25 @@ async function onboardingAction(formData: FormData) {
     redirect("/onboarding?error=required");
   }
 
-  await updateBrandProfile(session, {
-    name,
-    website,
-    industry,
-    market,
-    businessModel,
-    primaryGoal,
-    audience,
-    positioning,
-    voice: current.voice || "Clear, specific, credible and consistent with the brand.",
-    proofPoints: current.proofPoints,
-    avoid: current.avoid || "Unsupported claims\nFake urgency\nInvented product facts",
-    notes: current.notes,
-  });
+  try {
+    await updateBrandProfile(session, {
+      name,
+      website,
+      industry,
+      market,
+      businessModel,
+      primaryGoal,
+      audience,
+      positioning,
+      voice: current.voice || "Clear, specific, credible and consistent with the brand.",
+      proofPoints: current.proofPoints,
+      avoid: current.avoid || "Unsupported claims\nFake urgency\nInvented product facts",
+      notes: current.notes,
+    });
+  } catch (error) {
+    console.error("onboarding save failed", error);
+    redirect("/onboarding?error=failed");
+  }
 
   redirect("/dashboard?onboarding=complete");
 }
@@ -73,6 +78,9 @@ export default async function OnboardingPage({
 
         {params?.error === "required" && (
           <div className="error-box">Complete the required business fields before continuing.</div>
+        )}
+        {params?.error === "failed" && (
+          <div className="error-box">Workspace setup could not be saved. Your entries are safe to retry; please submit again.</div>
         )}
 
         <form action={onboardingAction}>
