@@ -7,6 +7,7 @@ import { getCurrentBrandProfile } from "../../lib/brand-profile";
 import { TikTokStatusButton } from "../../components/TikTokStatusButton";
 import { YouTubeStatusButton } from "../../components/YouTubeStatusButton";
 import { SocialQueueActions } from "../../components/SocialQueueActions";
+import { listPendingMetaPages } from "../../lib/meta-integration";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,8 @@ function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?
   if (access === "forbidden") return { tone: "error", text: "Your workspace role cannot connect, disconnect, publish, or modify social accounts." };
   if (access === "plan-limit") return { tone: "error", text: "This workspace has reached its social-connection plan limit. Upgrade the plan or disconnect an unused provider before connecting another account." };
   if (meta === "connected") return { tone: "success", text: "Meta connected successfully. Facebook and the linked Instagram professional account are ready for supported live publishing." };
+  if (meta === "choose-page") return { tone: "success", text: "Meta authorized successfully. Choose the Facebook Page and linked Instagram account for this workspace." };
+  if (meta === "page-required") return { tone: "error", text: "Choose a Facebook Page before completing the Meta connection." };
   if (meta === "disconnected") return { tone: "success", text: "Meta connection removed." };
   if (meta === "app-required") return { tone: "error", text: "Meta connection is not enabled by the platform administrator yet." };
   if (meta === "storage-required") return { tone: "error", text: "Secure Meta connection storage is not enabled by the platform administrator yet." };
@@ -67,11 +70,18 @@ export default async function SocialPage({
   const canManage = canManageMarketing(session.role);
   const params = searchParams ? await searchParams : undefined;
   const notice = integrationNotice(params?.meta, params?.linkedin, params?.x, params?.tiktok, params?.youtube, params?.pinterest, params?.access);
-  const [scheduled, platforms, profile] = await Promise.all([
+  const [scheduled, platforms, profile, pendingMetaPages] = await Promise.all([
     listSocialPosts(),
     getSocialPlatforms(),
     getCurrentBrandProfile(session),
+    params?.meta === "choose-page" || params?.meta === "page-required"
+      ? listPendingMetaPages()
+      : Promise.resolve([]),
   ]);
+  const effectiveNotice =
+    (params?.meta === "choose-page" || params?.meta === "page-required") && pendingMetaPages.length === 0
+      ? { tone: "error", text: "Meta Page selection expired or is no longer available. Start Connect again from the Social Hub." }
+      : notice;
 
   return (
     <div className="social-page">
@@ -87,7 +97,41 @@ export default async function SocialPage({
         </div>
       </div>
 
-      {notice && <div className={`profile-notice social-notice ${notice.tone}`}>{notice.text}</div>}
+      {effectiveNotice && <div className={`profile-notice social-notice ${effectiveNotice.tone}`}>{effectiveNotice.text}</div>}
+
+      {pendingMetaPages.length > 0 && (
+        <section className="card meta-page-selector">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">META ACCOUNT SELECTION</p>
+              <h2>Choose the Page for this workspace</h2>
+              <p className="muted">Only the selected Page and its linked Instagram professional account will be stored for this client workspace.</p>
+            </div>
+            <span className="pill">{pendingMetaPages.length} available</span>
+          </div>
+          <form action="/api/integrations/meta/select" method="post" className="meta-page-options">
+            {pendingMetaPages.map((page, index) => (
+              <label className="meta-page-option" key={page.id}>
+                <input type="radio" name="pageId" value={page.id} required defaultChecked={pendingMetaPages.length === 1 && index === 0} />
+                <span>
+                  <strong>{page.name}</strong>
+                  <small>
+                    {page.instagramUsername
+                      ? `Instagram · @${page.instagramUsername}`
+                      : page.instagramBusinessAccountId
+                        ? "Instagram professional account linked"
+                        : "Facebook Page only"}
+                  </small>
+                </span>
+              </label>
+            ))}
+            <div className="button-row">
+              <button className="btn" type="submit">Connect selected Page</button>
+              <a className="btn secondary" href="/social">Cancel</a>
+            </div>
+          </form>
+        </section>
+      )}
 
       <SocialPublisher platforms={platforms} canManage={canManage} platformAdmin={Boolean(session.platformAdmin)} />
 

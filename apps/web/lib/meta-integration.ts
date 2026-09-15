@@ -22,6 +22,13 @@ export type MetaConnection = {
   instagramUsername?: string;
 };
 
+export type PendingMetaPage = {
+  id: string;
+  name: string;
+  instagramBusinessAccountId?: string;
+  instagramUsername?: string;
+};
+
 function usePostgres() {
   return isPostgresBackend();
 }
@@ -154,11 +161,138 @@ export async function saveMetaConnection(input: {
   });
 }
 
+
+export async function savePendingMetaPages(input: {
+  userAccessToken: string;
+  pages: MetaPage[];
+}) {
+  if (!integrationStorageReady()) throw new Error("META_STORAGE_NOT_READY");
+  const prisma = getPrisma();
+  const brand = await currentBrand();
+  const metadataJson = {
+    userAccessToken: encryptIntegrationSecret(input.userAccessToken),
+    pages: input.pages.map((page) => ({
+      id: page.id,
+      name: page.name,
+      pageAccessToken: encryptIntegrationSecret(page.access_token),
+      instagramBusinessAccountId: page.instagram_business_account?.id || null,
+      instagramUsername: page.instagram_business_account?.username || null,
+    })),
+    createdAt: new Date().toISOString(),
+    graphVersion,
+  };
+
+  return prisma.integrationConnection.upsert({
+    where: { brandId_provider: { brandId: brand.id, provider: "meta_pending" } },
+    create: {
+      brandId: brand.id,
+      provider: "meta_pending",
+      status: "pending_selection",
+      metadataJson,
+    },
+    update: {
+      status: "pending_selection",
+      metadataJson,
+    },
+  });
+}
+
+export async function listPendingMetaPages(): Promise<PendingMetaPage[]> {
+  if (!integrationStorageReady()) return [];
+  const prisma = getPrisma();
+  const brand = await currentBrand();
+  const row = await prisma.integrationConnection.findUnique({
+    where: { brandId_provider: { brandId: brand.id, provider: "meta_pending" } },
+  });
+  if (!row || row.status !== "pending_selection" || !row.metadataJson || typeof row.metadataJson !== "object") return [];
+
+  const meta = row.metadataJson as Record<string, unknown>;
+  const createdAt = typeof meta.createdAt === "string" ? Date.parse(meta.createdAt) : Number.NaN;
+  if (!Number.isFinite(createdAt) || Date.now() - createdAt > 30 * 60_000) {
+    await prisma.integrationConnection.deleteMany({ where: { brandId: brand.id, provider: "meta_pending" } });
+    return [];
+  }
+  const pages = Array.isArray(meta.pages) ? meta.pages : [];
+  return pages.flatMap((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+    const page = value as Record<string, unknown>;
+    if (typeof page.id !== "string" || typeof page.name !== "string") return [];
+    return [{
+      id: page.id,
+      name: page.name,
+      instagramBusinessAccountId: typeof page.instagramBusinessAccountId === "string" ? page.instagramBusinessAccountId : undefined,
+      instagramUsername: typeof page.instagramUsername === "string" ? page.instagramUsername : undefined,
+    }];
+  });
+}
+
+export async function finalizePendingMetaPage(pageId: string) {
+  if (!integrationStorageReady()) throw new Error("META_STORAGE_NOT_READY");
+  const prisma = getPrisma();
+  const brand = await currentBrand();
+  const row = await prisma.integrationConnection.findUnique({
+    where: { brandId_provider: { brandId: brand.id, provider: "meta_pending" } },
+  });
+  if (!row || row.status !== "pending_selection" || !row.metadataJson || typeof row.metadataJson !== "object") {
+    throw new Error("META_PENDING_SELECTION_NOT_FOUND");
+  }
+
+  const meta = row.metadataJson as Record<string, unknown>;
+  const createdAt = typeof meta.createdAt === "string" ? Date.parse(meta.createdAt) : Number.NaN;
+  if (!Number.isFinite(createdAt) || Date.now() - createdAt > 30 * 60_000) {
+    await prisma.integrationConnection.deleteMany({ where: { brandId: brand.id, provider: "meta_pending" } });
+    throw new Error("META_PENDING_SELECTION_EXPIRED");
+  }
+  const encryptedUserToken = typeof meta.userAccessToken === "string" ? meta.userAccessToken : undefined;
+  const pages = Array.isArray(meta.pages) ? meta.pages : [];
+  const selected = pages.find((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    return (value as Record<string, unknown>).id === pageId;
+  });
+  if (!encryptedUserToken || !selected || typeof selected !== "object" || Array.isArray(selected)) {
+    throw new Error("META_PENDING_PAGE_NOT_FOUND");
+  }
+
+  const page = selected as Record<string, unknown>;
+  const encryptedPageToken = typeof page.pageAccessToken === "string" ? page.pageAccessToken : undefined;
+  if (!encryptedPageToken || typeof page.id !== "string" || typeof page.name !== "string") {
+    throw new Error("META_PENDING_PAGE_INVALID");
+  }
+
+  await saveMetaConnection({
+    userAccessToken: decryptIntegrationSecret(encryptedUserToken),
+    page: {
+      id: page.id,
+      name: page.name,
+      access_token: decryptIntegrationSecret(encryptedPageToken),
+      instagram_business_account: typeof page.instagramBusinessAccountId === "string"
+        ? {
+            id: page.instagramBusinessAccountId,
+            username: typeof page.instagramUsername === "string" ? page.instagramUsername : undefined,
+          }
+        : undefined,
+    },
+  });
+
+  await prisma.integrationConnection.deleteMany({
+    where: { brandId: brand.id, provider: "meta_pending" },
+  });
+}
+
+export async function clearPendingMetaPages() {
+  if (!usePostgres()) return;
+  const prisma = getPrisma();
+  const brand = await currentBrand();
+  await prisma.integrationConnection.deleteMany({ where: { brandId: brand.id, provider: "meta_pending" } });
+}
+
 export async function disconnectMetaConnection() {
   if (!usePostgres()) return;
   const prisma = getPrisma();
   const brand = await currentBrand();
-  await prisma.integrationConnection.deleteMany({ where: { brandId: brand.id, provider: "meta" } });
+  await prisma.integrationConnection.deleteMany({
+    where: { brandId: brand.id, provider: { in: ["meta", "meta_pending"] } },
+  });
 }
 
 export async function getMetaConnection(brandId?: string): Promise<MetaConnection | null> {
