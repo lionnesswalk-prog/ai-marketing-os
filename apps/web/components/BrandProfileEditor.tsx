@@ -58,6 +58,9 @@ export function BrandProfileEditor({
           proofPoints: profile.proofPoints,
           avoid: profile.avoid,
           notes: profile.notes,
+          logoUrl: profile.logoUrl,
+          primaryColor: profile.primaryColor,
+          secondaryColor: profile.secondaryColor,
         }),
       });
       const body = await response.json();
@@ -96,6 +99,17 @@ export function BrandProfileEditor({
         <label>Brand voice<textarea disabled={!canEdit} rows={4} value={profile.voice} onChange={(e) => field("voice", e.target.value)} placeholder="Clear, composed, expert, warm, direct..." /></label>
         <label>Verified proof points · one per line<textarea disabled={!canEdit} rows={5} value={profile.proofPoints} onChange={(e) => field("proofPoints", e.target.value)} placeholder={"Award-winning support\nMade in-house\n30-day return policy"} /></label>
         <label>Avoid · one per line<textarea disabled={!canEdit} rows={4} value={profile.avoid} onChange={(e) => field("avoid", e.target.value)} placeholder={"Unsupported claims\nFake urgency\nGeneric filler"} /></label>
+        <div className="brand-profile-section-head visual-identity-head">
+          <div>
+            <p className="eyebrow">VISUAL IDENTITY</p>
+            <h2>Logo & brand colors</h2>
+          </div>
+        </div>
+        <div className="brand-profile-grid">
+          <label>Logo URL<input disabled={!canEdit} type="url" value={profile.logoUrl} onChange={(e) => field("logoUrl", e.target.value)} placeholder="https://yourbrand.com/logo.png" /></label>
+          <label>Primary color<div className="brand-color-field"><input disabled={!canEdit} type="color" value={profile.primaryColor} onChange={(e) => field("primaryColor", e.target.value)} /><input disabled={!canEdit} value={profile.primaryColor} onChange={(e) => field("primaryColor", e.target.value)} maxLength={7} placeholder="#171817" /></div></label>
+          <label>Secondary color<div className="brand-color-field"><input disabled={!canEdit} type="color" value={profile.secondaryColor} onChange={(e) => field("secondaryColor", e.target.value)} /><input disabled={!canEdit} value={profile.secondaryColor} onChange={(e) => field("secondaryColor", e.target.value)} maxLength={7} placeholder="#7267f0" /></div></label>
+        </div>
         <label>Additional AI context<textarea disabled={!canEdit} rows={5} value={profile.notes} onChange={(e) => field("notes", e.target.value)} placeholder="Products, seasonality, market constraints, terminology or other useful context." /></label>
 
         {message && <div className="profile-notice success">{message}</div>}
@@ -117,6 +131,7 @@ export function BrandProfileEditor({
           <div><span>01</span><strong>Strategy</strong><p>Audience, positioning and proof influence campaign angles and assumptions.</p></div>
           <div><span>02</span><strong>Social</strong><p>Voice, proof points and avoid-list guide hooks, captions and CTAs.</p></div>
           <div><span>03</span><strong>Inquiry</strong><p>Replies inherit brand identity while refusing to invent unverified facts.</p></div>
+          <div><span>04</span><strong>Brand Studio</strong><p>Logo, brand colors and saved knowledge power branded social creatives and AI suggestions.</p></div>
         </div>
         <div className="brand-ai-safety"><strong>Tenant safe</strong><span>AI context is loaded from the active workspace brand only.</span></div>
       </aside>
