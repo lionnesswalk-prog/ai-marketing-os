@@ -16,6 +16,37 @@ async function workspaceId() {
   return session.workspaceId;
 }
 
+export async function publishDraftSocialPostNow(id: string) {
+  if (!usePostgres()) {
+    const post = memoryStore.socialPosts.find((item) => item.id === id);
+    if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
+    if (post.status !== "draft") throw new Error("SOCIAL_POST_NOT_DRAFT");
+    return { status: "draft" as const, preview: true };
+  }
+
+  const prisma = getPrisma();
+  const currentWorkspaceId = await workspaceId();
+  const post = await prisma.socialPost.findFirst({
+    where: { id, ...brandIsWorkspaceScope(currentWorkspaceId) },
+  });
+  if (!post) throw new Error("SOCIAL_POST_NOT_FOUND");
+  if (post.status !== "draft") throw new Error("SOCIAL_POST_NOT_DRAFT");
+
+  const issues = getStoredSocialPostDeliveryIssues(post);
+  if (issues.length) {
+    throw new Error("SOCIAL_POST_PREFLIGHT_FAILED::" + socialDeliveryIssueMessage(issues));
+  }
+
+  const claim = await prisma.socialPost.updateMany({
+    where: { id, status: "draft" },
+    data: { status: "publishing", scheduledAt: null },
+  });
+  if (claim.count !== 1) throw new Error("SOCIAL_POST_PUBLISH_CONFLICT");
+
+  const status = await deliverSocialPost(post);
+  return { status, preview: false };
+}
+
 export async function retrySocialPostNow(id: string) {
   if (!usePostgres()) {
     const post = memoryStore.socialPosts.find((item) => item.id === id);
