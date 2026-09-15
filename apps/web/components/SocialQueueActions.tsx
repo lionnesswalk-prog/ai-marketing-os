@@ -3,6 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+function localDateTimeValue(date: Date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
 export function SocialQueueActions({
   postId,
   status,
@@ -17,9 +22,7 @@ export function SocialQueueActions({
   const [showReschedule, setShowReschedule] = useState(false);
   const [newTime, setNewTime] = useState(() => {
     if (!scheduledAt) return "";
-    const date = new Date(scheduledAt);
-    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-    return local.toISOString().slice(0, 16);
+    return localDateTimeValue(new Date(scheduledAt));
   });
   const [message, setMessage] = useState("");
 
@@ -42,7 +45,7 @@ export function SocialQueueActions({
       if (!response.ok && response.status !== 207) {
         throw new Error(body.error ?? "Unable to update post.");
       }
-      setMessage(body.message ?? "Updated.");
+      setMessage([body.message ?? "Updated.", body.warning].filter(Boolean).join(" "));
       setShowReschedule(false);
       router.refresh();
     } catch (error) {
@@ -78,7 +81,7 @@ export function SocialQueueActions({
             type="datetime-local"
             value={newTime}
             onChange={(event) => setNewTime(event.target.value)}
-            min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+            min={localDateTimeValue(new Date(Date.now() + 60_000))}
           />
           <button className="queue-action primary" type="button" disabled={busy !== null || !newTime} onClick={() => act("reschedule")}>
             {busy === "reschedule" ? "Saving…" : "Save time"}
