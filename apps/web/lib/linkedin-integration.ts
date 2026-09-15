@@ -65,7 +65,6 @@ export function getLinkedInSetupState() {
     appConfigured: appConfigured(),
     storageReady: storageReady(),
     apiVersion,
-    authorSource: "oauth_person",
   };
 }
 
@@ -149,6 +148,7 @@ export async function saveLinkedInConnection(input: {
     expiresAt: input.expiresIn ? new Date(Date.now() + input.expiresIn * 1000).toISOString() : null,
     connectedAt: new Date().toISOString(),
     apiVersion,
+    authorSource: "oauth_person",
   };
 
   return prisma.integrationConnection.upsert({
