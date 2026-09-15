@@ -1,6 +1,7 @@
 import type { AppRole, AppSession } from "./auth";
 import { setSession } from "./auth";
 import { getPrisma } from "./prisma";
+import { isDatabaseMode } from "./runtime-mode";
 
 export type WorkspaceOption = {
   id: string;
@@ -9,10 +10,6 @@ export type WorkspaceOption = {
   role: AppRole;
   current: boolean;
 };
-
-function isDatabaseMode() {
-  return process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres";
-}
 
 function role(value: string): AppRole {
   if (value === "admin" || value === "marketing_manager" || value === "sales" || value === "viewer") return value;
