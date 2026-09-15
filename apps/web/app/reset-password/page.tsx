@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { resetPasswordWithToken } from "../../lib/account-security";
+import { PasswordField } from "../../components/PasswordField";
 
 async function resetAction(formData: FormData) {
   "use server";
@@ -36,8 +37,8 @@ export default async function ResetPasswordPage({
       ) : (
         <form className="auth-form" action={resetAction}>
           <input type="hidden" name="token" value={params.token} />
-          <label>New password<input name="password" type="password" minLength={8} required autoComplete="new-password" /></label>
-          <label>Confirm password<input name="confirm" type="password" minLength={8} required autoComplete="new-password" /></label>
+          <PasswordField label="New password" name="password" autoComplete="new-password" minLength={8} required />
+          <PasswordField label="Confirm password" name="confirm" autoComplete="new-password" minLength={8} required />
           {params?.status === "password" && <div className="error-box">Passwords must match and be at least 8 characters.</div>}
           <button className="btn auth-submit" type="submit">Update password</button>
         </form>
