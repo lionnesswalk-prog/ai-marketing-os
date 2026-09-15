@@ -2,6 +2,7 @@ import { getPrisma } from "./prisma";
 import { getSession } from "./auth";
 import { canEncryptIntegrations, decryptIntegrationSecret, encryptIntegrationSecret } from "./integration-crypto";
 import { fetchPublicMedia } from "./public-media";
+import { isPostgresBackend } from "./runtime-mode";
 
 type GoogleTokenResponse = {
   access_token: string;
@@ -38,7 +39,7 @@ export type YouTubeConnection = {
 };
 
 function usePostgres() {
-  return process.env.DATA_BACKEND === "postgres";
+  return isPostgresBackend();
 }
 
 function storageReady() {

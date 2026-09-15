@@ -1,6 +1,7 @@
 import { getPrisma } from "./prisma";
 import { getSession } from "./auth";
 import { canEncryptIntegrations, decryptIntegrationSecret, encryptIntegrationSecret } from "./integration-crypto";
+import { isPostgresBackend } from "./runtime-mode";
 
 const apiVersion = process.env.LINKEDIN_API_VERSION || "202608";
 
@@ -28,7 +29,7 @@ export type LinkedInConnection = {
 };
 
 function usePostgres() {
-  return process.env.DATA_BACKEND === "postgres";
+  return isPostgresBackend();
 }
 
 function appConfigured() {

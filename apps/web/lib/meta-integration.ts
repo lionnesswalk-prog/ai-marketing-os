@@ -1,6 +1,7 @@
 import { getPrisma } from "./prisma";
 import { getSession } from "./auth";
 import { canEncryptIntegrations, decryptIntegrationSecret, encryptIntegrationSecret } from "./integration-crypto";
+import { isPostgresBackend } from "./runtime-mode";
 
 const graphVersion = process.env.META_GRAPH_VERSION || "v26.0";
 const graphBase = `https://graph.facebook.com/${graphVersion}`;
@@ -22,7 +23,7 @@ export type MetaConnection = {
 };
 
 function usePostgres() {
-  return process.env.DATA_BACKEND === "postgres";
+  return isPostgresBackend();
 }
 
 function metaAppConfigured() {
