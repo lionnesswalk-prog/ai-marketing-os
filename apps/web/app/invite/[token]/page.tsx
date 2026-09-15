@@ -5,6 +5,7 @@ import {
   getPublicInvite,
   registerFromWorkspaceInvite,
 } from "../../../lib/workspace-members";
+import { PasswordField } from "../../../components/PasswordField";
 
 function inviteError(code?: string) {
   if (code === "invalid") return "This invite is invalid or no longer available.";
@@ -109,7 +110,7 @@ export default async function InvitePage({
             <input type="hidden" name="token" value={token} />
             <label>Full name<input name="name" minLength={2} required autoComplete="name" placeholder="Your name" /></label>
             <label>Email<input value={invite.email} readOnly aria-readonly="true" /></label>
-            <label>Password<input name="password" type="password" minLength={8} required autoComplete="new-password" placeholder="Minimum 8 characters" /></label>
+            <PasswordField label="Password" name="password" autoComplete="new-password" minLength={8} required placeholder="Minimum 8 characters" />
             <button className="btn auth-submit" type="submit">Create account & join</button>
           </form>
           <p className="auth-switch">
