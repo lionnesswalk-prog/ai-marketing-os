@@ -26,6 +26,7 @@ export type LinkedInConnection = {
   authorUrn: string;
   accountLabel?: string;
   profileUrl?: string;
+  expiresAt?: string;
 };
 
 function usePostgres() {
@@ -64,6 +65,7 @@ export function getLinkedInSetupState() {
     appConfigured: appConfigured(),
     storageReady: storageReady(),
     apiVersion,
+    authorSource: "oauth_person",
   };
 }
 
@@ -113,8 +115,9 @@ export async function exchangeLinkedInCode(code: string, redirectUri: string) {
   const profile = await profileResponse.json().catch(() => ({})) as Partial<LinkedInUserInfo>;
   if (!profileResponse.ok || !profile.sub) throw new Error("LINKEDIN_PROFILE_LOOKUP_FAILED");
 
-  const configuredAuthor = process.env.LINKEDIN_ORGANIZATION_URN || process.env.LINKEDIN_AUTHOR_URN;
-  const authorUrn = configuredAuthor || `urn:li:person:${profile.sub}`;
+  // OAuth connections are workspace-specific. Never let a global environment
+  // author override the person who just authorized this workspace.
+  const authorUrn = `urn:li:person:${profile.sub}`;
   return {
     accessToken: token.access_token,
     expiresIn: token.expires_in,
@@ -198,11 +201,28 @@ export async function getLinkedInConnection(brandId?: string): Promise<LinkedInC
   const authorUrn = typeof meta.authorUrn === "string" ? meta.authorUrn : undefined;
   if (!encryptedToken || !authorUrn) return null;
 
+  const expiresAt = typeof meta.expiresAt === "string" ? meta.expiresAt : undefined;
+  const expiryMs = expiresAt ? Date.parse(expiresAt) : Number.NaN;
+  if (Number.isFinite(expiryMs) && expiryMs <= Date.now()) {
+    await prisma.integrationConnection.update({
+      where: { id: row.id },
+      data: {
+        status: "expired",
+        metadataJson: {
+          ...meta,
+          expiredAt: new Date().toISOString(),
+        },
+      },
+    });
+    return null;
+  }
+
   return {
     source: "database",
     accessToken: decryptIntegrationSecret(encryptedToken),
     authorUrn,
     accountLabel: typeof meta.accountLabel === "string" ? meta.accountLabel : "LinkedIn",
+    expiresAt,
   };
 }
 
