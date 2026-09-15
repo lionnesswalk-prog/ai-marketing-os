@@ -20,3 +20,7 @@
 .brand-readonly-note { width: fit-content; padding: 10px 12px; border-radius: 10px; background: var(--surface-soft); color: var(--muted); font-size: 10px; }
 @media (max-width: 1050px) { .brand-profile-layout { grid-template-columns: 1fr; } .brand-ai-card { position: static; } }
 @media (max-width: 760px) { .brand-profile-grid { grid-template-columns: 1fr; } .brand-profile-section-head { align-items: flex-start; flex-direction: column; } }
+
+.visual-identity-head { margin-top: 10px; padding-top: 18px; border-top: 1px solid var(--border); }
+.brand-color-field { display: grid; grid-template-columns: 48px minmax(0,1fr); gap: 8px; align-items: center; }
+.brand-color-field input[type="color"] { min-height: 42px; padding: 4px; cursor: pointer; }
