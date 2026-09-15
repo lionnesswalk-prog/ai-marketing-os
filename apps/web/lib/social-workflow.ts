@@ -1,6 +1,7 @@
 import { start } from "workflow/api";
 import { getPrisma } from "./prisma";
 import { scheduledSocialPostWorkflow } from "../workflows/scheduled-social-post";
+import { isPostgresBackend } from "./runtime-mode";
 
 function metadata(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -14,7 +15,7 @@ export async function startScheduledSocialPostWorkflow(postId: string, scheduled
     throw new Error("SOCIAL_WORKFLOW_SCHEDULE_INVALID");
   }
 
-  if (process.env.DATA_BACKEND !== "postgres") {
+  if (!isPostgresBackend()) {
     return { preview: true as const };
   }
 
