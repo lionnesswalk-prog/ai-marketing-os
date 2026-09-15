@@ -1,6 +1,7 @@
 import { getPrisma } from "./prisma";
 import { getStoredSocialPostDeliveryIssues, socialDeliveryIssueMessage } from "./social-preflight";
 import { classifyTikTokPublishStatus, classifyYouTubePublishStatus } from "./provider-processing-status";
+import { isPostgresBackend } from "./runtime-mode";
 
 type DeliveryStatus = "publishing" | "published" | "failed";
 
@@ -119,7 +120,7 @@ export async function deliverSocialPost(post: any): Promise<DeliveryStatus> {
 }
 
 export async function runScheduledPublisher(limit = 3, options?: { workspaceId?: string }) {
-  if (process.env.DATA_BACKEND !== "postgres") {
+  if (!isPostgresBackend()) {
     return { claimed: 0, published: 0, processing: 0, failed: 0, skipped: "postgres-required" };
   }
 
@@ -282,7 +283,7 @@ export async function runScheduledPublisher(limit = 3, options?: { workspaceId?:
 
 
 export async function publishScheduledPostById(postId: string, expectedScheduledAt: string) {
-  if (process.env.DATA_BACKEND !== "postgres") {
+  if (!isPostgresBackend()) {
     return { status: "skipped" as const, reason: "postgres-required" };
   }
 
