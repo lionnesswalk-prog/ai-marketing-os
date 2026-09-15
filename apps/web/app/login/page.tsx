@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { authenticateAccount, getAuthMode } from "../../lib/auth-service";
 import { getSession, setSession } from "../../lib/auth";
 import { assertAuthAllowed, authIpFromHeaders, clearAuthAttempts, loginThrottleKeysFromValues, recordAuthAttempt } from "../../lib/auth-rate-limit";
+import { PasswordField } from "../../components/PasswordField";
 
 function errorMessage(code?: string) {
   if (code === "invalid") return "Enter a valid email and password.";
@@ -82,7 +83,7 @@ export default async function LoginPage({
         <input type="hidden" name="next" value={next} />
         {params?.invite && <input type="hidden" name="invite" value={params.invite} />}
         <label>Email address<input name="email" type="email" autoComplete="email" required placeholder="you@company.com" /></label>
-        <label>Password<input name="password" type="password" autoComplete="current-password" minLength={8} required placeholder="Minimum 8 characters" /></label>
+        <PasswordField label="Password" name="password" autoComplete="current-password" minLength={8} required placeholder="Minimum 8 characters" />
         <div style={{ textAlign: "right", marginTop: -6, marginBottom: 10 }}><a className="text-link" href="/forgot-password">Forgot password?</a></div>
         {message && <div className="error-box" role="alert">{message}</div>}
         <button className="btn auth-submit" type="submit">Sign in</button>

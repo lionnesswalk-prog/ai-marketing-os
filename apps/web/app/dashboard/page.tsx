@@ -3,6 +3,7 @@ import { dashboardData } from "../../lib/repository";
 import { getCurrentBrandProfile } from "../../lib/brand-profile";
 import { getWorkspaceReadiness } from "../../lib/workspace-readiness";
 import { getIndustryPlaybook } from "../../lib/industry-intelligence";
+import { effectiveDataBackend } from "../../lib/runtime-mode";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
@@ -11,13 +12,14 @@ export default async function Dashboard() {
   const [data, profile, setup] = await Promise.all([dashboardData(), getCurrentBrandProfile(session), getWorkspaceReadiness(session)]);
   const industry = getIndustryPlaybook(profile.industry);
   const metrics = [
-    ["Tracked spend", money.format(data.spend)],
-    ["Tracked revenue", money.format(data.revenue)],
-    ["ROAS", `${data.roas.toFixed(2)}x`],
-    ["Open leads", String(data.leads)],
-    ["Pending approvals", String(data.pendingApprovals)],
-    ["Campaigns needing action", String(data.campaignsNeedingAction)],
+    { label: "Tracked spend", value: money.format(data.spend), href: "/campaigns" },
+    { label: "Tracked revenue", value: money.format(data.revenue), href: "/analytics" },
+    { label: "ROAS", value: `${data.roas.toFixed(2)}x`, href: "/analytics" },
+    { label: "Open leads", value: String(data.leads), href: "/leads" },
+    { label: "Pending approvals", value: String(data.pendingApprovals), href: "/approvals" },
+    { label: "Campaigns needing action", value: String(data.campaignsNeedingAction), href: "/campaigns" },
   ];
+  const productionData = effectiveDataBackend() === "postgres";
 
   return (
     <div>
@@ -28,8 +30,10 @@ export default async function Dashboard() {
           <p className="muted large">Paid media, social content, leads and approval-gated AI recommendations in one operating view.</p>
         </div>
         <div className="hero-badges">
-          <span className="pill accent">{profile.name}</span>
-          <span className="pill">{process.env.DATA_BACKEND === "postgres" ? "Production data" : "Preview data"}</span>
+          <a className="pill accent dashboard-badge-link" href="/brand" aria-label={`Open ${profile.name} Brand Profile`}>{profile.name}</a>
+          <a className="pill dashboard-badge-link" href={productionData ? "/analytics" : "/platform"}>
+            {productionData ? "Production data" : "Preview data"}
+          </a>
         </div>
       </div>
 
@@ -70,15 +74,15 @@ export default async function Dashboard() {
       </div>
 
       <div className="metric-grid">
-        {metrics.map(([key, value], index) => (
-          <div className="card metric-card" key={key}>
+        {metrics.map((metric, index) => (
+          <a className="card metric-card metric-card-link" href={metric.href} key={metric.label}>
             <div className="metric-kicker">
-              <div className="muted">{key}</div>
+              <div className="muted">{metric.label}</div>
               <span className="metric-orb" />
             </div>
-            <div className="metric">{value}</div>
-            <div className="metric-index">Metric {String(index + 1).padStart(2, "0")}</div>
-          </div>
+            <div className="metric">{metric.value}</div>
+            <div className="metric-index">Open · {String(index + 1).padStart(2, "0")}</div>
+          </a>
         ))}
       </div>
 

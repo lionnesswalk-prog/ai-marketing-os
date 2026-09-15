@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { PasswordField } from "./PasswordField";
 
 export function SignupForm() {
   const [busy, setBusy] = useState(false);
@@ -43,7 +44,7 @@ export function SignupForm() {
       <label>Full name<input name="name" autoComplete="name" minLength={2} maxLength={80} required placeholder="Your name" /></label>
       <label>Brand / company name<input name="brandName" minLength={2} maxLength={120} required placeholder="Your brand name" /></label>
       <label>Email address<input name="email" type="email" autoComplete="email" maxLength={200} required placeholder="you@company.com" /></label>
-      <label>Password<input name="password" type="password" autoComplete="new-password" minLength={8} maxLength={200} required placeholder="Minimum 8 characters" /></label>
+      <PasswordField label="Password" name="password" autoComplete="new-password" minLength={8} maxLength={200} required placeholder="Minimum 8 characters" />
       <label style={{ display: "flex", gridTemplateColumns: "auto 1fr", alignItems: "start", gap: 10 }}>
         <input name="acceptTerms" type="checkbox" required style={{ width: 18, marginTop: 2 }} />
         <span>I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms of Use</a> and <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.</span>
