@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPrisma } from "./prisma";
 import { roleCan, type AppRole } from "./access-policy";
+import { effectiveAuthMode, isDatabaseMode } from "./runtime-mode";
 
 export type { AppRole } from "./access-policy";
 
@@ -29,7 +30,7 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 function authSecret() {
   const configured = process.env.AUTH_SECRET;
   if (configured) return configured;
-  if (process.env.AUTH_MODE === "database") {
+  if (effectiveAuthMode() === "database") {
     throw new Error("AUTH_SECRET is required when AUTH_MODE=database");
   }
   return "ai-marketing-os-preview-only-change-before-production";
@@ -67,7 +68,7 @@ export function readSessionToken(token: string | undefined): AppSession | null {
     // Preview sessions can be upgraded transparently after deployments. Database
     // sessions must always be bound to a real user and workspace.
     if (!payload.userId || !payload.workspaceId) {
-      if (process.env.AUTH_MODE === "database") return null;
+      if (effectiveAuthMode() === "database") return null;
       return {
         email: payload.email,
         role: payload.role,
@@ -119,7 +120,7 @@ export async function getSession(): Promise<AppSession | null> {
   const session = readSessionToken(store.get(SESSION_COOKIE)?.value);
   if (!session) return null;
 
-  if (process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres") {
+  if (isDatabaseMode()) {
     try {
       const prisma = getPrisma();
       const access = await prisma.workspaceAccess.findUnique({
