@@ -4,9 +4,10 @@ import { getPrisma } from "./prisma";
 import { deliverSocialPost } from "./scheduled-publisher";
 import { getStoredSocialPostDeliveryIssues, socialDeliveryIssueMessage } from "./social-preflight";
 import { brandIsWorkspaceScope } from "./tenant-scope";
+import { isPostgresBackend } from "./runtime-mode";
 
 function usePostgres() {
-  return process.env.DATA_BACKEND === "postgres";
+  return isPostgresBackend();
 }
 
 async function workspaceId() {
