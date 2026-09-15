@@ -3,6 +3,8 @@ import { CampaignBuilder } from "../../components/CampaignBuilder";
 import { getCurrentBrandProfile } from "../../lib/brand-profile";
 import { listCampaigns } from "../../lib/repository";
 
+export const dynamic = "force-dynamic";
+
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
 export default async function Campaigns() {

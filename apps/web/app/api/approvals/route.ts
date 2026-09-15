@@ -24,7 +24,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid approval decision.", issues: parsed.error.flatten() }, { status: 400 });
   }
 
-  const updated = await decideApproval(parsed.data.id, parsed.data.decision, session.email);
-  if (!updated) return NextResponse.json({ error: "Approval not found." }, { status: 404 });
-  return NextResponse.json(updated);
+  try {
+    const updated = await decideApproval(parsed.data.id, parsed.data.decision, session.email, session.userId);
+    if (!updated) return NextResponse.json({ error: "Approval not found." }, { status: 404 });
+    return NextResponse.json(updated);
+  } catch (error) {
+    if (error instanceof Error && error.message === "APPROVAL_ALREADY_DECIDED") {
+      return NextResponse.json({ error: "This approval was already decided. Refreshing will show the latest state." }, { status: 409 });
+    }
+    console.error("approval decision failed", error);
+    return NextResponse.json({ error: "Unable to update this approval right now." }, { status: 500 });
+  }
 }

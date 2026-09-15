@@ -8,6 +8,8 @@ import { TikTokStatusButton } from "../../components/TikTokStatusButton";
 import { YouTubeStatusButton } from "../../components/YouTubeStatusButton";
 import { SocialQueueActions } from "../../components/SocialQueueActions";
 
+export const dynamic = "force-dynamic";
+
 function integrationNotice(meta?: string, linkedin?: string, x?: string, tiktok?: string, youtube?: string, pinterest?: string, access?: string) {
   if (access === "forbidden") return { tone: "error", text: "Your workspace role cannot connect, disconnect, publish, or modify social accounts." };
   if (access === "plan-limit") return { tone: "error", text: "This workspace has reached its social-connection plan limit. Upgrade the plan or disconnect an unused provider before connecting another account." };

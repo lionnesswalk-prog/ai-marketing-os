@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ApprovalView } from "../lib/domain";
 
 export function ApprovalQueue({ initial }: { initial: ApprovalView[] }) {
+  const router = useRouter();
   const [items, setItems] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -20,6 +22,7 @@ export function ApprovalQueue({ initial }: { initial: ApprovalView[] }) {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Approval update failed");
       setItems((current) => current.map((item) => item.id === id ? { ...item, status: decision } : item));
+      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Approval update failed");
     } finally {
