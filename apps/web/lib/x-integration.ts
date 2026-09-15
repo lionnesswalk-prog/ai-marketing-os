@@ -200,9 +200,13 @@ async function refreshDatabaseToken(connectionId: string, refreshToken: string) 
   };
   await prisma.integrationConnection.update({
     where: { id: connectionId },
-    data: { metadataJson: nextMetadata },
+    data: { metadataJson: nextMetadata, status: "connected" },
   });
-  return token.access_token;
+  return {
+    accessToken: token.access_token,
+    refreshToken: token.refresh_token || refreshToken,
+    expiresAt: typeof nextMetadata.expiresAt === "string" ? nextMetadata.expiresAt : undefined,
+  };
 }
 
 export async function getXConnection(brandId?: string): Promise<XConnection | null> {
@@ -230,11 +234,46 @@ export async function getXConnection(brandId?: string): Promise<XConnection | nu
   if (!encryptedAccess) return null;
   let accessToken = decryptIntegrationSecret(encryptedAccess);
   const encryptedRefresh = typeof meta.refreshToken === "string" ? meta.refreshToken : undefined;
-  const refreshToken = encryptedRefresh ? decryptIntegrationSecret(encryptedRefresh) : undefined;
-  const expiresAt = typeof meta.expiresAt === "string" ? meta.expiresAt : undefined;
+  let refreshToken = encryptedRefresh ? decryptIntegrationSecret(encryptedRefresh) : undefined;
+  let expiresAt = typeof meta.expiresAt === "string" ? meta.expiresAt : undefined;
 
-  if (expiresAt && refreshToken && new Date(expiresAt).getTime() < Date.now() + 60_000) {
-    accessToken = await refreshDatabaseToken(row.id, refreshToken);
+  const expiryMs = expiresAt ? Date.parse(expiresAt) : Number.NaN;
+  const expiring = Number.isFinite(expiryMs) && expiryMs < Date.now() + 60_000;
+
+  if (expiring && !refreshToken) {
+    await prisma.integrationConnection.update({
+      where: { id: row.id },
+      data: {
+        status: "expired",
+        metadataJson: {
+          ...meta,
+          expiredAt: new Date().toISOString(),
+        },
+      },
+    });
+    return null;
+  }
+
+  if (expiring && refreshToken) {
+    try {
+      const refreshed = await refreshDatabaseToken(row.id, refreshToken);
+      accessToken = refreshed.accessToken;
+      refreshToken = refreshed.refreshToken;
+      expiresAt = refreshed.expiresAt;
+    } catch (error) {
+      console.error("X token refresh failed; reconnect required", error);
+      await prisma.integrationConnection.update({
+        where: { id: row.id },
+        data: {
+          status: "expired",
+          metadataJson: {
+            ...meta,
+            refreshFailedAt: new Date().toISOString(),
+          },
+        },
+      }).catch((updateError) => console.error("X expired status update failed", updateError));
+      return null;
+    }
   }
 
   return {

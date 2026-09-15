@@ -182,7 +182,7 @@ export async function getPlatformReadiness() {
       callbackUrl: callback("/api/integrations/linkedin/callback"),
       scopes: ["openid", "profile", "email", "w_member_social"],
       capabilities: ["Member OAuth", "Text publishing", "Article-link publishing", "Workspace-scoped connection"],
-      note: "API version " + linkedin.apiVersion + ". Organization publishing and post analytics can require additional LinkedIn products.",
+      note: "API version " + linkedin.apiVersion + ". Workspace OAuth connects the authorizing member; global LINKEDIN_AUTHOR_URN/LINKEDIN_ORGANIZATION_URN values are reserved for explicit shared-token fallback only. Organization publishing requires a separate workspace-safe organization selection flow.",
     }),
     provider({
       id: "x",
