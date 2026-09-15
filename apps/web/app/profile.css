@@ -121,7 +121,7 @@
 }
 
 @media (max-width: 760px) {
-  .sidebar-profile { min-width: 220px; margin: 0; }
+  .sidebar-profile { min-width: 0; margin: 0; }
   .profile-readonly-grid { grid-template-columns: 1fr; gap: 0; }
   .profile-panel { padding: 21px 18px; }
   .profile-actions { justify-content: stretch; }
