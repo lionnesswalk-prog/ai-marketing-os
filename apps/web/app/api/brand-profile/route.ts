@@ -16,6 +16,9 @@ const schema = z.object({
   proofPoints: z.string().trim().max(3000).default(""),
   avoid: z.string().trim().max(2000).default(""),
   notes: z.string().trim().max(3000).default(""),
+  logoUrl: z.union([z.string().trim().url(), z.literal("")]).default(""),
+  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#171817"),
+  secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#7267f0"),
 });
 
 export async function POST(request: Request) {
@@ -27,7 +30,7 @@ export async function POST(request: Request) {
 
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Check the brand profile fields and website URL." }, { status: 400 });
+    return NextResponse.json({ error: "Check the brand profile fields, URLs and six-digit HEX colors." }, { status: 400 });
   }
 
   try {
