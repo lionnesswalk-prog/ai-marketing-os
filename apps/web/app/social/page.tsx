@@ -78,6 +78,10 @@ export default async function SocialPage({
       ? listPendingMetaPages()
       : Promise.resolve([]),
   ]);
+  const effectiveNotice =
+    (params?.meta === "choose-page" || params?.meta === "page-required") && pendingMetaPages.length === 0
+      ? { tone: "error", text: "Meta Page selection expired or is no longer available. Start Connect again from the Social Hub." }
+      : notice;
 
   return (
     <div className="social-page">
@@ -93,7 +97,7 @@ export default async function SocialPage({
         </div>
       </div>
 
-      {notice && <div className={`profile-notice social-notice ${notice.tone}`}>{notice.text}</div>}
+      {effectiveNotice && <div className={`profile-notice social-notice ${effectiveNotice.tone}`}>{effectiveNotice.text}</div>}
 
       {pendingMetaPages.length > 0 && (
         <section className="card meta-page-selector">
