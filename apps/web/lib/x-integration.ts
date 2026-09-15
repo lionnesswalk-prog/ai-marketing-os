@@ -233,8 +233,40 @@ export async function getXConnection(brandId?: string): Promise<XConnection | nu
   const refreshToken = encryptedRefresh ? decryptIntegrationSecret(encryptedRefresh) : undefined;
   const expiresAt = typeof meta.expiresAt === "string" ? meta.expiresAt : undefined;
 
-  if (expiresAt && refreshToken && new Date(expiresAt).getTime() < Date.now() + 60_000) {
-    accessToken = await refreshDatabaseToken(row.id, refreshToken);
+  const expiryMs = expiresAt ? Date.parse(expiresAt) : Number.NaN;
+  const expiring = Number.isFinite(expiryMs) && expiryMs < Date.now() + 60_000;
+
+  if (expiring && !refreshToken) {
+    await prisma.integrationConnection.update({
+      where: { id: row.id },
+      data: {
+        status: "expired",
+        metadataJson: {
+          ...meta,
+          expiredAt: new Date().toISOString(),
+        },
+      },
+    });
+    return null;
+  }
+
+  if (expiring && refreshToken) {
+    try {
+      accessToken = await refreshDatabaseToken(row.id, refreshToken);
+    } catch (error) {
+      console.error("X token refresh failed; reconnect required", error);
+      await prisma.integrationConnection.update({
+        where: { id: row.id },
+        data: {
+          status: "expired",
+          metadataJson: {
+            ...meta,
+            refreshFailedAt: new Date().toISOString(),
+          },
+        },
+      }).catch((updateError) => console.error("X expired status update failed", updateError));
+      return null;
+    }
   }
 
   return {
