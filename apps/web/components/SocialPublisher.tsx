@@ -21,7 +21,7 @@ const privacyLabels: Record<string, string> = {
   SELF_ONLY: "Only me",
 };
 
-export function SocialPublisher({ platforms, canManage = true }: { platforms: SocialPlatformConfig[]; canManage?: boolean }) {
+export function SocialPublisher({ platforms, canManage = true, platformAdmin = false }: { platforms: SocialPlatformConfig[]; canManage?: boolean; platformAdmin?: boolean }) {
   const router = useRouter();
   const [selected, setSelected] = useState<SocialPlatform[]>(["instagram", "facebook"]);
   const [title, setTitle] = useState("New social post");
@@ -228,7 +228,11 @@ export function SocialPublisher({ platforms, canManage = true }: { platforms: So
               <div className="social-platform-actions">
                 <a href={platform.homeUrl} target="_blank" rel="noreferrer">Open ↗</a>
                 {canManage && !platform.connected && platform.connectUrl && platform.setupReady !== false && <a className="connect-social" href={platform.connectUrl}>Connect</a>}
-                {canManage && !platform.connected && platform.setupReady === false && <button type="button" disabled title="Platform administrator must finish provider setup first.">Setup pending</button>}
+                {canManage && !platform.connected && platform.setupReady === false && (
+                  platformAdmin
+                    ? <a className="connect-social" href="/platform">Finish setup</a>
+                    : <span className="pill" title="Platform administrator must finish provider setup first.">Setup pending</span>
+                )}
                 {canManage && platform.connected && platform.disconnectUrl && (
                   <form action={platform.disconnectUrl} method="post"><button type="submit">Disconnect</button></form>
                 )}
