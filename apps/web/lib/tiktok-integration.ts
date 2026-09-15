@@ -235,9 +235,14 @@ async function refreshDatabaseToken(connectionId: string, refreshToken: string) 
   };
   await prisma.integrationConnection.update({
     where: { id: connectionId },
-    data: { metadataJson },
+    data: { metadataJson, status: "connected" },
   });
-  return { accessToken: token.access_token, refreshToken: nextRefresh };
+  return {
+    accessToken: token.access_token,
+    refreshToken: nextRefresh,
+    expiresAt: typeof metadataJson.expiresAt === "string" ? metadataJson.expiresAt : undefined,
+    refreshExpiresAt: typeof metadataJson.refreshExpiresAt === "string" ? metadataJson.refreshExpiresAt : undefined,
+  };
 }
 
 export async function getTikTokConnection(brandId?: string): Promise<TikTokConnection | null> {
@@ -265,12 +270,49 @@ export async function getTikTokConnection(brandId?: string): Promise<TikTokConne
   let accessToken = decryptIntegrationSecret(encryptedAccess);
   const encryptedRefresh = typeof meta.refreshToken === "string" ? meta.refreshToken : undefined;
   let refreshToken = encryptedRefresh ? decryptIntegrationSecret(encryptedRefresh) : undefined;
-  const expiresAt = typeof meta.expiresAt === "string" ? meta.expiresAt : undefined;
+  let expiresAt = typeof meta.expiresAt === "string" ? meta.expiresAt : undefined;
+  let refreshExpiresAt = typeof meta.refreshExpiresAt === "string" ? meta.refreshExpiresAt : undefined;
 
-  if (expiresAt && refreshToken && new Date(expiresAt).getTime() < Date.now() + 60_000) {
-    const refreshed = await refreshDatabaseToken(row.id, refreshToken);
-    accessToken = refreshed.accessToken;
-    refreshToken = refreshed.refreshToken;
+  const accessExpiryMs = expiresAt ? Date.parse(expiresAt) : Number.NaN;
+  const refreshExpiryMs = refreshExpiresAt ? Date.parse(refreshExpiresAt) : Number.NaN;
+  const accessExpiring = Number.isFinite(accessExpiryMs) && accessExpiryMs < Date.now() + 60_000;
+  const refreshExpired = Number.isFinite(refreshExpiryMs) && refreshExpiryMs <= Date.now();
+
+  if (accessExpiring && (!refreshToken || refreshExpired)) {
+    await prisma.integrationConnection.update({
+      where: { id: row.id },
+      data: {
+        status: "expired",
+        metadataJson: {
+          ...meta,
+          expiredAt: new Date().toISOString(),
+        },
+      },
+    });
+    return null;
+  }
+
+  if (accessExpiring && refreshToken) {
+    try {
+      const refreshed = await refreshDatabaseToken(row.id, refreshToken);
+      accessToken = refreshed.accessToken;
+      refreshToken = refreshed.refreshToken;
+      expiresAt = refreshed.expiresAt;
+      refreshExpiresAt = refreshed.refreshExpiresAt;
+    } catch (error) {
+      console.error("TikTok token refresh failed; reconnect required", error);
+      await prisma.integrationConnection.update({
+        where: { id: row.id },
+        data: {
+          status: "expired",
+          metadataJson: {
+            ...meta,
+            refreshFailedAt: new Date().toISOString(),
+          },
+        },
+      }).catch((updateError) => console.error("TikTok expired status update failed", updateError));
+      return null;
+    }
   }
 
   return {

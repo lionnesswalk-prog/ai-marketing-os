@@ -227,12 +227,13 @@ async function refreshDatabaseToken(connectionId: string, refreshToken: string) 
 
   await prisma.integrationConnection.update({
     where: { id: connectionId },
-    data: { metadataJson },
+    data: { metadataJson, status: "connected" },
   });
 
   return {
     accessToken: token.access_token,
     refreshToken: token.refresh_token || refreshToken,
+    expiresAt: typeof metadataJson.expiresAt === "string" ? metadataJson.expiresAt : undefined,
   };
 }
 
@@ -262,12 +263,45 @@ export async function getYouTubeConnection(brandId?: string): Promise<YouTubeCon
   let accessToken = decryptIntegrationSecret(encryptedAccess);
   const encryptedRefresh = typeof meta.refreshToken === "string" ? meta.refreshToken : undefined;
   let refreshToken = encryptedRefresh ? decryptIntegrationSecret(encryptedRefresh) : undefined;
-  const expiresAt = typeof meta.expiresAt === "string" ? meta.expiresAt : undefined;
+  let expiresAt = typeof meta.expiresAt === "string" ? meta.expiresAt : undefined;
 
-  if (expiresAt && refreshToken && new Date(expiresAt).getTime() < Date.now() + 60_000) {
-    const refreshed = await refreshDatabaseToken(row.id, refreshToken);
-    accessToken = refreshed.accessToken;
-    refreshToken = refreshed.refreshToken;
+  const expiryMs = expiresAt ? Date.parse(expiresAt) : Number.NaN;
+  const expiring = Number.isFinite(expiryMs) && expiryMs < Date.now() + 60_000;
+
+  if (expiring && !refreshToken) {
+    await prisma.integrationConnection.update({
+      where: { id: row.id },
+      data: {
+        status: "expired",
+        metadataJson: {
+          ...meta,
+          expiredAt: new Date().toISOString(),
+        },
+      },
+    });
+    return null;
+  }
+
+  if (expiring && refreshToken) {
+    try {
+      const refreshed = await refreshDatabaseToken(row.id, refreshToken);
+      accessToken = refreshed.accessToken;
+      refreshToken = refreshed.refreshToken;
+      expiresAt = refreshed.expiresAt;
+    } catch (error) {
+      console.error("YouTube token refresh failed; reconnect required", error);
+      await prisma.integrationConnection.update({
+        where: { id: row.id },
+        data: {
+          status: "expired",
+          metadataJson: {
+            ...meta,
+            refreshFailedAt: new Date().toISOString(),
+          },
+        },
+      }).catch((updateError) => console.error("YouTube expired status update failed", updateError));
+      return null;
+    }
   }
 
   return {
