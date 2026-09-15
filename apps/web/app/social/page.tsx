@@ -87,7 +87,7 @@ export default async function SocialPage({
 
       {notice && <div className={`profile-notice social-notice ${notice.tone}`}>{notice.text}</div>}
 
-      <SocialPublisher platforms={platforms} canManage={canManage} />
+      <SocialPublisher platforms={platforms} canManage={canManage} platformAdmin={Boolean(session.platformAdmin)} />
 
       <section>
         <div className="section-head">

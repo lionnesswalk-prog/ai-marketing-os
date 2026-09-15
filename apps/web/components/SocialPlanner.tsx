@@ -19,6 +19,7 @@ export function SocialPlanner({
   const [plan, setPlan] = useState<ContentPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -29,6 +30,7 @@ export function SocialPlanner({
 
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       const response = await fetch("/api/social", {
         method: "POST",
@@ -38,6 +40,7 @@ export function SocialPlanner({
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Content generation failed");
       setPlan(body.plan);
+      setNotice(body.warning || (body.mode === "mock" ? "Safe built-in content mode is active." : ""));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Content generation failed");
     } finally {
@@ -53,6 +56,7 @@ export function SocialPlanner({
         <label>Objective<textarea disabled={disabled} rows={3} value={objective} onChange={(e) => setObjective(e.target.value)} /></label>
         <button className="btn" disabled={disabled || busy}>{busy ? "Generating…" : "Generate content set"}</button>
         <p className="muted">Brand voice and guardrails are loaded automatically from Brand Profile.</p>
+        {notice && <div className="profile-notice">{notice}</div>}
         {error && <div className="error-box">{error}</div>}
       </form>
 

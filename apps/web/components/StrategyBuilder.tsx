@@ -27,6 +27,7 @@ export function StrategyBuilder({
   const [plan, setPlan] = useState<StrategyPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -37,6 +38,7 @@ export function StrategyBuilder({
 
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       const response = await fetch("/api/strategy", {
         method: "POST",
@@ -46,6 +48,7 @@ export function StrategyBuilder({
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Could not build strategy");
       setPlan(body.plan);
+      setNotice(body.warning || (body.mode === "mock" ? "Safe built-in planning mode is active." : ""));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not build strategy");
     } finally {
@@ -63,6 +66,7 @@ export function StrategyBuilder({
         <label>Additional campaign notes<textarea disabled={disabled} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Launch date, geography, constraints, offer details..." /></label>
         <button className="btn" disabled={disabled || busy}>{busy ? "Building…" : "Generate 30-day plan"}</button>
         <p className="muted">Brand Profile context is added server-side. Mock mode works without API credentials.</p>
+        {notice && <div className="profile-notice">{notice}</div>}
         {error && <div className="error-box">{error}</div>}
       </form>
 

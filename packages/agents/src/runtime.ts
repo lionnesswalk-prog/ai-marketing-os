@@ -18,71 +18,80 @@ export type ContentPlanInput = {
   brandContext?: string;
 };
 
-export async function buildStrategy(input: StrategyInput) {
-  if (process.env.AI_MODE !== "live" || !process.env.OPENAI_API_KEY) return mockStrategy(input);
+export type AiExecutionMode = "live" | "mock" | "fallback";
 
-  const result = await run(
-    strategistAgent,
-    JSON.stringify({
-      task: "Build a practical 30-day marketing plan.",
-      ...input,
-      rules: [
-        "Use the supplied brand context as the source of truth for positioning and tone.",
-        "Channel budget percentages must sum to 100.",
-        "Do not fabricate historical performance, customer proof or product facts.",
-        "Mark assumptions explicitly.",
-        "Use verified workspace knowledge as factual source-of-truth and label reference notes as unverified.",
-        "Do not invent numeric industry benchmarks, market sizes, conversion rates, CAC, ROAS or growth rates. If a number is not supplied by verified context, describe the metric qualitatively or ask for data.",
-        "Match funnel logic, KPIs and channel priorities to the supplied industry, market and business model.",
-      ],
-    }),
-  );
-  return result.finalOutput;
+export type AiExecutionResult<T> = {
+  output: T;
+  mode: AiExecutionMode;
+  warning?: string;
+};
+
+function liveAiEnabled() {
+  return process.env.AI_MODE === "live" && Boolean(process.env.OPENAI_API_KEY);
+}
+
+function fallbackWarning() {
+  return "Live AI was temporarily unavailable, so a safe fallback was generated instead.";
+}
+
+export async function buildStrategy(input: StrategyInput) {
+  if (!liveAiEnabled()) {
+    return { output: mockStrategy(input), mode: "mock" as const };
+  }
+
+  try {
+    const result = await run(
+      strategistAgent,
+      JSON.stringify({
+        task: "Build a practical 30-day marketing plan.",
+        ...input,
+        rules: [
+          "Use the supplied brand context as the source of truth for positioning and tone.",
+          "Channel budget percentages must sum to 100.",
+          "Do not fabricate historical performance, customer proof or product facts.",
+          "Mark assumptions explicitly.",
+          "Use verified workspace knowledge as factual source-of-truth and label reference notes as unverified.",
+          "Do not invent numeric industry benchmarks, market sizes, conversion rates, CAC, ROAS or growth rates. If a number is not supplied by verified context, describe the metric qualitatively or ask for data.",
+          "Match funnel logic, KPIs and channel priorities to the supplied industry, market and business model.",
+        ],
+      }),
+    );
+    return { output: result.finalOutput, mode: "live" as const };
+  } catch (error) {
+    console.error("live AI strategy generation failed", error);
+    return {
+      output: mockStrategy(input),
+      mode: "fallback" as const,
+      warning: fallbackWarning(),
+    };
+  }
 }
 
 export async function buildContentPlan(input: ContentPlanInput) {
-  if (process.env.AI_MODE !== "live" || !process.env.OPENAI_API_KEY) {
-    const theme = input.theme.trim();
-    const objective = input.objective.trim();
-    return {
-      theme,
-      posts: [
-        {
-          platform: "Instagram",
-          format: "Reel",
-          hook: `What should customers understand about ${theme}?`,
-          caption: `${input.brandName}: a focused story about ${theme.toLowerCase()}, built to support ${objective.toLowerCase()}.`,
-          cta: "Discover more",
-        },
-        {
-          platform: "Instagram",
-          format: "Carousel",
-          hook: "The value, proof and decision points in one clear story.",
-          caption: `A practical breakdown of ${theme.toLowerCase()} for the audience most likely to care about it.`,
-          cta: "Explore the details",
-        },
-        {
-          platform: "Facebook",
-          format: "Static",
-          hook: `The idea behind ${input.brandName}'s next move.`,
-          caption: "Clear positioning, useful proof and a direct reason to engage—without unsupported claims or generic filler.",
-          cta: "Learn more",
-        },
-      ],
-    };
+  if (!liveAiEnabled()) {
+    return { output: mockContentPlan(input), mode: "mock" as const };
   }
 
-  const result = await run(contentAgent, JSON.stringify({
-    ...input,
-    rules: [
-      "Use the supplied brand context as the source of truth.",
-      "Never invent proof points, product features, stock, pricing or policies.",
-      "Use verified workspace knowledge as factual source-of-truth. Treat reference notes as unverified context.",
-      "Do not invent performance benchmarks or market statistics.",
-      "If a fact is not supplied, keep the copy general rather than guessing.",
-    ],
-  }));
-  return result.finalOutput;
+  try {
+    const result = await run(contentAgent, JSON.stringify({
+      ...input,
+      rules: [
+        "Use the supplied brand context as the source of truth.",
+        "Never invent proof points, product features, stock, pricing or policies.",
+        "Use verified workspace knowledge as factual source-of-truth. Treat reference notes as unverified context.",
+        "Do not invent performance benchmarks or market statistics.",
+        "If a fact is not supplied, keep the copy general rather than guessing.",
+      ],
+    }));
+    return { output: result.finalOutput, mode: "live" as const };
+  } catch (error) {
+    console.error("live AI content generation failed", error);
+    return {
+      output: mockContentPlan(input),
+      mode: "fallback" as const,
+      warning: fallbackWarning(),
+    };
+  }
 }
 
 export async function draftInquiryReply(input: {
@@ -91,28 +100,77 @@ export async function draftInquiryReply(input: {
   brandName: string;
   brandContext?: string;
 }) {
-  if (process.env.AI_MODE !== "live" || !process.env.OPENAI_API_KEY) {
-    const stockQuestion = /stock|available|medium|size|dress|inventory/i.test(input.message);
-    return {
-      reply: stockQuestion
-        ? `I can help with that for ${input.brandName}. I need to verify the exact item and availability before confirming it. Please share the product name or link.`
-        : `Thanks for reaching out to ${input.brandName}. I can help with this and will only confirm details that are verified for your request.`,
-      intent: stockQuestion ? ("high" as const) : ("medium" as const),
-      requiresHuman: false,
-      missingFacts: stockQuestion ? ["Exact product identifier", "Live inventory for requested item"] : [],
-    };
+  if (!liveAiEnabled()) {
+    return { output: mockInquiryReply(input), mode: "mock" as const };
   }
 
-  const result = await run(inquiryAgent, JSON.stringify({
-    ...input,
-    rules: [
-      "Use the supplied brand context for tone and terminology.",
-      "Verified facts in this request override general brand context.",
-      "Never invent stock, delivery, discounts, refunds, pricing or exclusivity.",
-      "Use verified workspace knowledge as factual source-of-truth and say when required facts are missing.",
+  try {
+    const result = await run(inquiryAgent, JSON.stringify({
+      ...input,
+      rules: [
+        "Use the supplied brand context for tone and terminology.",
+        "Verified facts in this request override general brand context.",
+        "Never invent stock, delivery, discounts, refunds, pricing or exclusivity.",
+        "Use verified workspace knowledge as factual source-of-truth and say when required facts are missing.",
+      ],
+    }));
+    return { output: result.finalOutput, mode: "live" as const };
+  } catch (error) {
+    console.error("live AI inquiry drafting failed", error);
+    return {
+      output: mockInquiryReply(input),
+      mode: "fallback" as const,
+      warning: fallbackWarning(),
+    };
+  }
+}
+
+function mockContentPlan(input: ContentPlanInput) {
+  const theme = input.theme.trim();
+  const objective = input.objective.trim();
+  return {
+    theme,
+    posts: [
+      {
+        platform: "Instagram",
+        format: "Reel",
+        hook: `What should customers understand about ${theme}?`,
+        caption: `${input.brandName}: a focused story about ${theme.toLowerCase()}, built to support ${objective.toLowerCase()}.`,
+        cta: "Discover more",
+      },
+      {
+        platform: "Instagram",
+        format: "Carousel",
+        hook: "The value, proof and decision points in one clear story.",
+        caption: `A practical breakdown of ${theme.toLowerCase()} for the audience most likely to care about it.`,
+        cta: "Explore the details",
+      },
+      {
+        platform: "Facebook",
+        format: "Static",
+        hook: `The idea behind ${input.brandName}'s next move.`,
+        caption: "Clear positioning, useful proof and a direct reason to engage—without unsupported claims or generic filler.",
+        cta: "Learn more",
+      },
     ],
-  }));
-  return result.finalOutput;
+  };
+}
+
+function mockInquiryReply(input: {
+  message: string;
+  verifiedFacts: string[];
+  brandName: string;
+  brandContext?: string;
+}) {
+  const stockQuestion = /stock|available|medium|size|dress|inventory/i.test(input.message);
+  return {
+    reply: stockQuestion
+      ? `I can help with that for ${input.brandName}. I need to verify the exact item and availability before confirming it. Please share the product name or link.`
+      : `Thanks for reaching out to ${input.brandName}. I can help with this and will only confirm details that are verified for your request.`,
+    intent: stockQuestion ? ("high" as const) : ("medium" as const),
+    requiresHuman: false,
+    missingFacts: stockQuestion ? ["Exact product identifier", "Live inventory for requested item"] : [],
+  };
 }
 
 function mockStrategy(input: StrategyInput) {

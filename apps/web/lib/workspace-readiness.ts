@@ -1,6 +1,7 @@
 import type { AppSession } from "./auth";
 import { getCurrentBrandProfile } from "./brand-profile";
 import { getPrisma } from "./prisma";
+import { isDatabaseMode } from "./runtime-mode";
 
 export type WorkspaceSetupStep = {
   key: string;
@@ -20,7 +21,7 @@ export type WorkspaceReadiness = {
 };
 
 function databaseReady() {
-  return process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres";
+  return isDatabaseMode();
 }
 
 export async function getWorkspaceReadiness(session: AppSession): Promise<WorkspaceReadiness> {
