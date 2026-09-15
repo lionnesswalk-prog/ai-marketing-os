@@ -1,0 +1,51 @@
+.studio-page { width: 100%; }
+.studio-hero { margin-bottom: 20px; }
+.studio-grid { display: grid; grid-template-columns: minmax(320px,.82fr) minmax(0,1.18fr); gap: 18px; align-items: start; margin-top: 22px; }
+.studio-builder { position: sticky; top: 28px; display: grid; gap: 4px; }
+.studio-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.studio-preview { min-height: 650px; }
+.studio-image-frame { overflow: hidden; border-radius: 16px; aspect-ratio: 1; background: #171817; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.studio-image-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.studio-copy { margin-top: 18px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.studio-copy strong { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
+.studio-copy p { margin: 7px 0 0; font-size: 13px; white-space: pre-wrap; }
+.studio-copy .studio-hashtags { color: #6259c7; font-size: 11px; }
+.studio-timing { margin-top: 14px; padding: 14px; border-radius: 13px; background: rgba(114,103,240,.06); border: 1px solid rgba(114,103,240,.13); }
+.studio-timing > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.studio-timing span { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
+.studio-timing strong { font-size: 12px; }
+.studio-timing p { margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.studio-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.studio-empty { min-height: 500px; display: grid; place-items: center; align-content: center; text-align: center; padding: 30px; }
+.studio-empty h3 { margin-top: 18px; }
+.studio-empty p { max-width: 430px; }
+.studio-placeholder-orb { width: 120px; height: 120px; border-radius: 36px; background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.9), transparent 38%), linear-gradient(145deg,#171817,#7267f0); box-shadow: 0 22px 70px rgba(79,68,194,.22); transform: rotate(-7deg); }
+
+.copilot-card { margin-top: 28px; }
+.copilot-quick { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+.copilot-quick button { appearance: none; border: 1px solid var(--border-strong); background: rgba(255,255,255,.68); color: var(--ink-soft); border-radius: 999px; padding: 8px 11px; cursor: pointer; font: inherit; font-size: 10px; font-weight: 700; }
+.copilot-quick button:hover:not(:disabled) { background: var(--accent-soft); color: #5c52c8; border-color: rgba(114,103,240,.18); }
+.copilot-thread { max-height: 540px; overflow-y: auto; display: grid; gap: 10px; padding: 14px; border-radius: 15px; background: rgba(239,238,233,.58); border: 1px solid var(--border); }
+.copilot-message { display: grid; grid-template-columns: 36px minmax(0,1fr); gap: 10px; align-items: start; max-width: 900px; }
+.copilot-message > span { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: #171817; color: white; font-size: 9px; font-weight: 800; }
+.copilot-message.user { justify-self: end; width: min(760px,94%); }
+.copilot-message.user > span { background: #7267f0; }
+.copilot-message p { margin: 0; padding: 11px 13px; border-radius: 12px; background: rgba(255,255,255,.84); border: 1px solid rgba(24,25,24,.06); white-space: pre-wrap; font-size: 12px; line-height: 1.6; }
+.copilot-message.user p { background: rgba(114,103,240,.08); }
+.copilot-form { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; align-items: end; margin-top: 12px; }
+.copilot-form textarea { margin: 0; }
+.copilot-form .btn { min-width: 120px; }
+
+@media (max-width: 1050px) {
+  .studio-grid { grid-template-columns: 1fr; }
+  .studio-builder { position: static; }
+  .studio-preview { min-height: 0; }
+}
+@media (max-width: 760px) {
+  .studio-form-grid { grid-template-columns: 1fr; }
+  .studio-actions, .copilot-form { display: grid; grid-template-columns: 1fr; }
+  .studio-actions .btn, .copilot-form .btn { width: 100%; }
+  .studio-timing > div { display: grid; }
+  .copilot-message { grid-template-columns: 30px minmax(0,1fr); }
+  .copilot-message > span { width: 28px; height: 28px; }
+}
