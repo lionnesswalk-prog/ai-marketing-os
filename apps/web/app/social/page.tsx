@@ -102,6 +102,13 @@ export default async function SocialPage({
       <section>
         <div className="section-head"><div><p className="eyebrow">PUBLISHING QUEUE</p><h2>Current content</h2></div><span className="pill">{scheduled.length} posts</span></div>
         <div className="social-queue-grid">
+          {!scheduled.length && (
+            <div className="card empty">
+              <p className="eyebrow">NO CONTENT YET</p>
+              <h3>Create your first social post.</h3>
+              <p className="muted">Use the publisher above to save a draft, schedule content, or publish to a connected channel.</p>
+            </div>
+          )}
           {scheduled.map((post) => (
             <article className="card social-queue-card" key={post.id}>
               <div className="meta-row">

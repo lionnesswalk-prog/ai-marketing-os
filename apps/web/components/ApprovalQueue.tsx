@@ -51,7 +51,14 @@ export function ApprovalQueue({ initial }: { initial: ApprovalView[] }) {
           </div>
         </article>
       ))}
-      {!items.length && <div className="card"><p>No approval requests.</p></div>}
+      {!items.length && (
+        <div className="card empty">
+          <p className="eyebrow">ALL CLEAR</p>
+          <h3>No approval requests waiting.</h3>
+          <p className="muted">Spend-impacting recommendations will appear here when a campaign action needs human approval.</p>
+          <a className="text-link" href="/campaigns">Open campaigns →</a>
+        </div>
+      )}
     </div>
   );
 }

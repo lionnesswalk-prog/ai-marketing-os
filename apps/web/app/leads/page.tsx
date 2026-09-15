@@ -11,6 +11,14 @@ export default async function Leads() {
       <h1>Leads & customer conversations</h1>
       <p className="muted large">The inquiry agent drafts replies from verified facts and refuses to invent stock, delivery, discount or exclusivity claims.</p>
       <div className="stack">
+        {!leads.length && (
+          <div className="card empty">
+            <p className="eyebrow">NO INQUIRIES YET</p>
+            <h3>Lead conversations will appear here.</h3>
+            <p className="muted">Connect supported lead sources or import campaign/customer inquiry data to start using safe AI reply drafting.</p>
+            <a className="text-link" href="/social">Manage connections →</a>
+          </div>
+        )}
         {leads.map((lead) => <article className="card" key={lead.id}>
           <div className="row-between top-align">
             <div className="lead-main">
