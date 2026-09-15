@@ -10,6 +10,7 @@ import { schedulerCadenceLabel, schedulerDurableEnabled, schedulerSharedSecretRe
 import { emailDeliveryConfigured, emailProviderLabel } from "./email";
 import { aiRateLimitLabel } from "./ai-rate-limit";
 import { getSignupMode } from "./auth-service";
+import { effectiveAuthMode, effectiveDataBackend } from "./runtime-mode";
 
 export type PlatformCheck = {
   key: string;
@@ -58,13 +59,13 @@ export async function getPlatformReadiness() {
     {
       key: "database",
       label: "Production database",
-      ready: process.env.DATA_BACKEND === "postgres" && Boolean(process.env.DATABASE_URL),
+      ready: effectiveDataBackend() === "postgres" && Boolean(process.env.DATABASE_URL),
       detail: "PostgreSQL is required for isolated client workspaces, users and provider connections.",
     },
     {
       key: "auth",
       label: "Database authentication",
-      ready: process.env.AUTH_MODE === "database",
+      ready: effectiveAuthMode() === "database",
       detail: "Production users and workspace access must use database-backed authentication.",
     },
     {
