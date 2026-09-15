@@ -6,10 +6,12 @@ export function LeadDraftButton({ message }: { message: string }) {
   const [result, setResult] = useState<{ reply: string; missingFacts: string[]; requiresHuman: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function draft() {
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       const response = await fetch("/api/inquiries/draft", {
         method: "POST",
@@ -19,6 +21,7 @@ export function LeadDraftButton({ message }: { message: string }) {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Unable to draft reply.");
       setResult(body.draft);
+      setNotice(body.warning || (body.mode === "mock" ? "Safe built-in reply mode is active." : ""));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to draft reply.");
     } finally {
@@ -29,6 +32,7 @@ export function LeadDraftButton({ message }: { message: string }) {
   return (
     <div className="lead-draft">
       <button className="btn secondary" onClick={draft} disabled={busy}>{busy ? "Drafting…" : "Draft safe reply"}</button>
+      {notice && <div className="profile-notice">{notice}</div>}
       {error && <div className="error-box">{error}</div>}
       {result && <div className="draft-box"><strong>AI draft</strong><p>{result.reply}</p>{result.missingFacts.length > 0 && <p className="muted">Needs verification: {result.missingFacts.join(", ")}</p>}{result.requiresHuman && <span className="approval-tag">Human handoff</span>}</div>}
     </div>
