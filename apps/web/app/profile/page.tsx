@@ -7,6 +7,7 @@ import {
   updateAccountProfile,
 } from "../../lib/auth-service";
 import { deleteAccountAndOwnedData, sendVerificationEmail } from "../../lib/account-security";
+import { PasswordField } from "../../components/PasswordField";
 
 function roleLabel(role: string) {
   return role.split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
@@ -172,10 +173,10 @@ export default async function ProfilePage({
             </div>
             <p className="muted">Use at least 8 characters and choose a password you do not use elsewhere.</p>
             <form action={changePasswordAction} className="profile-form password-form">
-              <label>Current password<input name="currentPassword" type="password" required autoComplete="current-password" /></label>
+              <PasswordField label="Current password" name="currentPassword" autoComplete="current-password" required />
               <div className="profile-readonly-grid">
-                <label>New password<input name="newPassword" type="password" minLength={8} required autoComplete="new-password" /></label>
-                <label>Confirm password<input name="confirmPassword" type="password" minLength={8} required autoComplete="new-password" /></label>
+                <PasswordField label="New password" name="newPassword" autoComplete="new-password" minLength={8} required />
+                <PasswordField label="Confirm password" name="confirmPassword" autoComplete="new-password" minLength={8} required />
               </div>
               <div className="profile-actions"><button className="btn secondary" type="submit">Update password</button></div>
             </form>
