@@ -5,6 +5,7 @@ import { hashPassword } from "./password";
 import { getPrisma } from "./prisma";
 import { recordAuditEvent } from "./audit";
 import { assertBillingMemberCapacity } from "./billing";
+import { isDatabaseMode } from "./runtime-mode";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const ROLES: AppRole[] = ["admin", "marketing_manager", "sales", "viewer"];
@@ -36,7 +37,7 @@ export type PublicInviteView = {
 };
 
 function databaseReady() {
-  return process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres";
+  return isDatabaseMode();
 }
 
 function normalizeEmail(email: string) {
