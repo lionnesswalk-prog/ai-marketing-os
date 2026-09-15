@@ -2,6 +2,9 @@ name: Production Smoke
 
 on:
   workflow_dispatch: {}
+  workflow_run:
+    workflows: ["CI Build"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -13,6 +16,7 @@ concurrency:
 
 jobs:
   smoke:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -33,7 +37,7 @@ jobs:
           VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: |
           set -euo pipefail
-          base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
+          base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os-ashy.vercel.app}"
           base="${base%/}"
           headers=(-H "x-vercel-trusted-oidc-idp-token: $VERCEL_TRUSTED_OIDC_TOKEN")
           if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
@@ -72,7 +76,7 @@ jobs:
           VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: |
           set -euo pipefail
-          base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
+          base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os-ashy.vercel.app}"
           base="${base%/}"
           headers=(-H "x-vercel-trusted-oidc-idp-token: $VERCEL_TRUSTED_OIDC_TOKEN")
           if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
@@ -87,7 +91,7 @@ jobs:
           VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: |
           set -euo pipefail
-          base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}"
+          base="${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os-ashy.vercel.app}"
           base="${base%/}"
           headers=(-H "x-vercel-trusted-oidc-idp-token: $VERCEL_TRUSTED_OIDC_TOKEN")
           if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
