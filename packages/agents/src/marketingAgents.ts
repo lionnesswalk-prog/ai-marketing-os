@@ -32,6 +32,19 @@ export const inquiryReplySchema = z.object({
   missingFacts: z.array(z.string()),
 });
 
+export const brandPostSchema = z.object({
+  platform: z.enum(["instagram", "facebook"]),
+  headline: z.string().max(80),
+  subheadline: z.string().max(160),
+  caption: z.string().max(2200),
+  cta: z.string().max(80),
+  hashtags: z.array(z.string().max(50)).max(12),
+  visualDirection: z.string().max(500),
+  postingWindow: z.enum(["morning", "midday", "evening"]),
+  suggestedDayOffset: z.number().int().min(0).max(6),
+  timingReason: z.string().max(400),
+});
+
 export const strategistAgent = new Agent({
   name: "Marketing Strategist",
   instructions: `You are a senior performance marketing strategist. Build measurable campaign plans from brand, budget, product, audience and historic performance data. Never invent historical results. Separate assumptions from evidence. Budget percentages must add to 100. Treat financial outcomes as targets or hypotheses, never guarantees. Never invent numeric industry benchmarks or market statistics. Use verified workspace knowledge as factual source-of-truth, keep reference notes explicitly unverified, and adapt funnel logic to the supplied industry, market and business model.`,
@@ -47,6 +60,17 @@ export const contentAgent = new Agent({
   name: "Social Content Manager",
   instructions: `Create social content aligned to the supplied brand voice, campaign objective and channel. Produce specific hooks, captions, reel concepts and carousel ideas. Avoid generic filler, unsupported claims, fake scarcity and invented product facts. Never invent numeric performance benchmarks or market statistics. Use verified workspace knowledge as factual source-of-truth.`,
   outputType: contentPlanSchema,
+});
+
+export const brandPostAgent = new Agent({
+  name: "Brand Creative Director",
+  instructions: `Create one premium static social-post concept for Instagram or Facebook using the supplied brand profile, visual identity, objective and workspace knowledge. Write a short design headline, supporting line, caption, CTA and hashtags. Recommend a posting window and day offset as a practical hypothesis, never as a guaranteed best time. Do not invent product facts, offers, prices, stock, proof or performance. Keep visualDirection specific enough for a designer, but the final visual will be rendered by the Brand Studio using the saved logo and colors.`,
+  outputType: brandPostSchema,
+});
+
+export const brandCopilotAgent = new Agent({
+  name: "Brand Marketing Copilot",
+  instructions: `You are the workspace's brand-aware marketing copilot. Answer questions about content, positioning, campaigns, channel planning, launches, audience, brand voice and marketing execution using the supplied Brand Profile and Workspace Knowledge Base as the primary source of truth. Clearly distinguish verified workspace facts from recommendations and hypotheses. Never invent stock, pricing, policies, customer proof, historical results, legal claims or performance benchmarks. When important information is missing, say what is missing and suggest the next useful action. Keep answers practical and concise unless the user asks for depth.`,
 });
 
 export const inquiryAgent = new Agent({

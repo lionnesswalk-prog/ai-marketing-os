@@ -35,6 +35,9 @@ async function onboardingAction(formData: FormData) {
       proofPoints: current.proofPoints,
       avoid: current.avoid || "Unsupported claims\nFake urgency\nInvented product facts",
       notes: current.notes,
+      logoUrl: current.logoUrl,
+      primaryColor: current.primaryColor,
+      secondaryColor: current.secondaryColor,
     });
   } catch (error) {
     console.error("onboarding save failed", error);

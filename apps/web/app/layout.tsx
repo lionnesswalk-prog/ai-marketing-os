@@ -12,6 +12,7 @@ import "./team.css";
 import "./platform.css";
 import "./security.css";
 import "./brand.css";
+import "./studio.css";
 import "./billing.css";
 
 export const metadata = {

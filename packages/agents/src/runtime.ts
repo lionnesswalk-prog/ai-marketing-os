@@ -1,5 +1,5 @@
 import { run } from "@openai/agents";
-import { contentAgent, inquiryAgent, strategistAgent } from "./marketingAgents";
+import { brandCopilotAgent, brandPostAgent, contentAgent, inquiryAgent, strategistAgent } from "./marketingAgents";
 
 export type StrategyInput = {
   brandName: string;
@@ -16,6 +16,21 @@ export type ContentPlanInput = {
   objective: string;
   brandVoice: string;
   brandContext?: string;
+};
+
+export type BrandPostInput = {
+  brandName: string;
+  theme: string;
+  objective: string;
+  product?: string;
+  preferredPlatform?: "instagram" | "facebook";
+  brandContext?: string;
+};
+
+export type BrandCopilotInput = {
+  question: string;
+  brandContext: string;
+  recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
 };
 
 export type AiExecutionMode = "live" | "mock" | "fallback";
@@ -123,6 +138,86 @@ export async function draftInquiryReply(input: {
       warning: fallbackWarning(),
     };
   }
+}
+
+
+export async function buildBrandPost(input: BrandPostInput) {
+  if (!liveAiEnabled()) {
+    return { output: mockBrandPost(input), mode: "mock" as const };
+  }
+
+  try {
+    const result = await run(brandPostAgent, JSON.stringify({
+      task: "Create one ready-to-render branded static social post.",
+      ...input,
+      rules: [
+        "Use saved brand context and verified workspace knowledge as source-of-truth.",
+        "If preferredPlatform is supplied, use it.",
+        "Keep headline concise enough for a square creative.",
+        "Timing is a recommendation hypothesis, not a guarantee.",
+        "Do not invent facts, offers, prices, stock, policies, proof or performance.",
+      ],
+    }));
+    return { output: result.finalOutput, mode: "live" as const };
+  } catch (error) {
+    console.error("live AI brand post generation failed", error);
+    return {
+      output: mockBrandPost(input),
+      mode: "fallback" as const,
+      warning: fallbackWarning(),
+    };
+  }
+}
+
+export async function answerBrandCopilot(input: BrandCopilotInput) {
+  const fallback = mockBrandCopilot(input);
+  if (!liveAiEnabled()) {
+    return { output: fallback, mode: "mock" as const };
+  }
+
+  try {
+    const result = await run(brandCopilotAgent, JSON.stringify({
+      task: "Answer the user's brand/marketing question.",
+      question: input.question,
+      recentMessages: (input.recentMessages || []).slice(-10),
+      brandContext: input.brandContext,
+      rules: [
+        "Use verified workspace knowledge as factual source-of-truth.",
+        "Separate facts, recommendations and assumptions.",
+        "Do not fabricate performance benchmarks or business facts.",
+        "Give practical next actions when useful.",
+      ],
+    }));
+    return { output: String(result.finalOutput || ""), mode: "live" as const };
+  } catch (error) {
+    console.error("live Brand Copilot failed", error);
+    return { output: fallback, mode: "fallback" as const, warning: fallbackWarning() };
+  }
+}
+
+function mockBrandPost(input: BrandPostInput) {
+  const platform = input.preferredPlatform || "instagram";
+  const theme = input.theme.trim();
+  return {
+    platform,
+    headline: theme.slice(0, 64) || input.brandName,
+    subheadline: input.objective.trim().slice(0, 120) || "A focused brand story built for the right audience.",
+    caption: `${input.brandName}: ${theme}. A considered story designed to support ${input.objective.toLowerCase()} without unsupported claims.`,
+    cta: "Discover more",
+    hashtags: [input.brandName.replace(/[^a-z0-9]/gi, ""), "brandstory", "discovermore"].filter(Boolean).map((tag) => `#${tag}`),
+    visualDirection: "Use the saved primary color as the main field, the secondary color as a restrained accent, generous negative space and the saved logo with clear breathing room.",
+    postingWindow: "evening" as const,
+    suggestedDayOffset: 1,
+    timingReason: "Start with an evening test window and compare engagement against the brand's own future post history.",
+  };
+}
+
+function mockBrandCopilot(input: BrandCopilotInput) {
+  return [
+    "Based on the saved brand context, I can help with this as a working recommendation.",
+    `Question: ${input.question}`,
+    "Use the Brand Profile and verified Knowledge items as the factual base. If this decision depends on product, pricing, inventory, policy or performance data that is not saved yet, add that information to Knowledge before treating the recommendation as final.",
+  ].join("\n\n");
 }
 
 function mockContentPlan(input: ContentPlanInput) {
