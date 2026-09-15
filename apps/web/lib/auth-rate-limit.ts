@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import { getPrisma } from "./prisma";
+import { isDatabaseMode } from "./runtime-mode";
 
 const WINDOW_MS = 15 * 60 * 1000;
 const BLOCK_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
 function enabled() {
-  return process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres";
+  return isDatabaseMode();
 }
 
 function hash(kind: string, value: string) {

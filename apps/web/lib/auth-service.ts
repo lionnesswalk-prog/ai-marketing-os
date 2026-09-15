@@ -3,6 +3,7 @@ import type { AppRole, AppSession } from "./auth";
 import { createSessionToken, readSessionToken, setSession } from "./auth";
 import { hashPassword, verifyPassword } from "./password";
 import { getPrisma } from "./prisma";
+import { effectiveAuthMode } from "./runtime-mode";
 
 const PREVIEW_ACCOUNT_COOKIE = "amos_preview_account";
 const PREVIEW_ACCOUNT_TTL = 60 * 60 * 24 * 30;
@@ -25,11 +26,7 @@ export type AccountProfile = {
 };
 
 function authMode() {
-  if (process.env.AUTH_MODE === "database") return "database";
-  if (process.env.VERCEL_ENV === "production" && process.env.ALLOW_PREVIEW_AUTH_IN_PRODUCTION !== "true") {
-    return "database";
-  }
-  return "preview";
+  return effectiveAuthMode();
 }
 
 export type SignupMode = "open" | "closed" | "first_user";

@@ -2,6 +2,7 @@ import type { AppSession } from "./auth";
 import { getPrisma } from "./prisma";
 import { canEncryptIntegrations } from "./integration-crypto";
 import { canViewSecurity } from "./access-policy";
+import { isDatabaseMode } from "./runtime-mode";
 
 export type AuditEventView = {
   id: string;
@@ -35,7 +36,7 @@ export type SecurityOverview = {
 };
 
 function databaseReady() {
-  return process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres";
+  return isDatabaseMode();
 }
 
 function payloadObject(value: unknown): Record<string, unknown> {

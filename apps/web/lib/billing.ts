@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import type { AppSession } from "./auth";
 import { getPrisma } from "./prisma";
 import { recordAuditEvent } from "./audit";
+import { isPostgresBackend } from "./runtime-mode";
 
 export type BillingPlanKey = "starter" | "growth" | "scale";
 
@@ -32,7 +33,7 @@ export type BillingPlan = {
 };
 
 function usePostgres() {
-  return process.env.DATA_BACKEND === "postgres";
+  return isPostgresBackend();
 }
 
 function positiveInt(value: string | undefined) {

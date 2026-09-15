@@ -1,7 +1,12 @@
+import { redirect } from "next/navigation";
 import { getAuthMode } from "../../lib/auth-service";
+import { getSession } from "../../lib/auth";
 import { SignupForm } from "../../components/SignupForm";
 
-export default function SignupPage() {
+export default async function SignupPage() {
+  const existingSession = await getSession();
+  if (existingSession) redirect("/dashboard");
+
   const mode = getAuthMode();
 
   return (

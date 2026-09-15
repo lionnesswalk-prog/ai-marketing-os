@@ -41,6 +41,15 @@ try {
   assert.equal(ready.checks.externalSchedulerDeclared, true);
   assert.equal(ready.checks.aiRuntime, true);
 
+  delete process.env.AUTH_MODE;
+  delete process.env.DATA_BACKEND;
+  const productionDefaults = getRuntimeHealthSnapshot();
+  assert.equal(productionDefaults.authMode, "database");
+  assert.equal(productionDefaults.dataBackend, "postgres");
+  assert.equal(productionDefaults.checks.authSecret, true);
+  assert.equal(productionDefaults.checks.databaseConfigured, true);
+  assert.equal(productionDefaults.checks.productionModeSafe, true);
+
   process.env.AUTH_MODE = "preview";
   process.env.DATA_BACKEND = "memory";
   const unsafeMode = getRuntimeHealthSnapshot();

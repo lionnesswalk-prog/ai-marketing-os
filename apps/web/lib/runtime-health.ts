@@ -1,5 +1,6 @@
 import { canEncryptIntegrations } from "./integration-crypto";
 import { schedulerAuthReady, schedulerExternalEnabled } from "./scheduler-config";
+import { effectiveAuthMode, effectiveDataBackend, runtimeEnvironment } from "./runtime-mode";
 
 export type RuntimeHealthSnapshot = {
   environment: string;
@@ -19,9 +20,9 @@ export type RuntimeHealthSnapshot = {
 };
 
 export function getRuntimeHealthSnapshot(): RuntimeHealthSnapshot {
-  const environment = process.env.VERCEL_ENV || process.env.NODE_ENV || "unknown";
-  const authMode = process.env.AUTH_MODE || (environment === "production" ? "database" : "preview");
-  const dataBackend = process.env.DATA_BACKEND || (environment === "production" ? "postgres" : "memory");
+  const environment = runtimeEnvironment();
+  const authMode = effectiveAuthMode();
+  const dataBackend = effectiveDataBackend();
   const databaseRequired = dataBackend === "postgres";
   const authSecretRequired = authMode === "database";
   const productionModeSafe =

@@ -6,9 +6,10 @@ import { getPrisma } from "./prisma";
 import { getSession } from "./auth";
 import { recordAuditEvent } from "./audit";
 import { brandIsWorkspaceScope } from "./tenant-scope";
+import { isPostgresBackend } from "./runtime-mode";
 
 function usePostgres() {
-  return process.env.DATA_BACKEND === "postgres";
+  return isPostgresBackend();
 }
 
 async function databaseWorkspaceId() {
