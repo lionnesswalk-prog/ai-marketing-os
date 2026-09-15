@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { getPrisma } from "./prisma";
 import { getSession } from "./auth";
 import { canEncryptIntegrations, decryptIntegrationSecret, encryptIntegrationSecret } from "./integration-crypto";
+import { isPostgresBackend } from "./runtime-mode";
 
 type XTokenResponse = {
   token_type?: string;
@@ -28,7 +29,7 @@ export type XConnection = {
 };
 
 function usePostgres() {
-  return process.env.DATA_BACKEND === "postgres";
+  return isPostgresBackend();
 }
 
 function storageReady() {
