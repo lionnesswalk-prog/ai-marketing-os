@@ -1,6 +1,7 @@
 import type { AppSession } from "./auth";
 import { canManageMarketing } from "./auth";
 import { getPrisma } from "./prisma";
+import { isDatabaseMode } from "./runtime-mode";
 import { recordAuditEvent } from "./audit";
 import { buildIndustryAIContext } from "./industry-intelligence";
 
@@ -23,7 +24,7 @@ export type BrandProfile = {
 export type BrandProfileInput = Omit<BrandProfile, "brandId">;
 
 function databaseReady() {
-  return process.env.AUTH_MODE === "database" && process.env.DATA_BACKEND === "postgres";
+  return isDatabaseMode();
 }
 
 function jsonObject(value: unknown): Record<string, unknown> {
