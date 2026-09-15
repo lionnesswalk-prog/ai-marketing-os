@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { schedulerBatchSize } from "../../../../lib/scheduler-config";
 import { getPrisma } from "../../../../lib/prisma";
+import { isPostgresBackend } from "../../../../lib/runtime-mode";
 import {
   matchesSchedulerSharedSecret,
   verifyGitHubSchedulerOidcToken,
@@ -27,7 +28,7 @@ async function authorize(request: Request) {
 }
 
 async function startInvocation(source: string) {
-  if (process.env.DATA_BACKEND !== "postgres") return null;
+  if (!isPostgresBackend()) return null;
   try {
     return await getPrisma().schedulerInvocation.create({
       data: { source, status: "running" },
