@@ -55,6 +55,7 @@ function friendlyPublishError(error: unknown, platformName: string) {
   if (message === "YOUTUBE_MEDIA_NOT_VIDEO") return "The YouTube media URL must point to a video file.";
   if (message === "YOUTUBE_MEDIA_TOO_LARGE_FOR_SERVER_TRANSFER") return "This YouTube video is too large for the current server-transfer limit and stayed in the queue.";
   if (message === "PINTEREST_BOARD_REQUIRED") return "Choose a Pinterest board before publishing.";
+  if (message === "PINTEREST_BOARD_NOT_ACCESSIBLE") return "The selected Pinterest board is no longer accessible. Reload the board list and choose another board.";
   if (message === "PINTEREST_MEDIA_REQUIRED") return "Pinterest needs a public image URL before publishing.";
   if (message === "PINTEREST_VIDEO_UPLOAD_NOT_READY") return "Pinterest video Pin upload is not enabled yet; the post stayed safely in the queue.";
   if (message.includes("url_ownership_unverified")) return "TikTok requires the media URL domain or URL prefix to be verified in the TikTok developer app.";
