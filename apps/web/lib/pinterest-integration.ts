@@ -225,9 +225,14 @@ async function refreshDatabaseToken(connectionId: string, refreshToken: string) 
 
   await prisma.integrationConnection.update({
     where: { id: connectionId },
-    data: { metadataJson },
+    data: { metadataJson, status: "connected" },
   });
-  return { accessToken: token.access_token, refreshToken: nextRefresh };
+  return {
+    accessToken: token.access_token,
+    refreshToken: nextRefresh,
+    expiresAt: typeof metadataJson.expiresAt === "string" ? metadataJson.expiresAt : undefined,
+    refreshTokenExpiresAt: typeof metadataJson.refreshTokenExpiresAt === "string" ? metadataJson.refreshTokenExpiresAt : undefined,
+  };
 }
 
 export async function getPinterestConnection(brandId?: string): Promise<PinterestConnection | null> {
@@ -255,12 +260,49 @@ export async function getPinterestConnection(brandId?: string): Promise<Pinteres
   let accessToken = decryptIntegrationSecret(encryptedAccess);
   const encryptedRefresh = typeof meta.refreshToken === "string" ? meta.refreshToken : undefined;
   let refreshToken = encryptedRefresh ? decryptIntegrationSecret(encryptedRefresh) : undefined;
-  const expiresAt = typeof meta.expiresAt === "string" ? meta.expiresAt : undefined;
+  let expiresAt = typeof meta.expiresAt === "string" ? meta.expiresAt : undefined;
+  let refreshTokenExpiresAt = typeof meta.refreshTokenExpiresAt === "string" ? meta.refreshTokenExpiresAt : undefined;
 
-  if (expiresAt && refreshToken && new Date(expiresAt).getTime() < Date.now() + 60_000) {
-    const refreshed = await refreshDatabaseToken(row.id, refreshToken);
-    accessToken = refreshed.accessToken;
-    refreshToken = refreshed.refreshToken;
+  const accessExpiryMs = expiresAt ? Date.parse(expiresAt) : Number.NaN;
+  const refreshExpiryMs = refreshTokenExpiresAt ? Date.parse(refreshTokenExpiresAt) : Number.NaN;
+  const accessExpiring = Number.isFinite(accessExpiryMs) && accessExpiryMs < Date.now() + 60_000;
+  const refreshExpired = Number.isFinite(refreshExpiryMs) && refreshExpiryMs <= Date.now();
+
+  if (accessExpiring && (!refreshToken || refreshExpired)) {
+    await prisma.integrationConnection.update({
+      where: { id: row.id },
+      data: {
+        status: "expired",
+        metadataJson: {
+          ...meta,
+          expiredAt: new Date().toISOString(),
+        },
+      },
+    });
+    return null;
+  }
+
+  if (accessExpiring && refreshToken) {
+    try {
+      const refreshed = await refreshDatabaseToken(row.id, refreshToken);
+      accessToken = refreshed.accessToken;
+      refreshToken = refreshed.refreshToken;
+      expiresAt = refreshed.expiresAt;
+      refreshTokenExpiresAt = refreshed.refreshTokenExpiresAt;
+    } catch (error) {
+      console.error("Pinterest token refresh failed; reconnect required", error);
+      await prisma.integrationConnection.update({
+        where: { id: row.id },
+        data: {
+          status: "expired",
+          metadataJson: {
+            ...meta,
+            refreshFailedAt: new Date().toISOString(),
+          },
+        },
+      }).catch((updateError) => console.error("Pinterest expired status update failed", updateError));
+      return null;
+    }
   }
 
   return {
@@ -273,22 +315,39 @@ export async function getPinterestConnection(brandId?: string): Promise<Pinteres
   };
 }
 
+async function fetchPinterestBoards(accessToken: string): Promise<PinterestBoard[]> {
+  const boards: PinterestBoard[] = [];
+  let bookmark: string | undefined;
+
+  for (let page = 0; page < 5; page += 1) {
+    const url = new URL("https://api.pinterest.com/v5/boards");
+    url.searchParams.set("page_size", "100");
+    if (bookmark) url.searchParams.set("bookmark", bookmark);
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+    const body = await response.json().catch(() => ({})) as {
+      items?: PinterestBoard[];
+      bookmark?: string;
+      message?: string;
+    };
+    if (!response.ok) throw new Error(body.message || `Pinterest boards lookup failed (${response.status})`);
+
+    boards.push(...(body.items || []).filter((board) => Boolean(board.id && board.name)));
+    bookmark = typeof body.bookmark === "string" && body.bookmark ? body.bookmark : undefined;
+    if (!bookmark) break;
+  }
+
+  const unique = new Map(boards.map((board) => [board.id, board]));
+  return Array.from(unique.values());
+}
+
 export async function listPinterestBoards(brandId?: string): Promise<PinterestBoard[]> {
   const connection = await getPinterestConnection(brandId);
   if (!connection) throw new Error("PINTEREST_NOT_CONNECTED");
-
-  const url = new URL("https://api.pinterest.com/v5/boards");
-  url.searchParams.set("page_size", "100");
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${connection.accessToken}` },
-    cache: "no-store",
-  });
-  const body = await response.json().catch(() => ({})) as {
-    items?: PinterestBoard[];
-    message?: string;
-  };
-  if (!response.ok) throw new Error(body.message || `Pinterest boards lookup failed (${response.status})`);
-  return (body.items || []).filter((board) => Boolean(board.id && board.name));
+  return fetchPinterestBoards(connection.accessToken);
 }
 
 function pinDescription(input: { caption: string; hashtags?: string; cta?: string }) {
@@ -315,6 +374,11 @@ export async function publishPinterest(input: {
   if (!input.mediaUrl) throw new Error("PINTEREST_MEDIA_REQUIRED");
   if (["video", "reel", "short", "story", "carousel"].includes(input.contentType)) {
     throw new Error("PINTEREST_VIDEO_UPLOAD_NOT_READY");
+  }
+
+  const boards = await fetchPinterestBoards(connection.accessToken);
+  if (!boards.some((board) => board.id === input.boardId)) {
+    throw new Error("PINTEREST_BOARD_NOT_ACCESSIBLE");
   }
 
   const response = await fetch("https://api.pinterest.com/v5/pins", {
