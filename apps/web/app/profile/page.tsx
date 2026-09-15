@@ -188,9 +188,16 @@ export default async function ProfilePage({
               <span className="profile-section-number">03</span>
             </div>
             <p className="muted">If you are the only member of a workspace, deleting your account also deletes that workspace and its brand data. Shared workspaces remain and your access is removed.</p>
+            {session.platformAdmin && (
+              <div className="profile-notice">Platform administrator accounts cannot be deleted from this screen.</div>
+            )}
             <form action={deleteAccountAction} className="profile-form">
-              <label>Type DELETE to confirm<input name="confirmation" autoComplete="off" placeholder="DELETE" /></label>
-              <div className="profile-actions"><button className="btn secondary" type="submit">Delete my account and owned data</button></div>
+              <label>Type DELETE to confirm<input name="confirmation" autoComplete="off" placeholder="DELETE" disabled={Boolean(session.platformAdmin)} /></label>
+              <div className="profile-actions">
+                <button className="btn danger" type="submit" disabled={Boolean(session.platformAdmin)}>
+                  Delete my account and owned data
+                </button>
+              </div>
             </form>
           </section>
         </div>
