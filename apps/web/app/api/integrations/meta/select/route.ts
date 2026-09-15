@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { canManageIntegrations, getSession } from "../../../../../../lib/auth";
-import { finalizePendingMetaPage } from "../../../../../../lib/meta-integration";
+import { canManageIntegrations, getSession } from "../../../../../lib/auth";
+import { finalizePendingMetaPage } from "../../../../../lib/meta-integration";
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
