@@ -31,12 +31,12 @@ export async function POST(request: Request) {
     await consumeAiRequest(session.workspaceId, "strategy");
     const profile = await getCurrentBrandProfile(session);
     const knowledgeContext = await buildWorkspaceKnowledgeContext(session);
-    const plan = await buildStrategy({
+    const result = await buildStrategy({
       ...parsed.data,
       brandName: profile.name,
       brandContext: [buildBrandAIContext(profile), knowledgeContext].join("\n\n"),
     });
-    return NextResponse.json({ mode: process.env.AI_MODE === "live" ? "live" : "mock", plan });
+    return NextResponse.json({ mode: result.mode, plan: result.output, warning: result.warning });
   } catch (error) {
     if (error instanceof Error && error.message === "AI_RATE_LIMITED") {
       return NextResponse.json({ error: "Free beta AI usage limit reached for this hour. Try again shortly." }, { status: 429 });
