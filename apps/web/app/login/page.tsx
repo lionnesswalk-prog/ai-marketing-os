@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { authenticateAccount, getAuthMode } from "../../lib/auth-service";
-import { setSession } from "../../lib/auth";
+import { getSession, setSession } from "../../lib/auth";
 import { assertAuthAllowed, authIpFromHeaders, clearAuthAttempts, loginThrottleKeysFromValues, recordAuthAttempt } from "../../lib/auth-rate-limit";
 
 function errorMessage(code?: string) {
@@ -59,10 +59,16 @@ export default async function LoginPage({
 }: {
   searchParams?: Promise<{ error?: string; invite?: string; next?: string; reset?: string }>;
 }) {
-  const mode = getAuthMode();
   const params = searchParams ? await searchParams : undefined;
-  const message = errorMessage(params?.error);
   const next = safeNext(params?.next ?? "/dashboard");
+  const existingSession = await getSession();
+  if (existingSession) {
+    if (params?.invite) redirect("/invite/" + encodeURIComponent(params.invite));
+    redirect(next);
+  }
+
+  const mode = getAuthMode();
+  const message = errorMessage(params?.error);
 
   return (
     <div className="auth-card">
