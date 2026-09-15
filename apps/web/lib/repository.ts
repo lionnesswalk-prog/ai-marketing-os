@@ -346,10 +346,16 @@ export async function listApprovals(): Promise<ApprovalView[]> {
   }));
 }
 
-export async function decideApproval(id: string, decision: "approved" | "rejected", decidedBy: string) {
+export async function decideApproval(
+  id: string,
+  decision: "approved" | "rejected",
+  decidedBy: string,
+  actorId?: string,
+) {
   if (!usePostgres()) {
     const approval = memoryStore.approvals.find((item) => item.id === id);
     if (!approval) return null;
+    if (approval.status !== "pending") throw new Error("APPROVAL_ALREADY_DECIDED");
     approval.status = decision;
     approval.decidedAt = new Date().toISOString();
     approval.decidedBy = decidedBy;
@@ -358,30 +364,37 @@ export async function decideApproval(id: string, decision: "approved" | "rejecte
 
   const workspaceId = await databaseWorkspaceId();
   const prisma = getPrisma();
-  const existing = await prisma.approval.findFirst({ where: { id, ...brandIsWorkspaceScope(workspaceId) } });
-  if (!existing) return null;
 
-  const approval = await prisma.approval.update({
-    where: { id },
-    data: { status: decision, decidedAt: new Date(), decidedBy },
-    include: { action: true },
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.approval.findFirst({
+      where: { id, ...brandIsWorkspaceScope(workspaceId) },
+    });
+    if (!existing) return null;
+    if (existing.status !== "pending") throw new Error("APPROVAL_ALREADY_DECIDED");
+
+    const decidedAt = new Date();
+    const approval = await tx.approval.update({
+      where: { id },
+      data: { status: decision, decidedAt, decidedBy },
+      include: { action: true },
+    });
+    await tx.optimizationAction.update({
+      where: { id: approval.actionId },
+      data: { status: decision === "approved" ? "approved" : "rejected" },
+    });
+    await tx.auditLog.create({
+      data: {
+        brandId: approval.brandId,
+        actorType: "workspace_user",
+        actorId: actorId || decidedBy,
+        action: `approval.${decision}`,
+        entityType: "optimization_action",
+        entityId: approval.actionId,
+        payload: { approvalId: id, decidedBy },
+      },
+    });
+    return approval;
   });
-  await prisma.optimizationAction.update({
-    where: { id: approval.actionId },
-    data: { status: decision === "approved" ? "approved" : "rejected" },
-  });
-  await prisma.auditLog.create({
-    data: {
-      brandId: approval.brandId,
-      actorType: "user",
-      actorId: decidedBy,
-      action: `approval.${decision}`,
-      entityType: "optimization_action",
-      entityId: approval.actionId,
-      payload: { approvalId: id },
-    },
-  });
-  return approval;
 }
 
 export async function dashboardData(): Promise<DashboardView> {
