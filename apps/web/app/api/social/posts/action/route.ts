@@ -3,12 +3,14 @@ import { z } from "zod";
 import { canManageMarketing, getSession } from "../../../../../lib/auth";
 import {
   cancelSocialSchedule,
+  publishDraftSocialPostNow,
   rescheduleSocialPost,
   retrySocialPostNow,
 } from "../../../../../lib/social-post-actions";
 import { startScheduledSocialPostWorkflow } from "../../../../../lib/social-workflow";
 
 const requestSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("publish"), postId: z.string().min(1) }),
   z.object({ action: z.literal("retry"), postId: z.string().min(1) }),
   z.object({ action: z.literal("cancel"), postId: z.string().min(1) }),
   z.object({
@@ -22,6 +24,8 @@ function friendlyError(error: unknown) {
   const message = error instanceof Error ? error.message : "UNKNOWN";
   if (message === "SOCIAL_POST_NOT_FOUND") return { status: 404, text: "Post not found." };
   if (message === "SOCIAL_POST_NOT_FAILED") return { status: 409, text: "Only failed posts can be retried." };
+  if (message === "SOCIAL_POST_NOT_DRAFT") return { status: 409, text: "Only draft posts can be published immediately." };
+  if (message === "SOCIAL_POST_PUBLISH_CONFLICT") return { status: 409, text: "This draft is already being published." };
   if (message === "SOCIAL_POST_NOT_SCHEDULED") return { status: 409, text: "This post is no longer scheduled." };
   if (message === "SOCIAL_POST_NOT_RESCHEDULABLE") return { status: 409, text: "This post cannot be rescheduled in its current state." };
   if (message === "SOCIAL_POST_SCHEDULE_INVALID") return { status: 400, text: "Choose a future date and time." };
@@ -41,6 +45,21 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid post action." }, { status: 400 });
 
   try {
+    if (parsed.data.action === "publish") {
+      const result = await publishDraftSocialPostNow(parsed.data.postId);
+      return NextResponse.json({
+        ok: true,
+        status: result.status,
+        message: result.preview
+          ? "Preview mode kept the draft in the portal queue."
+          : result.status === "failed"
+            ? "The provider rejected the post. It is available to review and retry."
+            : result.status === "publishing"
+              ? "Post submitted. The provider is processing it."
+              : "Post published successfully.",
+      }, { status: result.status === "failed" ? 207 : result.status === "publishing" ? 202 : 200 });
+    }
+
     if (parsed.data.action === "retry") {
       const result = await retrySocialPostNow(parsed.data.postId);
       return NextResponse.json({
