@@ -53,7 +53,7 @@ async function finishInvocation(
     error?: string;
   },
 ) {
-  if (!id || process.env.DATA_BACKEND !== "postgres") return;
+  if (!id || !isPostgresBackend()) return;
   try {
     await getPrisma().schedulerInvocation.update({
       where: { id },
