@@ -35,7 +35,7 @@ jobs:
           VERCEL_TRUSTED_OIDC_TOKEN: ${{ steps.vercel-oidc.outputs.token }}
         run: |
           set -euo pipefail
-          base="${SCHEDULER_APP_URL_OVERRIDE:-${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os.vercel.app}}"
+          base="${SCHEDULER_APP_URL_OVERRIDE:-${PRODUCTION_APP_URL_OVERRIDE:-https://ai-marketing-os-ashy.vercel.app}}"
           base="${base%/}"
           headers=(-H "x-vercel-trusted-oidc-idp-token: $VERCEL_TRUSTED_OIDC_TOKEN")
           if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
