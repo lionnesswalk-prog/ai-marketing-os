@@ -19,6 +19,9 @@ export type BrandProfile = {
   proofPoints: string;
   avoid: string;
   notes: string;
+  logoUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
 };
 
 export type BrandProfileInput = Omit<BrandProfile, "brandId">;
@@ -72,6 +75,9 @@ function profileFromBrand(brand: { id: string; name: string; voiceJson: unknown 
     proofPoints: listText(meta.proofPoints),
     avoid: listText(meta.avoid),
     notes: textValue(meta.notes),
+    logoUrl: textValue(meta.logoUrl),
+    primaryColor: textValue(meta.primaryColor) || "#171817",
+    secondaryColor: textValue(meta.secondaryColor) || "#7267f0",
   };
 }
 
@@ -91,6 +97,9 @@ export async function getCurrentBrandProfile(session: AppSession): Promise<Brand
       proofPoints: "",
       avoid: "Unsupported claims\nFake urgency\nInvented product facts",
       notes: "",
+      logoUrl: "",
+      primaryColor: "#171817",
+      secondaryColor: "#7267f0",
     };
   }
 
@@ -123,6 +132,8 @@ export function buildBrandAIContext(profile: BrandProfile) {
     profile.proofPoints ? `Verified proof points:\n${profile.proofPoints}` : "",
     profile.avoid ? `Avoid:\n${profile.avoid}` : "",
     profile.notes ? `Additional context: ${profile.notes}` : "",
+    profile.logoUrl ? `Brand logo: ${profile.logoUrl}` : "",
+    `Brand colors: ${profile.primaryColor} / ${profile.secondaryColor}`,
   ].filter(Boolean).join("\n\n");
 }
 
@@ -156,6 +167,9 @@ export async function updateBrandProfile(session: AppSession, input: BrandProfil
     proofPoints: splitLines(input.proofPoints),
     avoid: splitLines(input.avoid),
     notes: input.notes.trim(),
+    logoUrl: input.logoUrl.trim(),
+    primaryColor: input.primaryColor.trim() || "#171817",
+    secondaryColor: input.secondaryColor.trim() || "#7267f0",
     updatedAt: new Date().toISOString(),
   };
 
