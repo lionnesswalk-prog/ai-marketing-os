@@ -26,13 +26,21 @@ export default function GlobalError({
             Retry the application. If the problem remains, use the reference below when reviewing runtime logs.
           </p>
           {error.digest && <p style={{ opacity: 0.65 }}>Reference · {error.digest}</p>}
-          <button
-            type="button"
-            onClick={reset}
-            style={{ marginTop: 16, padding: "12px 18px", borderRadius: 8, border: 0, cursor: "pointer" }}
-          >
-            Retry application
-          </button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+            <button
+              type="button"
+              onClick={reset}
+              style={{ padding: "12px 18px", borderRadius: 8, border: 0, cursor: "pointer" }}
+            >
+              Retry application
+            </button>
+            <a
+              href="/dashboard"
+              style={{ padding: "12px 18px", borderRadius: 8, border: "1px solid rgba(255,255,255,.22)", color: "#fff", textDecoration: "none" }}
+            >
+              Dashboard
+            </a>
+          </div>
         </main>
       </body>
     </html>
