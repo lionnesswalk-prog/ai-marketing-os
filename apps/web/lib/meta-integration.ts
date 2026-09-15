@@ -207,6 +207,11 @@ export async function listPendingMetaPages(): Promise<PendingMetaPage[]> {
   if (!row || row.status !== "pending_selection" || !row.metadataJson || typeof row.metadataJson !== "object") return [];
 
   const meta = row.metadataJson as Record<string, unknown>;
+  const createdAt = typeof meta.createdAt === "string" ? Date.parse(meta.createdAt) : Number.NaN;
+  if (!Number.isFinite(createdAt) || Date.now() - createdAt > 30 * 60_000) {
+    await prisma.integrationConnection.deleteMany({ where: { brandId: brand.id, provider: "meta_pending" } });
+    return [];
+  }
   const pages = Array.isArray(meta.pages) ? meta.pages : [];
   return pages.flatMap((value) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return [];
@@ -233,6 +238,11 @@ export async function finalizePendingMetaPage(pageId: string) {
   }
 
   const meta = row.metadataJson as Record<string, unknown>;
+  const createdAt = typeof meta.createdAt === "string" ? Date.parse(meta.createdAt) : Number.NaN;
+  if (!Number.isFinite(createdAt) || Date.now() - createdAt > 30 * 60_000) {
+    await prisma.integrationConnection.deleteMany({ where: { brandId: brand.id, provider: "meta_pending" } });
+    throw new Error("META_PENDING_SELECTION_EXPIRED");
+  }
   const encryptedUserToken = typeof meta.userAccessToken === "string" ? meta.userAccessToken : undefined;
   const pages = Array.isArray(meta.pages) ? meta.pages : [];
   const selected = pages.find((value) => {
