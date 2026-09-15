@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { canManageIntegrations, getSession } from "../../../../../lib/auth";
 import { oauthRedirectUri } from "../../../../../lib/app-origin";
-import { exchangeMetaCode, saveMetaConnection } from "../../../../../lib/meta-integration";
+import { exchangeMetaCode, saveMetaConnection, savePendingMetaPages } from "../../../../../lib/meta-integration";
 
 const STATE_COOKIE = "amos_meta_oauth_state";
 const WORKSPACE_COOKIE = "amos_meta_oauth_workspace";
@@ -29,9 +29,16 @@ export async function GET(request: NextRequest) {
   try {
     const redirectUri = oauthRedirectUri(request.nextUrl.origin, "/api/integrations/meta/callback");
     const result = await exchangeMetaCode(code, redirectUri);
-    const preferredPage = result.pages.find((page) => page.instagram_business_account) || result.pages[0];
-    await saveMetaConnection({ userAccessToken: result.userAccessToken, page: preferredPage });
-    return NextResponse.redirect(new URL("/social?meta=connected", request.url));
+    if (result.pages.length === 1) {
+      await saveMetaConnection({ userAccessToken: result.userAccessToken, page: result.pages[0] });
+      return NextResponse.redirect(new URL("/social?meta=connected", request.url));
+    }
+
+    await savePendingMetaPages({
+      userAccessToken: result.userAccessToken,
+      pages: result.pages,
+    });
+    return NextResponse.redirect(new URL("/social?meta=choose-page", request.url));
   } catch (error) {
     console.error("Meta OAuth callback failed", error);
     return NextResponse.redirect(new URL("/social?meta=failed", request.url));
