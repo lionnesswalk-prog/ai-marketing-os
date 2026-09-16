@@ -46,6 +46,23 @@ function fallbackTiming(timezoneOffsetMinutes: number) {
   };
 }
 
+function alignDayOffset(
+  original: number,
+  targetDayOfWeek: number | undefined,
+  horizonDays: number,
+  timezoneOffsetMinutes: number,
+) {
+  if (targetDayOfWeek === undefined) return original;
+  const localNow = new Date(Date.now() - timezoneOffsetMinutes * 60_000);
+  const localStartDay = localNow.getUTCDay();
+  const currentDay = (localStartDay + original) % 7;
+  const forward = (targetDayOfWeek - currentDay + 7) % 7;
+  const next = original + forward;
+  if (next < horizonDays) return next;
+  const previous = next - 7;
+  return previous >= 0 ? previous : original;
+}
+
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -101,9 +118,17 @@ export async function POST(request: Request) {
     const entries = result.output.entries.map((entry) => {
       const recommendation = recommendationByPlatform.get(entry.platform) ||
         timing.recommendations[0];
+      const clampedOffset = Math.max(0, Math.min(parsed.data.horizonDays - 1, entry.dayOffset));
       return {
         ...entry,
-        dayOffset: Math.max(0, Math.min(parsed.data.horizonDays - 1, entry.dayOffset)),
+        dayOffset: recommendation.evidence === "performance"
+          ? alignDayOffset(
+              clampedOffset,
+              recommendation.dayOfWeek,
+              parsed.data.horizonDays,
+              parsed.data.timezoneOffsetMinutes,
+            )
+          : clampedOffset,
         postingWindow: recommendation.postingWindow,
         timingReason: recommendation.reason,
         timingEvidence: recommendation.evidence,
