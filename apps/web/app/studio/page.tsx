@@ -4,15 +4,18 @@ import { BrandStudio } from "../../components/BrandStudio";
 import { BrandCopilot } from "../../components/BrandCopilot";
 import { listBrandCopilotHistory } from "../../lib/brand-copilot-history";
 import { listBrandAssets } from "../../lib/brand-assets";
+import { getLatestContentCalendarPlan } from "../../lib/content-calendar";
+import { ContentCalendar } from "../../components/ContentCalendar";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudioPage() {
   const session = await requireSession();
-  const [profile, copilotHistory, brandAssets] = await Promise.all([
+  const [profile, copilotHistory, brandAssets, latestCalendar] = await Promise.all([
     getCurrentBrandProfile(session),
     listBrandCopilotHistory(session, 40).catch(() => []),
     listBrandAssets(session, 12).catch(() => []),
+    getLatestContentCalendarPlan(session).catch(() => null),
   ]);
 
   return (
@@ -34,6 +37,11 @@ export default async function StudioPage() {
         logoReady={Boolean(profile.logoUrl)}
         canGenerate={canManageMarketing(session.role)}
         initialAssets={brandAssets}
+      />
+
+      <ContentCalendar
+        initialPlan={latestCalendar}
+        canManage={canManageMarketing(session.role)}
       />
 
       <BrandCopilot brandName={profile.name} initialMessages={copilotHistory.map((item) => ({ role: item.role, content: item.content }))} />

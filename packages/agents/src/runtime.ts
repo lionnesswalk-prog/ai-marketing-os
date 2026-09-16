@@ -1,5 +1,5 @@
 import { run } from "@openai/agents";
-import { brandCopilotAgent, brandPostAgent, contentAgent, inquiryAgent, strategistAgent } from "./marketingAgents";
+import { brandCopilotAgent, brandPostAgent, contentAgent, contentCalendarAgent, inquiryAgent, strategistAgent } from "./marketingAgents";
 
 export type StrategyInput = {
   brandName: string;
@@ -31,6 +31,16 @@ export type BrandCopilotInput = {
   question: string;
   brandContext: string;
   recentMessages?: Array<{ role: "user" | "assistant"; content: string }>;
+};
+
+export type ContentCalendarInput = {
+  brandName: string;
+  objective: string;
+  focus?: string;
+  horizonDays: 7 | 30;
+  postCount: number;
+  brandContext: string;
+  timingContext: string;
 };
 
 export type AiExecutionMode = "live" | "mock" | "fallback";
@@ -169,6 +179,37 @@ export async function buildBrandPost(input: BrandPostInput) {
   }
 }
 
+export async function buildContentCalendar(input: ContentCalendarInput) {
+  const fallback = mockContentCalendar(input);
+  if (!liveAiEnabled()) {
+    return { output: fallback, mode: "mock" as const };
+  }
+
+  try {
+    const result = await run(contentCalendarAgent, JSON.stringify({
+      task: "Build a ready-to-materialize social content calendar.",
+      ...input,
+      rules: [
+        `Return exactly ${input.postCount} entries across day offsets 0 through ${input.horizonDays - 1}.`,
+        "Use only Instagram, Facebook and Pinterest because these are the current Brand Studio static-publishing destinations.",
+        "Use verified workspace knowledge as factual source-of-truth.",
+        "Treat supplied performance timing as recent correlation, never causation or a guarantee.",
+        "Treat test timing as an experiment, never as historical evidence.",
+        "Do not invent prices, offers, inventory, customer proof, policies or historical metrics.",
+        "Keep each entry different enough to serve a distinct content purpose.",
+      ],
+    }));
+    const output = result.finalOutput;
+    if (!output || output.entries.length !== input.postCount) {
+      throw new Error("CONTENT_CALENDAR_ENTRY_COUNT_MISMATCH");
+    }
+    return { output, mode: "live" as const };
+  } catch (error) {
+    console.error("live content calendar generation failed", error);
+    return { output: fallback, mode: "fallback" as const, warning: fallbackWarning() };
+  }
+}
+
 export async function answerBrandCopilot(input: BrandCopilotInput) {
   const fallback = mockBrandCopilot(input);
   if (!liveAiEnabled()) {
@@ -193,6 +234,47 @@ export async function answerBrandCopilot(input: BrandCopilotInput) {
     console.error("live Brand Copilot failed", error);
     return { output: fallback, mode: "fallback" as const, warning: fallbackWarning() };
   }
+}
+
+function mockContentCalendar(input: ContentCalendarInput) {
+  const platforms = ["instagram", "facebook", "pinterest"] as const;
+  const themes = [
+    "Brand point of view",
+    "Product or service focus",
+    "Education and useful context",
+    "Behind the brand",
+    "Audience question or objection",
+    "Detail and craftsmanship",
+    "Discovery story",
+    "Trust-building context",
+    "Use case",
+    "Brand philosophy",
+    "Conversation starter",
+    "Next-step invitation",
+  ];
+  const count = Math.max(1, Math.min(input.postCount, 16));
+  const step = input.horizonDays / count;
+
+  return {
+    summary: `A ${input.horizonDays}-day working content plan for ${input.brandName}, designed around ${input.objective.toLowerCase()}.`,
+    entries: Array.from({ length: count }, (_, index) => {
+      const platform = platforms[index % platforms.length];
+      const theme = themes[index % themes.length] + (input.focus ? `: ${input.focus}` : "");
+      return {
+        dayOffset: Math.min(input.horizonDays - 1, Math.floor(index * step)),
+        platform,
+        theme,
+        headline: theme.slice(0, 72),
+        subheadline: `A focused ${platform} story supporting ${input.objective.toLowerCase()}.`.slice(0, 150),
+        caption: `${input.brandName}: ${theme}. This is a working content direction grounded in the saved brand context, without unsupported claims.`,
+        cta: "Discover more",
+        hashtags: [input.brandName.replace(/[^a-z0-9]/gi, ""), "brandstory", "discovermore"]
+          .filter(Boolean)
+          .map((tag) => `#${tag}`),
+        visualDirection: "Use saved brand colors, clear logo breathing room, disciplined typography and a distinct composition from adjacent calendar posts.",
+      };
+    }),
+  };
 }
 
 function mockBrandPost(input: BrandPostInput) {

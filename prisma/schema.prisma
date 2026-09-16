@@ -34,6 +34,7 @@ model Brand {
   knowledgeItems KnowledgeItem[]
   copilotMessages BrandCopilotMessage[]
   assets BrandAsset[]
+  contentCalendarPlans ContentCalendarPlan[]
 
   @@index([workspaceId])
 }
@@ -232,6 +233,44 @@ model KnowledgeItem {
   brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId, verified, updatedAt])
+}
+
+model ContentCalendarPlan {
+  id          String                @id @default(cuid())
+  brandId     String
+  horizonDays Int
+  objective   String
+  focus       String?
+  aiMode      String?
+  timingJson  Json?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  brand       Brand                 @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  items       ContentCalendarItem[]
+
+  @@index([brandId, createdAt])
+}
+
+model ContentCalendarItem {
+  id              String              @id @default(cuid())
+  planId          String
+  dayOffset       Int
+  platform        String
+  theme           String
+  headline        String
+  subheadline     String
+  caption         String
+  cta             String
+  hashtags        Json?
+  visualDirection String
+  postingWindow   String
+  timingReason    String
+  timingEvidence  String
+  socialPostId    String?             @unique
+  createdAt       DateTime            @default(now())
+  plan            ContentCalendarPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, dayOffset])
 }
 
 model BrandAsset {

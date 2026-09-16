@@ -512,6 +512,7 @@ export async function fetchTikTokAnalytics() {
       like_count?: number;
       comment_count?: number;
       share_count?: number;
+      create_time?: number;
     }> };
     error?: { code?: string; message?: string };
   };
@@ -534,6 +535,7 @@ export async function fetchTikTokAnalytics() {
       likes: Number(video.like_count || 0),
       comments: Number(video.comment_count || 0),
       shares: Number(video.share_count || 0),
+      publishedAt: video.create_time ? new Date(video.create_time * 1000).toISOString() : undefined,
     })),
   };
 }

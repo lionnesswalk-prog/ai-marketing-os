@@ -221,6 +221,8 @@ export async function createBrandStudioDraft(input: {
   aiMode: string;
   warning?: string;
   assetId?: string;
+  sourceCalendarPlanId?: string;
+  sourceCalendarItemId?: string;
 }) {
   const prisma = getPrisma();
   const brand = await prisma.brand.findFirst({
@@ -271,6 +273,8 @@ export async function createBrandStudioDraft(input: {
         suggestedDayOffset: input.post.suggestedDayOffset,
         timingReason: input.post.timingReason,
         generatedBy: "brand_studio",
+        sourceCalendarPlanId: input.sourceCalendarPlanId || null,
+        sourceCalendarItemId: input.sourceCalendarItemId || null,
         generatedAt: new Date().toISOString(),
       },
     },
