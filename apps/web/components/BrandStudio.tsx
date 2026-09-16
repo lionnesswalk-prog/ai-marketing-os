@@ -1,10 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
+
+type CreativeTemplate = "editorial" | "split" | "minimal";
+
+type BrandAsset = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  createdAt: string;
+};
 
 type GeneratedDraft = {
   postId: string;
   mediaUrl: string;
+  variantUrls: Record<CreativeTemplate, string>;
+  creativeTemplate: CreativeTemplate;
+  assetId?: string;
   platform: "instagram" | "facebook" | "pinterest";
   title: string;
   subheadline: string;
@@ -22,6 +36,12 @@ type PinterestBoard = {
   id: string;
   name: string;
   privacy?: string;
+};
+
+const templateLabels: Record<CreativeTemplate, string> = {
+  editorial: "Editorial",
+  split: "Split",
+  minimal: "Minimal",
 };
 
 function suggestedDate(window: GeneratedDraft["postingWindow"], dayOffset: number) {
@@ -45,20 +65,24 @@ export function BrandStudio({
   brandName,
   logoReady,
   canGenerate,
+  initialAssets,
 }: {
   brandName: string;
   logoReady: boolean;
   canGenerate: boolean;
+  initialAssets: BrandAsset[];
 }) {
   const [theme, setTheme] = useState("");
   const [objective, setObjective] = useState("");
   const [product, setProduct] = useState("");
   const [platform, setPlatform] = useState<"" | "instagram" | "facebook" | "pinterest">("");
+  const [assets, setAssets] = useState(initialAssets);
+  const [selectedAssetId, setSelectedAssetId] = useState("");
   const [draft, setDraft] = useState<GeneratedDraft | null>(null);
   const [dirty, setDirty] = useState(false);
   const [boards, setBoards] = useState<PinterestBoard[]>([]);
   const [boardsLoading, setBoardsLoading] = useState(false);
-  const [busy, setBusy] = useState<"generate" | "save" | "publish" | "schedule" | null>(null);
+  const [busy, setBusy] = useState<"upload" | "generate" | "save" | "publish" | "schedule" | null>(null);
   const [message, setMessage] = useState("");
   const [warning, setWarning] = useState("");
   const [error, setError] = useState("");
@@ -100,6 +124,49 @@ export function BrandStudio({
     setError("");
   }
 
+  function selectTemplate(template: CreativeTemplate) {
+    setDraft((current) => current
+      ? {
+          ...current,
+          creativeTemplate: template,
+          mediaUrl: current.variantUrls[template],
+        }
+      : current);
+    setDirty(true);
+    setMessage("");
+    setError("");
+  }
+
+  async function uploadAsset(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (file.size > 6 * 1024 * 1024) {
+      setError("Use a JPG, PNG or WebP image up to 6 MB.");
+      return;
+    }
+
+    setBusy("upload");
+    setMessage("");
+    setWarning("");
+    setError("");
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      const response = await fetch("/api/brand-assets", { method: "POST", body: form });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Unable to upload this product image.");
+      const asset = body.asset as BrandAsset;
+      setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)].slice(0, 12));
+      setSelectedAssetId(asset.id);
+      setMessage("Product image uploaded and selected for the next creative.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to upload this product image.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function generate() {
     if (!canGenerate) return;
     setBusy("generate");
@@ -115,6 +182,7 @@ export function BrandStudio({
           objective,
           product: product || undefined,
           preferredPlatform: platform || undefined,
+          assetId: selectedAssetId || undefined,
         }),
       });
       const body = await response.json();
@@ -122,7 +190,9 @@ export function BrandStudio({
       setDraft(body.draft);
       setDirty(false);
       setWarning(body.warning || (body.mode === "mock" ? "Safe built-in creative mode is active." : ""));
-      setMessage("Branded creative generated and saved as a Social Hub draft.");
+      setMessage(selectedAssetId
+        ? "Three product-led branded creative options generated and saved as one Social Hub draft."
+        : "Three branded layout options generated and saved as one Social Hub draft.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to generate branded post.");
     } finally {
@@ -148,13 +218,14 @@ export function BrandStudio({
           cta: draft.cta,
           hashtags: draft.hashtags,
           pinterestBoardId: draft.pinterestBoardId || undefined,
+          creativeTemplate: draft.creativeTemplate,
         }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Unable to save Brand Studio changes.");
       setDraft((current) => current ? { ...current, ...body.draft } : current);
       setDirty(false);
-      setMessage("Changes saved. The branded creative was regenerated with a fresh image URL.");
+      setMessage("Changes saved. All three creative options were regenerated with fresh secure image URLs.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save Brand Studio changes.");
     } finally {
@@ -165,7 +236,7 @@ export function BrandStudio({
   async function postAction(action: "publish" | "reschedule") {
     if (!draft) return;
     if (dirty) {
-      setError("Save your Brand Studio edits before publishing or scheduling.");
+      setError("Save your Brand Studio edits and template choice before publishing or scheduling.");
       return;
     }
     if (draft.platform === "pinterest" && !draft.pinterestBoardId) {
@@ -202,7 +273,7 @@ export function BrandStudio({
           <div>
             <p className="eyebrow">AI CREATIVE BUILDER</p>
             <h2>Generate a branded post</h2>
-            <p className="muted">AI writes the concept and caption. Brand Studio renders a square PNG using {brandName}&apos;s saved logo and colors.</p>
+            <p className="muted">Upload a product or garment photo, then combine it with {brandName}&apos;s saved logo, colors and AI-written campaign copy.</p>
           </div>
           <span className={"pill " + (logoReady ? "accent" : "")}>{logoReady ? "Logo ready" : "Wordmark mode"}</span>
         </div>
@@ -212,6 +283,40 @@ export function BrandStudio({
             Add a public logo URL in Brand Profile for logo-based creatives. Until then, Brand Studio uses the brand name as a clean wordmark.
           </div>
         )}
+
+        <div className="studio-asset-head">
+          <div>
+            <p className="eyebrow">PRODUCT / GARMENT IMAGE</p>
+            <p className="muted">JPG, PNG or WebP · max 6 MB. Uploads stay inside this workspace.</p>
+          </div>
+          <label className="btn secondary studio-upload-button">
+            {busy === "upload" ? "Uploading…" : "Upload photo"}
+            <input type="file" accept="image/jpeg,image/png,image/webp" disabled={!canGenerate || busy !== null} onChange={uploadAsset} />
+          </label>
+        </div>
+
+        <div className="studio-assets">
+          <button
+            className={"studio-asset " + (!selectedAssetId ? "selected" : "")}
+            type="button"
+            onClick={() => setSelectedAssetId("")}
+          >
+            <span className="studio-asset-none">AI</span>
+            <small>No product photo</small>
+          </button>
+          {assets.map((asset) => (
+            <button
+              className={"studio-asset " + (selectedAssetId === asset.id ? "selected" : "")}
+              type="button"
+              key={asset.id}
+              onClick={() => setSelectedAssetId(asset.id)}
+              title={asset.fileName}
+            >
+              <img src={"/api/brand-assets/" + asset.id} alt={asset.fileName} />
+              <small>{asset.fileName}</small>
+            </button>
+          ))}
+        </div>
 
         <label>Post theme
           <input value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="New collection, product story, event, service, seasonal campaign..." />
@@ -234,7 +339,7 @@ export function BrandStudio({
         </div>
 
         <button className="btn" type="button" disabled={!canGenerate || busy !== null || theme.trim().length < 3 || objective.trim().length < 3} onClick={generate}>
-          {busy === "generate" ? "Generating…" : "Generate branded post"}
+          {busy === "generate" ? "Generating 3 options…" : "Generate 3 creative options"}
         </button>
         {!canGenerate && <p className="muted">Read-only access · ask an Admin or Marketing Manager to generate and publish creatives.</p>}
       </div>
@@ -248,6 +353,20 @@ export function BrandStudio({
         {draft ? (
           <>
             <div className="studio-image-frame"><img key={draft.mediaUrl} src={draft.mediaUrl} alt={draft.title} /></div>
+
+            <div className="studio-variants">
+              {(Object.keys(templateLabels) as CreativeTemplate[]).map((template) => (
+                <button
+                  type="button"
+                  className={"studio-variant " + (draft.creativeTemplate === template ? "selected" : "")}
+                  key={template}
+                  onClick={() => selectTemplate(template)}
+                >
+                  <img src={draft.variantUrls[template]} alt={templateLabels[template] + " creative option"} />
+                  <span>{templateLabels[template]}</span>
+                </button>
+              ))}
+            </div>
 
             <div className="studio-editor">
               <div className="studio-form-grid">
@@ -286,9 +405,9 @@ export function BrandStudio({
               )}
 
               <button className="btn secondary" type="button" disabled={!dirty || busy !== null || draft.title.trim().length < 1} onClick={saveDraft}>
-                {busy === "save" ? "Saving & regenerating…" : dirty ? "Save & refresh creative" : "Creative saved"}
+                {busy === "save" ? "Saving & regenerating…" : dirty ? "Save selection & edits" : "Creative saved"}
               </button>
-              {dirty && <p className="muted">Save edits before publishing so the post copy and rendered image stay in sync.</p>}
+              {dirty && <p className="muted">Save the selected layout and copy before publishing so the Social Hub draft uses exactly this version.</p>}
             </div>
 
             <div className="studio-timing">
@@ -304,8 +423,8 @@ export function BrandStudio({
         ) : (
           <div className="studio-empty">
             <div className="studio-placeholder-orb" />
-            <h3>Your branded creative will appear here.</h3>
-            <p className="muted">Every generated post is saved as a draft first, so the client stays in control before publishing or scheduling.</p>
+            <h3>Your product-led creative options will appear here.</h3>
+            <p className="muted">Upload a garment or product photo for product-led layouts, or generate without one for logo-and-color brand creatives.</p>
           </div>
         )}
 
