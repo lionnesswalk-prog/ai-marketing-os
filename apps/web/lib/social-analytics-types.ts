@@ -49,4 +49,5 @@ export type SocialAnalyticsView = {
     saves: number;
   };
   topContent: ContentAnalytics[];
+  recentContent: ContentAnalytics[];
 };
