@@ -65,6 +65,7 @@ export async function getSocialAnalytics(): Promise<SocialAnalyticsView> {
           url: item.url,
           likes: item.likes,
           comments: item.comments,
+          publishedAt: item.publishedAt,
         })));
       }
     } catch (error) {
@@ -168,6 +169,7 @@ export async function getSocialAnalytics(): Promise<SocialAnalyticsView> {
         impressions: item.impressions,
         engagements: item.engagements,
         saves: item.saves,
+        publishedAt: item.publishedAt,
       })));
     } catch (error) {
       Object.assign(byPlatform.get("pinterest")!, {
