@@ -197,11 +197,13 @@ export async function getSocialAnalytics(): Promise<SocialAnalyticsView> {
     saves: sum.saves + (item.saves || 0),
   }), { views: 0, impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0, saves: 0 });
 
+  const recentContent = [...topContent];
   return {
     updatedAt: new Date().toISOString(),
     liveChannels: channels.filter((item) => item.availability === "live").length,
     channels,
     totals,
-    topContent: topContent.sort((a, b) => engagementScore(b) - engagementScore(a)).slice(0, 12),
+    recentContent,
+    topContent: [...recentContent].sort((a, b) => engagementScore(b) - engagementScore(a)).slice(0, 12),
   };
 }
