@@ -11,6 +11,7 @@ const schema = z.object({
   cta: z.string().trim().max(80).default(""),
   hashtags: z.string().max(1000).default(""),
   pinterestBoardId: z.string().trim().max(200).optional(),
+  creativeTemplate: z.enum(["editorial", "split", "minimal"]).optional(),
 });
 
 export async function PATCH(request: Request) {
