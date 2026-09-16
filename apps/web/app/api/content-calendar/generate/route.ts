@@ -3,7 +3,7 @@ import { z } from "zod";
 import { canManageMarketing, getSession } from "../../../../lib/auth";
 import { buildBrandAIContext, getCurrentBrandProfile } from "../../../../lib/brand-profile";
 import { buildWorkspaceKnowledgeContext } from "../../../../lib/knowledge";
-import { buildPostingRecommendations } from "../../../../lib/posting-intelligence";
+import { buildPostingRecommendations, type PostingRecommendation } from "../../../../lib/posting-intelligence";
 import { saveContentCalendarPlan } from "../../../../lib/content-calendar";
 import { assertBillingFeature } from "../../../../lib/billing";
 import { consumeAiRequest } from "../../../../lib/ai-rate-limit";
@@ -111,8 +111,8 @@ export async function POST(request: Request) {
       timingContext,
     });
 
-    const recommendationByPlatform = new Map(
-      timing.recommendations.map((item) => [item.platform, item]),
+    const recommendationByPlatform = new Map<string, PostingRecommendation>(
+      timing.recommendations.map((item): [string, PostingRecommendation] => [item.platform, item]),
     );
 
     const entries = result.output.entries.map((entry) => {
