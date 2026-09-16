@@ -22,6 +22,15 @@ try {
   assert.ok(post.output.headline.length > 0);
   assert.ok(["morning", "midday", "evening"].includes(post.output.postingWindow));
 
+  const pinterestPost = await buildBrandPost({
+    brandName: "Example Brand",
+    theme: "Moodboard story",
+    objective: "Drive saves",
+    preferredPlatform: "pinterest",
+    brandContext: "Brand voice: composed and specific.",
+  });
+  assert.equal(pinterestPost.output.platform, "pinterest");
+
   const copilot = await answerBrandCopilot({
     question: "What should we post this week?",
     brandContext: "Brand: Example Brand",
@@ -52,6 +61,23 @@ try {
   assert.ok(profile.includes("logoUrl"));
   assert.ok(profile.includes("primaryColor"));
   assert.ok(profile.includes("secondaryColor"));
+
+  const studioLib = await readFile("apps/web/lib/brand-studio.ts", "utf8");
+  assert.ok(studioLib.includes("updateBrandStudioDraft"));
+  assert.ok(studioLib.includes("creativeToken = randomBytes(24)"));
+
+  const studioUi = await readFile("apps/web/components/BrandStudio.tsx", "utf8");
+  assert.ok(studioUi.includes('option value="pinterest"'));
+  assert.ok(studioUi.includes("Save & refresh creative"));
+  assert.ok(studioUi.includes("/api/integrations/pinterest/boards"));
+
+  const schema = await readFile("prisma/schema.prisma", "utf8");
+  assert.ok(schema.includes("model BrandCopilotMessage"));
+  assert.ok(schema.includes("copilotMessages BrandCopilotMessage[]"));
+
+  const copilotApi = await readFile("apps/web/app/api/brand-copilot/route.ts", "utf8");
+  assert.ok(copilotApi.includes("saveBrandCopilotExchange"));
+  assert.ok(copilotApi.includes("listBrandCopilotHistory"));
 } finally {
   if (previousMode === undefined) delete process.env.AI_MODE;
   else process.env.AI_MODE = previousMode;

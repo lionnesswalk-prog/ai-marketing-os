@@ -23,7 +23,7 @@ export type BrandPostInput = {
   theme: string;
   objective: string;
   product?: string;
-  preferredPlatform?: "instagram" | "facebook";
+  preferredPlatform?: "instagram" | "facebook" | "pinterest";
   brandContext?: string;
 };
 

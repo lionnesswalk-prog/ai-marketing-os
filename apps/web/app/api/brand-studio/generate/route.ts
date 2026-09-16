@@ -12,7 +12,7 @@ const schema = z.object({
   theme: z.string().trim().min(3).max(240),
   objective: z.string().trim().min(3).max(300),
   product: z.string().trim().max(240).optional(),
-  preferredPlatform: z.enum(["instagram", "facebook"]).optional(),
+  preferredPlatform: z.enum(["instagram", "facebook", "pinterest"]).optional(),
 });
 
 export async function POST(request: Request) {

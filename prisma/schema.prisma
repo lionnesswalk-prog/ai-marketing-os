@@ -32,6 +32,7 @@ model Brand {
   auditLogs    AuditLog[]
   insights     MarketingInsight[]
   knowledgeItems KnowledgeItem[]
+  copilotMessages BrandCopilotMessage[]
 
   @@index([workspaceId])
 }
@@ -230,6 +231,19 @@ model KnowledgeItem {
   brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId, verified, updatedAt])
+}
+
+model BrandCopilotMessage {
+  id        String   @id @default(cuid())
+  brandId   String
+  userId    String?
+  role      String
+  content   String
+  mode      String?
+  createdAt DateTime @default(now())
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, createdAt])
 }
 
 model IntegrationConnection {

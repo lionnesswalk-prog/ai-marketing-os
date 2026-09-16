@@ -33,7 +33,7 @@ export const inquiryReplySchema = z.object({
 });
 
 export const brandPostSchema = z.object({
-  platform: z.enum(["instagram", "facebook"]),
+  platform: z.enum(["instagram", "facebook", "pinterest"]),
   headline: z.string().max(80),
   subheadline: z.string().max(160),
   caption: z.string().max(2200),
@@ -64,7 +64,7 @@ export const contentAgent = new Agent({
 
 export const brandPostAgent = new Agent({
   name: "Brand Creative Director",
-  instructions: `Create one premium static social-post concept for Instagram or Facebook using the supplied brand profile, visual identity, objective and workspace knowledge. Write a short design headline, supporting line, caption, CTA and hashtags. Recommend a posting window and day offset as a practical hypothesis, never as a guaranteed best time. Do not invent product facts, offers, prices, stock, proof or performance. Keep visualDirection specific enough for a designer, but the final visual will be rendered by the Brand Studio using the saved logo and colors.`,
+  instructions: `Create one premium static social-post concept for Instagram, Facebook or Pinterest using the supplied brand profile, visual identity, objective and workspace knowledge. Write a short design headline, supporting line, caption, CTA and hashtags. Recommend a posting window and day offset as a practical hypothesis, never as a guaranteed best time. Do not invent product facts, offers, prices, stock, proof or performance. Keep visualDirection specific enough for a designer, but the final visual will be rendered by the Brand Studio using the saved logo and colors.`,
   outputType: brandPostSchema,
 });
 

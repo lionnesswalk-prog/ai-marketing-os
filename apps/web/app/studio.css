@@ -49,3 +49,6 @@
   .copilot-message { grid-template-columns: 30px minmax(0,1fr); }
   .copilot-message > span { width: 28px; height: 28px; }
 }
+
+.studio-editor { display: grid; gap: 4px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+.studio-editor .btn { width: fit-content; }

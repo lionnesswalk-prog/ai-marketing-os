@@ -6,6 +6,7 @@ import { buildWorkspaceKnowledgeContext } from "../../../lib/knowledge";
 import { assertBillingFeature } from "../../../lib/billing";
 import { consumeAiRequest } from "../../../lib/ai-rate-limit";
 import { answerBrandCopilot } from "../../../../../packages/agents/src/runtime";
+import { listBrandCopilotHistory, saveBrandCopilotExchange } from "../../../lib/brand-copilot-history";
 
 const schema = z.object({
   question: z.string().trim().min(2).max(2000),
@@ -30,11 +31,21 @@ export async function POST(request: Request) {
 
     const profile = await getCurrentBrandProfile(session);
     const knowledge = await buildWorkspaceKnowledgeContext(session);
+    const storedHistory = await listBrandCopilotHistory(session, 12).catch(() => []);
     const result = await answerBrandCopilot({
       question: parsed.data.question,
-      recentMessages: parsed.data.messages,
+      recentMessages: storedHistory.length
+        ? storedHistory.slice(-10).map((item) => ({ role: item.role, content: item.content }))
+        : parsed.data.messages,
       brandContext: [buildBrandAIContext(profile), knowledge].join("\n\n"),
     });
+
+    await saveBrandCopilotExchange({
+      session,
+      question: parsed.data.question,
+      answer: result.output,
+      mode: result.mode,
+    }).catch((historyError) => console.error("Brand Copilot history save failed", historyError));
 
     return NextResponse.json({
       ok: true,

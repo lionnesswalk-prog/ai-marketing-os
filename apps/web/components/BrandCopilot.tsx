@@ -14,13 +14,18 @@ const quickPrompts = [
   "What marketing knowledge is missing from this workspace?",
 ];
 
-export function BrandCopilot({ brandName }: { brandName: string }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "assistant",
-      content: "Ask me anything about " + brandName + "'s marketing, content, campaigns, positioning or saved brand knowledge. I will use this workspace's Brand Profile and Knowledge Base as context.",
-    },
-  ]);
+export function BrandCopilot({
+  brandName,
+  initialMessages,
+}: {
+  brandName: string;
+  initialMessages: ChatMessage[];
+}) {
+  const welcome: ChatMessage = {
+    role: "assistant",
+    content: "Ask me anything about " + brandName + "'s marketing, content, campaigns, positioning or saved brand knowledge. I will use this workspace's Brand Profile and Knowledge Base as context.",
+  };
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages.length ? initialMessages : [welcome]);
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -70,7 +75,7 @@ export function BrandCopilot({ brandName }: { brandName: string }) {
           <h2>Talk to your brand intelligence</h2>
           <p className="muted">Ask for ideas, strategy, content suggestions, launch plans, audience thinking or what information should be added to the Knowledge Base.</p>
         </div>
-        <span className="pill accent">Workspace aware</span>
+        <span className="pill accent">{initialMessages.length ? "History saved" : "Workspace aware"}</span>
       </div>
 
       <div className="copilot-quick">

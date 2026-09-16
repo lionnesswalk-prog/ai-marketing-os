@@ -2,12 +2,16 @@ import { canManageMarketing, requireSession } from "../../lib/auth";
 import { getCurrentBrandProfile } from "../../lib/brand-profile";
 import { BrandStudio } from "../../components/BrandStudio";
 import { BrandCopilot } from "../../components/BrandCopilot";
+import { listBrandCopilotHistory } from "../../lib/brand-copilot-history";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudioPage() {
   const session = await requireSession();
-  const profile = await getCurrentBrandProfile(session);
+  const [profile, copilotHistory] = await Promise.all([
+    getCurrentBrandProfile(session),
+    listBrandCopilotHistory(session, 40).catch(() => []),
+  ]);
 
   return (
     <div className="studio-page">
@@ -29,7 +33,7 @@ export default async function StudioPage() {
         canGenerate={canManageMarketing(session.role)}
       />
 
-      <BrandCopilot brandName={profile.name} />
+      <BrandCopilot brandName={profile.name} initialMessages={copilotHistory.map((item) => ({ role: item.role, content: item.content }))} />
     </div>
   );
 }
