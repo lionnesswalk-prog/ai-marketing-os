@@ -364,6 +364,7 @@ export async function fetchXAnalytics() {
     data?: Array<{
       id: string;
       text?: string;
+      created_at?: string;
       public_metrics?: {
         retweet_count?: number;
         reply_count?: number;
@@ -393,6 +394,7 @@ export async function fetchXAnalytics() {
       comments: Number(tweet.public_metrics?.reply_count || 0),
       shares: Number(tweet.public_metrics?.retweet_count || 0) + Number(tweet.public_metrics?.quote_count || 0),
       saves: Number(tweet.public_metrics?.bookmark_count || 0),
+      publishedAt: tweet.created_at,
     })),
   };
 }
