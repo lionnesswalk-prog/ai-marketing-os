@@ -25,6 +25,7 @@ export type ContentAnalytics = {
   id: string;
   title: string;
   url?: string;
+  publishedAt?: string;
   views?: number;
   impressions?: number;
   engagements?: number;
