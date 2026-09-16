@@ -13,6 +13,7 @@ const schema = z.object({
   objective: z.string().trim().min(3).max(300),
   product: z.string().trim().max(240).optional(),
   preferredPlatform: z.enum(["instagram", "facebook", "pinterest"]).optional(),
+  assetId: z.string().trim().min(1).max(200).optional(),
 });
 
 export async function POST(request: Request) {
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
       fallbackOrigin: new URL(request.url).origin,
       aiMode: result.mode,
       warning: result.warning,
+      assetId: parsed.data.assetId,
     });
 
     return NextResponse.json({
@@ -64,6 +66,9 @@ export async function POST(request: Request) {
     }
     if (error instanceof Error && error.message === "BILLING_FEATURE_NOT_ENTITLED") {
       return NextResponse.json({ error: "Brand Studio is not included in the current plan." }, { status: 403 });
+    }
+    if (error instanceof Error && error.message === "BRAND_ASSET_NOT_FOUND") {
+      return NextResponse.json({ error: "The selected product image is not available in this workspace." }, { status: 404 });
     }
     console.error("Brand Studio generation failed", error);
     return NextResponse.json({ error: "Unable to generate this branded post right now." }, { status: 500 });

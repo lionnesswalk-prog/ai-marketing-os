@@ -33,6 +33,7 @@ model Brand {
   insights     MarketingInsight[]
   knowledgeItems KnowledgeItem[]
   copilotMessages BrandCopilotMessage[]
+  assets BrandAsset[]
 
   @@index([workspaceId])
 }
@@ -231,6 +232,21 @@ model KnowledgeItem {
   brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId, verified, updatedAt])
+}
+
+model BrandAsset {
+  id        String   @id @default(cuid())
+  brandId   String
+  kind      String   @default("product_image")
+  fileName  String
+  mimeType  String
+  width     Int?
+  height    Int?
+  data      Bytes
+  createdAt DateTime @default(now())
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, createdAt])
 }
 
 model BrandCopilotMessage {
