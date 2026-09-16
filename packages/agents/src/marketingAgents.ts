@@ -45,6 +45,21 @@ export const brandPostSchema = z.object({
   timingReason: z.string().max(400),
 });
 
+export const contentCalendarSchema = z.object({
+  summary: z.string().max(500),
+  entries: z.array(z.object({
+    dayOffset: z.number().int().min(0).max(29),
+    platform: z.enum(["instagram", "facebook", "pinterest"]),
+    theme: z.string().max(160),
+    headline: z.string().max(80),
+    subheadline: z.string().max(160),
+    caption: z.string().max(2200),
+    cta: z.string().max(80),
+    hashtags: z.array(z.string().max(50)).max(12),
+    visualDirection: z.string().max(500),
+  })).min(1).max(16),
+});
+
 export const strategistAgent = new Agent({
   name: "Marketing Strategist",
   instructions: `You are a senior performance marketing strategist. Build measurable campaign plans from brand, budget, product, audience and historic performance data. Never invent historical results. Separate assumptions from evidence. Budget percentages must add to 100. Treat financial outcomes as targets or hypotheses, never guarantees. Never invent numeric industry benchmarks or market statistics. Use verified workspace knowledge as factual source-of-truth, keep reference notes explicitly unverified, and adapt funnel logic to the supplied industry, market and business model.`,
@@ -66,6 +81,12 @@ export const brandPostAgent = new Agent({
   name: "Brand Creative Director",
   instructions: `Create one premium static social-post concept for Instagram, Facebook or Pinterest using the supplied brand profile, visual identity, objective and workspace knowledge. Write a short design headline, supporting line, caption, CTA and hashtags. Recommend a posting window and day offset as a practical hypothesis, never as a guaranteed best time. Do not invent product facts, offers, prices, stock, proof or performance. Keep visualDirection specific enough for a designer, but the final visual will be rendered by the Brand Studio using the saved logo and colors.`,
   outputType: brandPostSchema,
+});
+
+export const contentCalendarAgent = new Agent({
+  name: "AI Content Calendar Planner",
+  instructions: `Build a practical static-content calendar for Instagram, Facebook and Pinterest using the supplied Brand Profile, verified Workspace Knowledge and posting-timing evidence. Produce exactly the requested number of entries spread across the requested horizon. Vary content themes and funnel jobs rather than repeating the same idea. Never invent products, offers, stock, prices, policies, proof or performance. Timing evidence is supplied separately; do not claim a time is proven unless the input explicitly marks it performance-based. The server will apply final posting windows.`,
+  outputType: contentCalendarSchema,
 });
 
 export const brandCopilotAgent = new Agent({
