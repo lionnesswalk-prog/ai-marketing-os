@@ -76,3 +76,29 @@
   .studio-variant { display: grid; grid-template-columns: 90px minmax(0,1fr); align-items: center; gap: 10px; }
   .studio-variant img { width: 90px; }
 }
+
+.calendar-card { margin-top: 28px; }
+.calendar-controls { display: grid; gap: 12px; margin-top: 16px; }
+.calendar-horizon { display: flex; gap: 8px; flex-wrap: wrap; }
+.calendar-horizon button { appearance: none; border: 1px solid var(--border-strong); background: rgba(255,255,255,.72); color: var(--ink-soft); border-radius: 999px; padding: 9px 13px; font: inherit; font-size: 10px; font-weight: 760; cursor: pointer; }
+.calendar-horizon button.active { background: #171817; border-color: #171817; color: #fff; }
+.calendar-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+.calendar-meta span { padding: 6px 9px; border-radius: 999px; background: rgba(24,25,24,.055); color: var(--muted); font-size: 9px; font-weight: 700; }
+.calendar-summary { margin: 12px 0 0; color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
+.calendar-list { display: grid; gap: 10px; margin-top: 16px; }
+.calendar-item { display: grid; grid-template-columns: 180px minmax(0,1fr); gap: 18px; padding: 16px; border: 1px solid var(--border); border-radius: 15px; background: rgba(255,255,255,.58); }
+.calendar-date { display: grid; align-content: start; gap: 8px; }
+.calendar-date > span { color: #7267f0; font-size: 10px; font-weight: 850; letter-spacing: .12em; }
+.calendar-date strong { font-size: 12px; line-height: 1.45; }
+.calendar-content h3 { margin: 9px 0 5px; font-size: 16px; }
+.calendar-content > p { margin: 0; }
+.calendar-caption { margin-top: 9px !important; font-size: 11px; line-height: 1.55; color: var(--ink-soft); }
+.calendar-content details { margin-top: 10px; }
+.calendar-content summary { cursor: pointer; color: #6259c7; font-size: 10px; font-weight: 760; }
+.calendar-content details p { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.calendar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+@media (max-width: 760px) {
+  .calendar-item { grid-template-columns: 1fr; gap: 10px; }
+  .calendar-actions { display: grid; grid-template-columns: 1fr; }
+  .calendar-actions .btn { width: 100%; }
+}
