@@ -18,7 +18,7 @@ export type BrandCreativeSpec = {
 };
 
 export type BrandPostDraftInput = {
-  platform: "instagram" | "facebook";
+  platform: "instagram" | "facebook" | "pinterest";
   headline: string;
   subheadline: string;
   caption: string;
