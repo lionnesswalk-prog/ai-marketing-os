@@ -214,6 +214,7 @@ export async function createBrandStudioDraft(input: {
     mediaUrl,
     platform: input.post.platform,
     title: input.post.headline,
+    subheadline: input.post.subheadline,
     caption: input.post.caption,
     hashtags: input.post.hashtags.join(" "),
     cta: input.post.cta,
@@ -221,6 +222,90 @@ export async function createBrandStudioDraft(input: {
     suggestedDayOffset: input.post.suggestedDayOffset,
     timingReason: input.post.timingReason,
     visualDirection: input.post.visualDirection,
+  };
+}
+
+export async function updateBrandStudioDraft(input: {
+  session: AppSession;
+  postId: string;
+  fallbackOrigin: string;
+  headline: string;
+  subheadline: string;
+  caption: string;
+  cta: string;
+  hashtags: string;
+  pinterestBoardId?: string;
+}) {
+  const prisma = getPrisma();
+  const post = await prisma.socialPost.findFirst({
+    where: {
+      id: input.postId,
+      status: "draft",
+      brand: { is: { workspaceId: input.session.workspaceId } },
+    },
+  });
+  if (!post) throw new Error("BRAND_STUDIO_DRAFT_NOT_FOUND");
+  if (!post.metadataJson || typeof post.metadataJson !== "object" || Array.isArray(post.metadataJson)) {
+    throw new Error("BRAND_STUDIO_DRAFT_INVALID");
+  }
+
+  const meta = post.metadataJson as Record<string, unknown>;
+  if (meta.generatedBy !== "brand_studio") throw new Error("BRAND_STUDIO_DRAFT_INVALID");
+  const rawSpec = meta.creativeSpec;
+  if (!rawSpec || typeof rawSpec !== "object" || Array.isArray(rawSpec)) {
+    throw new Error("BRAND_STUDIO_DRAFT_INVALID");
+  }
+
+  const currentSpec = rawSpec as Record<string, unknown>;
+  const creativeToken = randomBytes(24).toString("base64url");
+  const creativeSpec: BrandCreativeSpec = {
+    brandName: typeof currentSpec.brandName === "string" ? currentSpec.brandName : "",
+    logoUrl: typeof currentSpec.logoUrl === "string" ? currentSpec.logoUrl : undefined,
+    primaryColor: typeof currentSpec.primaryColor === "string" ? currentSpec.primaryColor : "#171817",
+    secondaryColor: typeof currentSpec.secondaryColor === "string" ? currentSpec.secondaryColor : "#7267f0",
+    headline: input.headline,
+    subheadline: input.subheadline,
+    cta: input.cta,
+    visualDirection: typeof currentSpec.visualDirection === "string" ? currentSpec.visualDirection : undefined,
+  };
+
+  const origin = canonicalAppOrigin(input.fallbackOrigin);
+  const mediaUrl = new URL(
+    `/api/public/brand-creative/${post.id}.${creativeToken}.png`,
+    origin,
+  ).toString();
+
+  const updated = await prisma.socialPost.update({
+    where: { id: post.id },
+    data: {
+      title: input.headline,
+      caption: input.caption,
+      metadataJson: {
+        ...meta,
+        hashtags: input.hashtags,
+        cta: input.cta,
+        altText: [input.headline, input.subheadline].filter(Boolean).join(". "),
+        creativeToken,
+        creativeSpec,
+        mediaUrl,
+        ...(post.platform === "pinterest"
+          ? { pinterestBoardId: input.pinterestBoardId || null }
+          : {}),
+        editedAt: new Date().toISOString(),
+      },
+    },
+  });
+
+  return {
+    postId: updated.id,
+    mediaUrl,
+    platform: updated.platform as "instagram" | "facebook" | "pinterest",
+    title: updated.title,
+    subheadline: input.subheadline,
+    caption: updated.caption,
+    hashtags: input.hashtags,
+    cta: input.cta,
+    pinterestBoardId: post.platform === "pinterest" ? input.pinterestBoardId : undefined,
   };
 }
 
