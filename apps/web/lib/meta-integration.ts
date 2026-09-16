@@ -442,6 +442,7 @@ export async function fetchMetaAnalytics() {
       url?: string;
       likes: number;
       comments: number;
+      publishedAt?: string;
     }>;
   } | null = null;
 
@@ -473,6 +474,7 @@ export async function fetchMetaAnalytics() {
       permalink?: string;
       like_count?: number;
       comments_count?: number;
+      timestamp?: string;
     }> }>(mediaUrl);
 
     instagram = {
@@ -485,6 +487,7 @@ export async function fetchMetaAnalytics() {
         url: item.permalink,
         likes: Number(item.like_count || 0),
         comments: Number(item.comments_count || 0),
+        publishedAt: item.timestamp,
       })),
     };
   }
