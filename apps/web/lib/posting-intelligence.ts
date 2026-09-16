@@ -62,12 +62,14 @@ function fallback(platform: PostingRecommendation["platform"]): PostingRecommend
   };
 }
 
-export async function buildPostingRecommendations(timezoneOffsetMinutes = 0) {
-  const analytics = await getSocialAnalytics();
+export function recommendPostingTimes(
+  recentContent: ContentAnalytics[],
+  timezoneOffsetMinutes = 0,
+) {
   const recommendations: PostingRecommendation[] = [];
 
   for (const platform of supported) {
-    const samples = analytics.recentContent.flatMap((item) => {
+    const samples = recentContent.flatMap((item) => {
       if (item.platform !== platform || !item.publishedAt) return [];
       const local = localParts(item.publishedAt, timezoneOffsetMinutes);
       if (!local) return [];
@@ -124,9 +126,14 @@ export async function buildPostingRecommendations(timezoneOffsetMinutes = 0) {
     });
   }
 
+  return recommendations;
+}
+
+export async function buildPostingRecommendations(timezoneOffsetMinutes = 0) {
+  const analytics = await getSocialAnalytics();
   return {
     updatedAt: analytics.updatedAt,
     timezoneOffsetMinutes,
-    recommendations,
+    recommendations: recommendPostingTimes(analytics.recentContent, timezoneOffsetMinutes),
   };
 }
