@@ -520,6 +520,7 @@ export async function fetchYouTubeAnalytics() {
     views: number;
     likes: number;
     comments: number;
+    publishedAt?: string;
   }> = [];
 
   if (uploads) {
@@ -548,7 +549,7 @@ export async function fetchYouTubeAnalytics() {
       const videosBody = await videosResponse.json().catch(() => ({})) as {
         items?: Array<{
           id: string;
-          snippet?: { title?: string };
+          snippet?: { title?: string; publishedAt?: string };
           statistics?: { viewCount?: string; likeCount?: string; commentCount?: string };
         }>;
       };
@@ -559,6 +560,7 @@ export async function fetchYouTubeAnalytics() {
         views: Number(video.statistics?.viewCount || 0),
         likes: Number(video.statistics?.likeCount || 0),
         comments: Number(video.statistics?.commentCount || 0),
+        publishedAt: video.snippet?.publishedAt,
       }));
     }
   }
