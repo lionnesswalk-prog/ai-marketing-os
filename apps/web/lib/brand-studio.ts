@@ -220,6 +220,7 @@ export async function createBrandStudioDraft(input: {
   fallbackOrigin: string;
   aiMode: string;
   warning?: string;
+  assetId?: string;
 }) {
   const prisma = getPrisma();
   const brand = await prisma.brand.findFirst({
@@ -228,10 +229,19 @@ export async function createBrandStudioDraft(input: {
   });
   if (!brand) throw new Error("BRAND_NOT_FOUND");
 
+  if (input.assetId) {
+    const asset = await prisma.brandAsset.findFirst({
+      where: { id: input.assetId, brandId: brand.id, kind: "product_image" },
+      select: { id: true },
+    });
+    if (!asset) throw new Error("BRAND_ASSET_NOT_FOUND");
+  }
+
   const creativeToken = randomBytes(24).toString("base64url");
   const creativeSpec: BrandCreativeSpec = {
     brandName: input.profile.name,
     logoUrl: input.profile.logoUrl || undefined,
+    assetId: input.assetId,
     primaryColor: input.profile.primaryColor,
     secondaryColor: input.profile.secondaryColor,
     headline: input.post.headline,
@@ -254,6 +264,7 @@ export async function createBrandStudioDraft(input: {
         altText: [input.post.headline, input.post.subheadline].filter(Boolean).join(". "),
         creativeToken,
         creativeSpec,
+        creativeTemplate: "editorial",
         aiMode: input.aiMode,
         aiWarning: input.warning || null,
         postingWindow: input.post.postingWindow,
@@ -266,10 +277,8 @@ export async function createBrandStudioDraft(input: {
   });
 
   const origin = canonicalAppOrigin(input.fallbackOrigin);
-  const mediaUrl = new URL(
-    `/api/public/brand-creative/${row.id}.${creativeToken}.png`,
-    origin,
-  ).toString();
+  const variantUrls = creativeVariantUrls(origin, row.id, creativeToken);
+  const mediaUrl = variantUrls.editorial;
 
   await prisma.socialPost.update({
     where: { id: row.id },
@@ -284,6 +293,9 @@ export async function createBrandStudioDraft(input: {
   return {
     postId: row.id,
     mediaUrl,
+    variantUrls,
+    creativeTemplate: "editorial" as BrandCreativeTemplate,
+    assetId: input.assetId,
     platform: input.post.platform,
     title: input.post.headline,
     subheadline: input.post.subheadline,
@@ -307,6 +319,7 @@ export async function updateBrandStudioDraft(input: {
   cta: string;
   hashtags: string;
   pinterestBoardId?: string;
+  creativeTemplate?: BrandCreativeTemplate;
 }) {
   const prisma = getPrisma();
   const post = await prisma.socialPost.findFirst({
@@ -333,6 +346,7 @@ export async function updateBrandStudioDraft(input: {
   const creativeSpec: BrandCreativeSpec = {
     brandName: typeof currentSpec.brandName === "string" ? currentSpec.brandName : "",
     logoUrl: typeof currentSpec.logoUrl === "string" ? currentSpec.logoUrl : undefined,
+    assetId: typeof currentSpec.assetId === "string" ? currentSpec.assetId : undefined,
     primaryColor: typeof currentSpec.primaryColor === "string" ? currentSpec.primaryColor : "#171817",
     secondaryColor: typeof currentSpec.secondaryColor === "string" ? currentSpec.secondaryColor : "#7267f0",
     headline: input.headline,
@@ -342,10 +356,9 @@ export async function updateBrandStudioDraft(input: {
   };
 
   const origin = canonicalAppOrigin(input.fallbackOrigin);
-  const mediaUrl = new URL(
-    `/api/public/brand-creative/${post.id}.${creativeToken}.png`,
-    origin,
-  ).toString();
+  const variantUrls = creativeVariantUrls(origin, post.id, creativeToken);
+  const creativeTemplate: BrandCreativeTemplate = input.creativeTemplate || "editorial";
+  const mediaUrl = variantUrls[creativeTemplate];
 
   const updated = await prisma.socialPost.update({
     where: { id: post.id },
@@ -359,6 +372,7 @@ export async function updateBrandStudioDraft(input: {
         altText: [input.headline, input.subheadline].filter(Boolean).join(". "),
         creativeToken,
         creativeSpec,
+        creativeTemplate,
         mediaUrl,
         ...(post.platform === "pinterest"
           ? { pinterestBoardId: input.pinterestBoardId || null }
@@ -371,6 +385,9 @@ export async function updateBrandStudioDraft(input: {
   return {
     postId: updated.id,
     mediaUrl,
+    variantUrls,
+    creativeTemplate,
+    assetId: creativeSpec.assetId,
     platform: updated.platform as "instagram" | "facebook" | "pinterest",
     title: updated.title,
     subheadline: input.subheadline,
@@ -382,11 +399,12 @@ export async function updateBrandStudioDraft(input: {
 }
 
 export async function publicCreativeByToken(raw: string) {
-  const match = raw.match(/^([^.]+)\.([A-Za-z0-9_-]+)\.png$/);
+  const match = raw.match(/^([^.]+)\.([A-Za-z0-9_-]+)(?:\.(editorial|split|minimal))?\.png$/);
   if (!match) return null;
-  const [, postId, suppliedToken] = match;
+  const [, postId, suppliedToken, requestedTemplate] = match;
 
-  const post = await getPrisma().socialPost.findUnique({
+  const prisma = getPrisma();
+  const post = await prisma.socialPost.findUnique({
     where: { id: postId },
     include: { brand: { select: { name: true } } },
   });
@@ -402,6 +420,7 @@ export async function publicCreativeByToken(raw: string) {
   const spec: BrandCreativeSpec = {
     brandName: typeof value.brandName === "string" ? value.brandName : post.brand.name,
     logoUrl: typeof value.logoUrl === "string" ? value.logoUrl : undefined,
+    assetId: typeof value.assetId === "string" ? value.assetId : undefined,
     primaryColor: typeof value.primaryColor === "string" ? value.primaryColor : "#171817",
     secondaryColor: typeof value.secondaryColor === "string" ? value.secondaryColor : "#7267f0",
     headline: typeof value.headline === "string" ? value.headline : post.title,
@@ -409,5 +428,21 @@ export async function publicCreativeByToken(raw: string) {
     cta: typeof value.cta === "string" ? value.cta : "Discover more",
     visualDirection: typeof value.visualDirection === "string" ? value.visualDirection : undefined,
   };
-  return renderBrandCreativePng(spec);
+
+  const storedTemplate = typeof meta.creativeTemplate === "string" ? meta.creativeTemplate : "editorial";
+  const candidate = requestedTemplate || storedTemplate;
+  const template: BrandCreativeTemplate =
+    candidate === "split" || candidate === "minimal" ? candidate : "editorial";
+
+  const asset = spec.assetId
+    ? await prisma.brandAsset.findFirst({
+        where: { id: spec.assetId, brandId: post.brandId, kind: "product_image" },
+        select: { data: true },
+      })
+    : null;
+
+  return renderBrandCreativePng(spec, {
+    template,
+    productImage: asset?.data,
+  });
 }
