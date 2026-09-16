@@ -453,6 +453,7 @@ export async function fetchPinterestAnalytics() {
       title?: string;
       description?: string;
       link?: string;
+      created_at?: string;
       pin_metrics?: unknown;
     }>;
     message?: string;
@@ -472,6 +473,7 @@ export async function fetchPinterestAnalytics() {
       saves: pinterestMetric(metrics, ["SAVE", "save", "saves"]),
       clicks: pinterestMetric(metrics, ["PIN_CLICK", "pin_click", "pin_clicks"]),
       outboundClicks: pinterestMetric(metrics, ["OUTBOUND_CLICK", "outbound_click", "outbound_clicks"]),
+      publishedAt: pin.created_at,
     };
   });
 
