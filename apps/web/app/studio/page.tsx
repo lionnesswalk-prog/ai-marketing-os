@@ -3,14 +3,16 @@ import { getCurrentBrandProfile } from "../../lib/brand-profile";
 import { BrandStudio } from "../../components/BrandStudio";
 import { BrandCopilot } from "../../components/BrandCopilot";
 import { listBrandCopilotHistory } from "../../lib/brand-copilot-history";
+import { listBrandAssets } from "../../lib/brand-assets";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudioPage() {
   const session = await requireSession();
-  const [profile, copilotHistory] = await Promise.all([
+  const [profile, copilotHistory, brandAssets] = await Promise.all([
     getCurrentBrandProfile(session),
     listBrandCopilotHistory(session, 40).catch(() => []),
+    listBrandAssets(session, 12).catch(() => []),
   ]);
 
   return (
@@ -31,6 +33,7 @@ export default async function StudioPage() {
         brandName={profile.name}
         logoReady={Boolean(profile.logoUrl)}
         canGenerate={canManageMarketing(session.role)}
+        initialAssets={brandAssets}
       />
 
       <BrandCopilot brandName={profile.name} initialMessages={copilotHistory.map((item) => ({ role: item.role, content: item.content }))} />
