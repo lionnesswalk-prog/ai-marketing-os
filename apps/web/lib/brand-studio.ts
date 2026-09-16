@@ -6,9 +6,12 @@ import { canonicalAppOrigin } from "./app-origin";
 import { fetchPublicMedia } from "./public-media";
 import { getPrisma } from "./prisma";
 
+export type BrandCreativeTemplate = "editorial" | "split" | "minimal";
+
 export type BrandCreativeSpec = {
   brandName: string;
   logoUrl?: string;
+  assetId?: string;
   primaryColor: string;
   secondaryColor: string;
   headline: string;
@@ -104,41 +107,110 @@ async function embeddedLogo(url?: string) {
   }
 }
 
-export async function renderBrandCreativePng(spec: BrandCreativeSpec) {
+export async function renderBrandCreativePng(
+  spec: BrandCreativeSpec,
+  options?: { template?: BrandCreativeTemplate; productImage?: Uint8Array },
+) {
+  const template = options?.template || "editorial";
   const primary = safeHex(spec.primaryColor, "#171817");
   const secondary = safeHex(spec.secondaryColor, "#7267f0");
-  const ink = readableInk(primary);
-  const mutedInk = ink === "#ffffff" ? "rgba(255,255,255,.76)" : "rgba(23,24,23,.68)";
+  const primaryInk = readableInk(primary);
   const logo = await embeddedLogo(spec.logoUrl);
-  const headlineLines = wrapLines(spec.headline, 22, 3);
-  const subheadlineLines = wrapLines(spec.subheadline, 42, 3);
-  const headline = headlineLines.map((line, index) =>
-    `<text x="82" y="${362 + index * 90}" fill="${ink}" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="700" letter-spacing="-2.4">${escapeXml(line)}</text>`
-  ).join("");
-  const subStart = 405 + headlineLines.length * 90;
-  const subheadline = subheadlineLines.map((line, index) =>
-    `<text x="86" y="${subStart + index * 42}" fill="${mutedInk}" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="400">${escapeXml(line)}</text>`
-  ).join("");
-  const logoMarkup = logo
-    ? `<rect x="76" y="66" width="270" height="126" rx="24" fill="rgba(255,255,255,.92)"/><image href="${logo}" x="96" y="82" width="230" height="92" preserveAspectRatio="xMinYMid meet"/>`
-    : `<text x="82" y="130" fill="${ink}" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="2">${escapeXml(spec.brandName.toUpperCase())}</text>`;
+  const product = options?.productImage?.byteLength
+    ? "data:image/jpeg;base64," + Buffer.from(options.productImage).toString("base64")
+    : undefined;
 
-  const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
-    <rect width="1080" height="1080" fill="${primary}"/>
-    <circle cx="930" cy="120" r="310" fill="${secondary}" opacity=".84"/>
-    <circle cx="980" cy="980" r="250" fill="${secondary}" opacity=".24"/>
-    <path d="M0 970 C260 900 460 1050 720 960 C865 910 950 900 1080 940 L1080 1080 L0 1080 Z" fill="${secondary}" opacity=".22"/>
-    ${logoMarkup}
-    <text x="84" y="266" fill="${mutedInk}" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="5">BRAND STORY</text>
-    ${headline}
-    ${subheadline}
-    <rect x="82" y="874" width="340" height="86" rx="43" fill="${ink}" opacity=".96"/>
-    <text x="252" y="928" text-anchor="middle" fill="${primary}" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700">${escapeXml(spec.cta || "Discover more")}</text>
-    <text x="84" y="1012" fill="${mutedInk}" font-family="Arial, Helvetica, sans-serif" font-size="18">${escapeXml(spec.brandName)}</text>
-  </svg>`;
+  const logoMarkup = (x: number, y: number, width = 230, height = 92, dark = false) =>
+    logo
+      ? `<rect x="${x - 18}" y="${y - 14}" width="${width + 36}" height="${height + 28}" rx="22" fill="rgba(255,255,255,.92)"/><image href="${logo}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMinYMid meet"/>`
+      : `<text x="${x}" y="${y + 48}" fill="${dark ? "#171817" : "#ffffff"}" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700" letter-spacing="2">${escapeXml(spec.brandName.toUpperCase())}</text>`;
+
+  const lines = wrapLines(spec.headline, template === "split" ? 17 : 21, 3);
+  const subLines = wrapLines(spec.subheadline, template === "split" ? 27 : 39, 3);
+
+  let svg = "";
+
+  if (template === "editorial") {
+    const headline = lines.map((line, index) =>
+      `<text x="78" y="${650 + index * 82}" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="70" font-weight="700" letter-spacing="-2.1">${escapeXml(line)}</text>`
+    ).join("");
+    const subStart = 684 + lines.length * 82;
+    const sub = subLines.map((line, index) =>
+      `<text x="82" y="${subStart + index * 38}" fill="rgba(255,255,255,.78)" font-family="Arial, Helvetica, sans-serif" font-size="27">${escapeXml(line)}</text>`
+    ).join("");
+
+    svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+      <defs>
+        <linearGradient id="overlay" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#000" stop-opacity=".08"/>
+          <stop offset=".52" stop-color="#000" stop-opacity=".12"/>
+          <stop offset="1" stop-color="#000" stop-opacity=".82"/>
+        </linearGradient>
+      </defs>
+      <rect width="1080" height="1080" fill="${primary}"/>
+      ${product ? `<image href="${product}" x="0" y="0" width="1080" height="1080" preserveAspectRatio="xMidYMid slice"/>` : `<circle cx="910" cy="120" r="360" fill="${secondary}" opacity=".8"/><circle cx="130" cy="900" r="300" fill="${secondary}" opacity=".22"/>`}
+      <rect width="1080" height="1080" fill="url(#overlay)"/>
+      ${logoMarkup(80, 74)}
+      <text x="82" y="575" fill="rgba(255,255,255,.68)" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" letter-spacing="5">EDITORIAL STORY</text>
+      ${headline}
+      ${sub}
+      <rect x="78" y="930" width="318" height="82" rx="41" fill="#ffffff"/>
+      <text x="237" y="982" text-anchor="middle" fill="#171817" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700">${escapeXml(spec.cta || "Discover more")}</text>
+    </svg>`;
+  } else if (template === "split") {
+    const headline = lines.map((line, index) =>
+      `<text x="620" y="${370 + index * 76}" fill="${primaryInk}" font-family="Arial, Helvetica, sans-serif" font-size="63" font-weight="700" letter-spacing="-2">${escapeXml(line)}</text>`
+    ).join("");
+    const subStart = 408 + lines.length * 76;
+    const sub = subLines.map((line, index) =>
+      `<text x="624" y="${subStart + index * 36}" fill="${primaryInk}" opacity=".68" font-family="Arial, Helvetica, sans-serif" font-size="25">${escapeXml(line)}</text>`
+    ).join("");
+
+    svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+      <rect width="1080" height="1080" fill="${primary}"/>
+      <rect x="0" y="0" width="560" height="1080" fill="#f2f1ed"/>
+      ${product ? `<image href="${product}" x="0" y="0" width="560" height="1080" preserveAspectRatio="xMidYMid slice"/>` : `<rect x="54" y="80" width="452" height="920" rx="40" fill="${secondary}" opacity=".58"/>`}
+      <rect x="560" y="0" width="10" height="1080" fill="${secondary}"/>
+      ${logoMarkup(620, 78, 210, 84, primaryInk === "#171817")}
+      <text x="622" y="294" fill="${primaryInk}" opacity=".56" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" letter-spacing="5">BRAND EDIT</text>
+      ${headline}
+      ${sub}
+      <rect x="620" y="875" width="310" height="80" rx="40" fill="${primaryInk}"/>
+      <text x="775" y="926" text-anchor="middle" fill="${primary}" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">${escapeXml(spec.cta || "Discover more")}</text>
+    </svg>`;
+  } else {
+    const headline = lines.map((line, index) =>
+      `<text x="84" y="${792 + index * 70}" fill="${primaryInk}" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700" letter-spacing="-1.8">${escapeXml(line)}</text>`
+    ).join("");
+    const subStart = 824 + lines.length * 70;
+    const sub = subLines.slice(0, 2).map((line, index) =>
+      `<text x="86" y="${subStart + index * 34}" fill="${primaryInk}" opacity=".64" font-family="Arial, Helvetica, sans-serif" font-size="23">${escapeXml(line)}</text>`
+    ).join("");
+
+    svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+      <rect width="1080" height="1080" fill="${primary}"/>
+      <circle cx="970" cy="120" r="260" fill="${secondary}" opacity=".35"/>
+      ${logoMarkup(76, 62, 205, 82, primaryInk === "#171817")}
+      <rect x="78" y="190" width="924" height="520" rx="46" fill="#ffffff" opacity=".96"/>
+      ${product ? `<clipPath id="productClip"><rect x="98" y="210" width="884" height="480" rx="32"/></clipPath><image href="${product}" x="98" y="210" width="884" height="480" preserveAspectRatio="xMidYMid slice" clip-path="url(#productClip)"/>` : `<rect x="98" y="210" width="884" height="480" rx="32" fill="${secondary}" opacity=".24"/>`}
+      ${headline}
+      ${sub}
+      <text x="994" y="1010" text-anchor="end" fill="${primaryInk}" opacity=".58" font-family="Arial, Helvetica, sans-serif" font-size="18">${escapeXml(spec.cta || "Discover more")} →</text>
+    </svg>`;
+  }
 
   return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer();
+}
+
+function creativeVariantUrls(origin: string, postId: string, token: string) {
+  return {
+    editorial: new URL(`/api/public/brand-creative/${postId}.${token}.editorial.png`, origin).toString(),
+    split: new URL(`/api/public/brand-creative/${postId}.${token}.split.png`, origin).toString(),
+    minimal: new URL(`/api/public/brand-creative/${postId}.${token}.minimal.png`, origin).toString(),
+  };
 }
 
 export async function createBrandStudioDraft(input: {
