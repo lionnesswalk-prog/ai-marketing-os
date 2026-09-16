@@ -95,7 +95,7 @@ export async function saveBrandAsset(session: AppSession, file: File): Promise<B
       mimeType: "image/jpeg",
       width: normalizedMeta.width ?? null,
       height: normalizedMeta.height ?? null,
-      data: normalized,
+      data: Uint8Array.from(normalized),
     },
     select: {
       id: true,
