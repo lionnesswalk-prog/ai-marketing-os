@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import sharp, { type Metadata } from "sharp";
 import type { AppSession } from "./auth";
 import { getPrisma } from "./prisma";
 
@@ -58,7 +58,7 @@ export async function saveBrandAsset(session: AppSession, file: File): Promise<B
   if (file.size <= 0 || file.size > 6 * 1024 * 1024) throw new Error("BRAND_ASSET_TOO_LARGE");
 
   const input = Buffer.from(await file.arrayBuffer());
-  let metadata: sharp.Metadata;
+  let metadata: Metadata;
   try {
     metadata = await sharp(input, { limitInputPixels: 60_000_000 }).metadata();
   } catch {
