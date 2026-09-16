@@ -33,7 +33,7 @@ export const inquiryReplySchema = z.object({
 });
 
 export const brandPostSchema = z.object({
-  platform: z.enum(["instagram", "facebook"]),
+  platform: z.enum(["instagram", "facebook", "pinterest"]),
   headline: z.string().max(80),
   subheadline: z.string().max(160),
   caption: z.string().max(2200),
