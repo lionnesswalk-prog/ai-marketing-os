@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type GeneratedDraft = {
   postId: string;
   mediaUrl: string;
-  platform: "instagram" | "facebook";
+  platform: "instagram" | "facebook" | "pinterest";
   title: string;
+  subheadline: string;
   caption: string;
   hashtags: string;
   cta: string;
@@ -14,6 +15,13 @@ type GeneratedDraft = {
   suggestedDayOffset: number;
   timingReason: string;
   visualDirection: string;
+  pinterestBoardId?: string;
+};
+
+type PinterestBoard = {
+  id: string;
+  name: string;
+  privacy?: string;
 };
 
 function suggestedDate(window: GeneratedDraft["postingWindow"], dayOffset: number) {
@@ -25,6 +33,12 @@ function suggestedDate(window: GeneratedDraft["postingWindow"], dayOffset: numbe
   target.setHours(hour, 0, 0, 0);
   if (target.getTime() <= now.getTime()) target.setDate(target.getDate() + 1);
   return target;
+}
+
+function platformLabel(platform: GeneratedDraft["platform"]) {
+  if (platform === "instagram") return "Instagram";
+  if (platform === "facebook") return "Facebook";
+  return "Pinterest";
 }
 
 export function BrandStudio({
@@ -39,9 +53,12 @@ export function BrandStudio({
   const [theme, setTheme] = useState("");
   const [objective, setObjective] = useState("");
   const [product, setProduct] = useState("");
-  const [platform, setPlatform] = useState<"" | "instagram" | "facebook">("");
+  const [platform, setPlatform] = useState<"" | "instagram" | "facebook" | "pinterest">("");
   const [draft, setDraft] = useState<GeneratedDraft | null>(null);
-  const [busy, setBusy] = useState<"generate" | "publish" | "schedule" | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [boards, setBoards] = useState<PinterestBoard[]>([]);
+  const [boardsLoading, setBoardsLoading] = useState(false);
+  const [busy, setBusy] = useState<"generate" | "save" | "publish" | "schedule" | null>(null);
   const [message, setMessage] = useState("");
   const [warning, setWarning] = useState("");
   const [error, setError] = useState("");
@@ -50,6 +67,38 @@ export function BrandStudio({
     () => draft ? suggestedDate(draft.postingWindow, draft.suggestedDayOffset) : null,
     [draft],
   );
+
+  useEffect(() => {
+    if (draft?.platform !== "pinterest") {
+      setBoards([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    setBoardsLoading(true);
+    fetch("/api/integrations/pinterest/boards", { signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || "Connect Pinterest before selecting a board.");
+        return body.boards as PinterestBoard[];
+      })
+      .then((items) => setBoards(items))
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setBoards([]);
+        setWarning(err instanceof Error ? err.message : "Pinterest board list is unavailable.");
+      })
+      .finally(() => setBoardsLoading(false));
+
+    return () => controller.abort();
+  }, [draft?.platform]);
+
+  function edit<K extends keyof GeneratedDraft>(key: K, value: GeneratedDraft[K]) {
+    setDraft((current) => current ? { ...current, [key]: value } : current);
+    setDirty(true);
+    setMessage("");
+    setError("");
+  }
 
   async function generate() {
     if (!canGenerate) return;
@@ -71,6 +120,7 @@ export function BrandStudio({
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Unable to generate branded post.");
       setDraft(body.draft);
+      setDirty(false);
       setWarning(body.warning || (body.mode === "mock" ? "Safe built-in creative mode is active." : ""));
       setMessage("Branded creative generated and saved as a Social Hub draft.");
     } catch (err) {
@@ -80,8 +130,49 @@ export function BrandStudio({
     }
   }
 
+  async function saveDraft() {
+    if (!draft) return;
+    setBusy("save");
+    setMessage("");
+    setError("");
+
+    try {
+      const response = await fetch("/api/brand-studio/draft", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          postId: draft.postId,
+          headline: draft.title,
+          subheadline: draft.subheadline,
+          caption: draft.caption,
+          cta: draft.cta,
+          hashtags: draft.hashtags,
+          pinterestBoardId: draft.pinterestBoardId || undefined,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Unable to save Brand Studio changes.");
+      setDraft((current) => current ? { ...current, ...body.draft } : current);
+      setDirty(false);
+      setMessage("Changes saved. The branded creative was regenerated with a fresh image URL.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to save Brand Studio changes.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function postAction(action: "publish" | "reschedule") {
     if (!draft) return;
+    if (dirty) {
+      setError("Save your Brand Studio edits before publishing or scheduling.");
+      return;
+    }
+    if (draft.platform === "pinterest" && !draft.pinterestBoardId) {
+      setError("Choose and save a Pinterest board before publishing or scheduling.");
+      return;
+    }
+
     setBusy(action === "publish" ? "publish" : "schedule");
     setMessage("");
     setError("");
@@ -137,6 +228,7 @@ export function BrandStudio({
               <option value="">Let AI choose</option>
               <option value="instagram">Instagram</option>
               <option value="facebook">Facebook</option>
+              <option value="pinterest">Pinterest</option>
             </select>
           </label>
         </div>
@@ -150,24 +242,62 @@ export function BrandStudio({
       <div className="card studio-preview">
         <div className="section-head">
           <div><p className="eyebrow">READY CREATIVE</p><h2>{draft ? draft.title : "Preview"}</h2></div>
-          {draft && <span className="pill accent">{draft.platform === "instagram" ? "Instagram" : "Facebook"}</span>}
+          {draft && <span className="pill accent">{platformLabel(draft.platform)}</span>}
         </div>
 
         {draft ? (
           <>
-            <div className="studio-image-frame"><img src={draft.mediaUrl} alt={draft.title} /></div>
-            <div className="studio-copy">
-              <strong>Caption</strong>
-              <p>{draft.caption}</p>
-              {draft.hashtags && <p className="studio-hashtags">{draft.hashtags}</p>}
+            <div className="studio-image-frame"><img key={draft.mediaUrl} src={draft.mediaUrl} alt={draft.title} /></div>
+
+            <div className="studio-editor">
+              <div className="studio-form-grid">
+                <label>Headline
+                  <input value={draft.title} maxLength={80} onChange={(e) => edit("title", e.target.value)} />
+                </label>
+                <label>CTA
+                  <input value={draft.cta} maxLength={80} onChange={(e) => edit("cta", e.target.value)} />
+                </label>
+              </div>
+              <label>Supporting line
+                <input value={draft.subheadline} maxLength={160} onChange={(e) => edit("subheadline", e.target.value)} />
+              </label>
+              <label>Caption
+                <textarea rows={5} value={draft.caption} maxLength={2200} onChange={(e) => edit("caption", e.target.value)} />
+              </label>
+              <label>Hashtags
+                <input value={draft.hashtags} maxLength={1000} onChange={(e) => edit("hashtags", e.target.value)} />
+              </label>
+
+              {draft.platform === "pinterest" && (
+                <label>Pinterest board
+                  <select
+                    value={draft.pinterestBoardId || ""}
+                    disabled={boardsLoading}
+                    onChange={(e) => edit("pinterestBoardId", e.target.value)}
+                  >
+                    <option value="">{boardsLoading ? "Loading boards..." : "Choose board"}</option>
+                    {boards.map((board) => (
+                      <option key={board.id} value={board.id}>
+                        {board.name}{board.privacy ? " · " + board.privacy.toLowerCase() : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              <button className="btn secondary" type="button" disabled={!dirty || busy !== null || draft.title.trim().length < 1} onClick={saveDraft}>
+                {busy === "save" ? "Saving & regenerating…" : dirty ? "Save & refresh creative" : "Creative saved"}
+              </button>
+              {dirty && <p className="muted">Save edits before publishing so the post copy and rendered image stay in sync.</p>}
             </div>
+
             <div className="studio-timing">
               <div><span>AI timing suggestion</span><strong>{schedule?.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</strong></div>
               <p>{draft.timingReason}</p>
             </div>
             <div className="studio-actions">
-              <button className="btn" type="button" disabled={busy !== null} onClick={() => postAction("publish")}>{busy === "publish" ? "Publishing…" : "Publish now"}</button>
-              <button className="btn secondary" type="button" disabled={busy !== null || !schedule} onClick={() => postAction("reschedule")}>{busy === "schedule" ? "Scheduling…" : "Schedule AI time"}</button>
+              <button className="btn" type="button" disabled={busy !== null || dirty} onClick={() => postAction("publish")}>{busy === "publish" ? "Publishing…" : "Publish now"}</button>
+              <button className="btn secondary" type="button" disabled={busy !== null || !schedule || dirty} onClick={() => postAction("reschedule")}>{busy === "schedule" ? "Scheduling…" : "Schedule AI time"}</button>
               <a className="text-link" href="/social">Open Social Hub →</a>
             </div>
           </>
