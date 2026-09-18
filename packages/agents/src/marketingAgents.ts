@@ -60,6 +60,26 @@ export const contentCalendarSchema = z.object({
   })).min(1).max(16),
 });
 
+export const performanceReviewSchema = z.object({
+  evidenceStatus: z.enum(["learning", "insufficient"]),
+  headline: z.string().max(140),
+  executiveSummary: z.string().max(800),
+  improvements: z.array(z.object({
+    title: z.string().max(120),
+    evidence: z.string().max(500),
+  })).max(4),
+  weakSignals: z.array(z.object({
+    title: z.string().max(120),
+    evidence: z.string().max(500),
+  })).max(4),
+  experiments: z.array(z.object({
+    hypothesis: z.string().max(220),
+    action: z.string().max(400),
+    successSignal: z.string().max(240),
+  })).max(5),
+  nextWeekPriorities: z.array(z.string().max(240)).max(6),
+});
+
 export const strategistAgent = new Agent({
   name: "Marketing Strategist",
   instructions: `You are a senior performance marketing strategist. Build measurable campaign plans from brand, budget, product, audience and historic performance data. Never invent historical results. Separate assumptions from evidence. Budget percentages must add to 100. Treat financial outcomes as targets or hypotheses, never guarantees. Never invent numeric industry benchmarks or market statistics. Use verified workspace knowledge as factual source-of-truth, keep reference notes explicitly unverified, and adapt funnel logic to the supplied industry, market and business model.`,
@@ -81,6 +101,12 @@ export const brandPostAgent = new Agent({
   name: "Brand Creative Director",
   instructions: `Create one premium static social-post concept for Instagram, Facebook or Pinterest using the supplied brand profile, visual identity, objective and workspace knowledge. Write a short design headline, supporting line, caption, CTA and hashtags. Recommend a posting window and day offset as a practical hypothesis, never as a guaranteed best time. Do not invent product facts, offers, prices, stock, proof or performance. Keep visualDirection specific enough for a designer, but the final visual will be rendered by the Brand Studio using the saved logo and colors.`,
   outputType: brandPostSchema,
+});
+
+export const performanceReviewAgent = new Agent({
+  name: "Weekly Marketing Performance Reviewer",
+  instructions: `Review verified portal-published social performance using only the supplied evidence. Compare recent and previous cohorts within the same platform; never treat raw engagement indexes as comparable across platforms. Newer posts have had less time to accumulate metrics, so describe differences as observed cohort signals rather than causal improvement or decline. If sample sizes are sparse, explicitly say so and emphasize experiments instead of winners. Identify practical next-week tests and priorities without inventing benchmarks, revenue impact, audience facts or causal explanations.`,
+  outputType: performanceReviewSchema,
 });
 
 export const contentCalendarAgent = new Agent({
