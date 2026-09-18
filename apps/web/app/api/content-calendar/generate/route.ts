@@ -3,7 +3,8 @@ import { z } from "zod";
 import { canManageMarketing, getSession } from "../../../../lib/auth";
 import { buildBrandAIContext, getCurrentBrandProfile } from "../../../../lib/brand-profile";
 import { buildWorkspaceKnowledgeContext } from "../../../../lib/knowledge";
-import { buildPostingRecommendations, type PostingRecommendation } from "../../../../lib/posting-intelligence";
+import { recommendPostingTimes, type PostingRecommendation } from "../../../../lib/posting-intelligence";
+import { buildContentLearningContext, getContentLearningSummary, refreshContentLearning } from "../../../../lib/content-learning";
 import { saveContentCalendarPlan } from "../../../../lib/content-calendar";
 import { assertBillingFeature } from "../../../../lib/billing";
 import { consumeAiRequest } from "../../../../lib/ai-rate-limit";
@@ -79,15 +80,36 @@ export async function POST(request: Request) {
     await assertBillingFeature(session.workspaceId, "aiStrategy");
     await consumeAiRequest(session.workspaceId, "content-calendar");
 
-    const [profile, knowledge, timing] = await Promise.all([
+    const [profile, knowledge, learningRefresh] = await Promise.all([
       getCurrentBrandProfile(session),
       buildWorkspaceKnowledgeContext(session),
-      buildPostingRecommendations(parsed.data.timezoneOffsetMinutes)
-        .catch((error) => {
-          console.error("posting intelligence unavailable; using test windows", error);
-          return fallbackTiming(parsed.data.timezoneOffsetMinutes);
+      refreshContentLearning(session)
+        .catch(async (error) => {
+          console.error("content learning refresh unavailable; using stored learning and test timing", error);
+          return {
+            analytics: null,
+            summary: await getContentLearningSummary(session).catch(() => ({
+              matchedPostCount: 0,
+              evidence: "insufficient" as const,
+              platformSummaries: [],
+              note: "Content learning is not available yet.",
+            })),
+            matchedThisRefresh: 0,
+          };
         }),
     ]);
+
+    const timing = learningRefresh.analytics
+      ? {
+          updatedAt: learningRefresh.analytics.updatedAt,
+          timezoneOffsetMinutes: parsed.data.timezoneOffsetMinutes,
+          recommendations: recommendPostingTimes(
+            learningRefresh.analytics.recentContent,
+            parsed.data.timezoneOffsetMinutes,
+          ),
+        }
+      : fallbackTiming(parsed.data.timezoneOffsetMinutes);
+    const learningContext = buildContentLearningContext(learningRefresh.summary);
 
     const postCount = parsed.data.horizonDays === 7 ? 4 : 12;
     const timingContext = timing.recommendations.map((item) =>
@@ -109,6 +131,7 @@ export async function POST(request: Request) {
       postCount,
       brandContext: [buildBrandAIContext(profile), knowledge].join("\n\n"),
       timingContext,
+      learningContext,
     });
 
     const recommendationByPlatform = new Map<string, PostingRecommendation>(
@@ -150,6 +173,8 @@ export async function POST(request: Request) {
       mode: result.mode,
       warning: result.warning,
       summary: result.output.summary,
+      learning: learningRefresh.summary,
+      matchedThisRefresh: learningRefresh.matchedThisRefresh,
       plan,
     });
   } catch (error) {
