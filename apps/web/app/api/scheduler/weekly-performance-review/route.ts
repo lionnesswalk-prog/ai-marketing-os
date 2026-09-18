@@ -24,9 +24,9 @@ async function authorize(request: Request) {
 }
 
 function batchSize() {
-  const value = Number(process.env.WEEKLY_REVIEW_BATCH_SIZE || "6");
-  if (!Number.isFinite(value)) return 6;
-  return Math.max(1, Math.min(Math.floor(value), 12));
+  const value = Number(process.env.WEEKLY_REVIEW_BATCH_SIZE || "3");
+  if (!Number.isFinite(value)) return 3;
+  return Math.max(1, Math.min(Math.floor(value), 8));
 }
 
 async function run(request: Request) {
