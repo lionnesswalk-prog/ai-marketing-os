@@ -19,14 +19,14 @@ export type SocialPlatformConfig = {
   connectionCheckFailed?: boolean;
 };
 
-export async function getSocialPlatforms(): Promise<SocialPlatformConfig[]> {
+export async function getSocialPlatforms(brandId?: string): Promise<SocialPlatformConfig[]> {
   const [metaResult, linkedinResult, xResult, tiktokResult, youtubeResult, pinterestResult] = await Promise.allSettled([
-    getMetaConnection(),
-    getLinkedInConnection(),
-    getXConnection(),
-    getTikTokConnection(),
-    getYouTubeConnection(),
-    getPinterestConnection(),
+    getMetaConnection(brandId),
+    getLinkedInConnection(brandId),
+    getXConnection(brandId),
+    getTikTokConnection(brandId),
+    getYouTubeConnection(brandId),
+    getPinterestConnection(brandId),
   ]);
   const meta = metaResult.status === "fulfilled" ? metaResult.value : null;
   const linkedin = linkedinResult.status === "fulfilled" ? linkedinResult.value : null;
