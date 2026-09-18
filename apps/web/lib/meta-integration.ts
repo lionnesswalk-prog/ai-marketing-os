@@ -422,8 +422,8 @@ export async function publishInstagram(input: {
 }
 
 
-export async function fetchMetaAnalytics() {
-  const connection = await getMetaConnection();
+export async function fetchMetaAnalytics(brandId?: string) {
+  const connection = await getMetaConnection(brandId);
   if (!connection?.pageAccessToken) throw new Error("META_NOT_CONNECTED");
 
   let facebook: {
