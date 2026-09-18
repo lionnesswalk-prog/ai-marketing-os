@@ -1,5 +1,5 @@
 import { run } from "@openai/agents";
-import { brandCopilotAgent, brandPostAgent, contentAgent, contentCalendarAgent, inquiryAgent, strategistAgent } from "./marketingAgents";
+import { brandCopilotAgent, brandPostAgent, contentAgent, contentCalendarAgent, inquiryAgent, performanceReviewAgent, strategistAgent } from "./marketingAgents";
 
 export type StrategyInput = {
   brandName: string;
@@ -42,6 +42,13 @@ export type ContentCalendarInput = {
   brandContext: string;
   timingContext: string;
   learningContext?: string;
+};
+
+export type WeeklyPerformanceReviewInput = {
+  brandName: string;
+  evidenceStatus: "learning" | "insufficient";
+  matchedPostCount: number;
+  evidenceContext: string;
 };
 
 export type AiExecutionMode = "live" | "mock" | "fallback";
@@ -213,6 +220,32 @@ export async function buildContentCalendar(input: ContentCalendarInput) {
   }
 }
 
+export async function buildWeeklyPerformanceReview(input: WeeklyPerformanceReviewInput) {
+  const fallback = mockWeeklyPerformanceReview(input);
+  if (!liveAiEnabled()) {
+    return { output: fallback, mode: "mock" as const };
+  }
+
+  try {
+    const result = await run(performanceReviewAgent, JSON.stringify({
+      task: "Create a weekly social performance review and next-week experiment plan.",
+      ...input,
+      rules: [
+        "Use only the supplied verified evidence.",
+        "Compare cohorts within the same platform; never rank platforms by raw engagement index.",
+        "Newer posts have had less time to accumulate metrics, so do not describe cohort differences as proven improvement or decline.",
+        "If sample sizes are sparse, say so and prioritize controlled tests over winners.",
+        "Do not invent benchmarks, causal explanations, revenue impact, audience facts or provider metrics.",
+        "Keep next-week actions specific enough to execute in the Content Calendar and Brand Studio.",
+      ],
+    }));
+    return { output: result.finalOutput, mode: "live" as const };
+  } catch (error) {
+    console.error("live weekly performance review failed", error);
+    return { output: fallback, mode: "fallback" as const, warning: fallbackWarning() };
+  }
+}
+
 export async function answerBrandCopilot(input: BrandCopilotInput) {
   const fallback = mockBrandCopilot(input);
   if (!liveAiEnabled()) {
@@ -237,6 +270,42 @@ export async function answerBrandCopilot(input: BrandCopilotInput) {
     console.error("live Brand Copilot failed", error);
     return { output: fallback, mode: "fallback" as const, warning: fallbackWarning() };
   }
+}
+
+function mockWeeklyPerformanceReview(input: WeeklyPerformanceReviewInput) {
+  const enough = input.evidenceStatus === "learning" && input.matchedPostCount >= 3;
+  return {
+    evidenceStatus: enough ? "learning" as const : "insufficient" as const,
+    headline: enough
+      ? "Recent verified content signals are ready for controlled iteration"
+      : "Keep building verified post history before declaring winners",
+    executiveSummary: enough
+      ? "Use the strongest same-platform recent patterns as directional evidence, while preserving deliberate testing because cohort age and sample size can distort apparent differences."
+      : "Verified provider-matched history is still limited. Treat current results as observations and use the next week to build a cleaner evidence base.",
+    improvements: enough
+      ? [{ title: "Observed strong recent examples", evidence: "Some verified posts are outperforming other recent posts within their own platform, but this is directional evidence rather than proof of causation." }]
+      : [],
+    weakSignals: enough
+      ? [{ title: "Cohort maturity remains a constraint", evidence: "Newer posts have had less time to accumulate provider metrics, so apparent differences should not be treated as a definitive decline." }]
+      : [{ title: "Sample size is still sparse", evidence: `Only ${input.matchedPostCount} verified portal-to-provider post matches are available for learning.` }],
+    experiments: [
+      {
+        hypothesis: "A focused repeat of one strong recent content pattern may produce another useful signal.",
+        action: "Create one controlled variation that keeps the strategic theme but changes the hook or visual treatment.",
+        successSignal: "Compare the new post with recent posts on the same platform after a similar observation window.",
+      },
+      {
+        hypothesis: "A deliberately different content theme can prevent overfitting.",
+        action: "Reserve at least one next-week post for a distinct theme or audience question.",
+        successSignal: "Look for a measurable same-platform difference after enough time has passed to accumulate metrics.",
+      },
+    ],
+    nextWeekPriorities: [
+      "Publish enough portal-tracked content to increase verified sample size.",
+      "Repeat useful patterns without copying exact wording or artwork.",
+      "Keep at least one controlled exploratory test in the weekly plan.",
+    ],
+  };
 }
 
 function mockContentCalendar(input: ContentCalendarInput) {
