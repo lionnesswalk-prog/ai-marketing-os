@@ -20,8 +20,8 @@ function engagementScore(item: ContentAnalytics) {
     (item.likes || 0) * 3 + (item.comments || 0) * 5 + (item.shares || 0) * 6 + (item.saves || 0) * 5;
 }
 
-export async function getSocialAnalytics(): Promise<SocialAnalyticsView> {
-  const platforms = await getSocialPlatforms();
+export async function getSocialAnalytics(brandId?: string): Promise<SocialAnalyticsView> {
+  const platforms = await getSocialPlatforms(brandId);
   const connected = new Map(platforms.map((item) => [item.id, item]));
 
   const channels: ChannelAnalytics[] = [
@@ -38,7 +38,7 @@ export async function getSocialAnalytics(): Promise<SocialAnalyticsView> {
 
   if (connected.get("instagram")?.connected || connected.get("facebook")?.connected) {
     try {
-      const data = await fetchMetaAnalytics();
+      const data = await fetchMetaAnalytics(brandId);
       if (data.facebook) {
         Object.assign(byPlatform.get("facebook")!, {
           availability: "live",
@@ -79,7 +79,7 @@ export async function getSocialAnalytics(): Promise<SocialAnalyticsView> {
 
   if (connected.get("youtube")?.connected) {
     try {
-      const data = await fetchYouTubeAnalytics();
+      const data = await fetchYouTubeAnalytics(brandId);
       Object.assign(byPlatform.get("youtube")!, {
         availability: "live",
         accountLabel: data.accountLabel,
@@ -101,7 +101,7 @@ export async function getSocialAnalytics(): Promise<SocialAnalyticsView> {
 
   if (connected.get("tiktok")?.connected) {
     try {
-      const data = await fetchTikTokAnalytics();
+      const data = await fetchTikTokAnalytics(brandId);
       Object.assign(byPlatform.get("tiktok")!, {
         availability: "live",
         accountLabel: data.accountLabel,
@@ -127,7 +127,7 @@ export async function getSocialAnalytics(): Promise<SocialAnalyticsView> {
 
   if (connected.get("x")?.connected) {
     try {
-      const data = await fetchXAnalytics();
+      const data = await fetchXAnalytics(brandId);
       Object.assign(byPlatform.get("x")!, {
         availability: "live",
         accountLabel: data.accountLabel,
@@ -151,7 +151,7 @@ export async function getSocialAnalytics(): Promise<SocialAnalyticsView> {
 
   if (connected.get("pinterest")?.connected) {
     try {
-      const data = await fetchPinterestAnalytics();
+      const data = await fetchPinterestAnalytics(brandId);
       Object.assign(byPlatform.get("pinterest")!, {
         availability: "live",
         accountLabel: data.accountLabel,

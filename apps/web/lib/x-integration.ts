@@ -326,8 +326,8 @@ export async function publishX(input: {
 }
 
 
-export async function fetchXAnalytics() {
-  const connection = await getXConnection();
+export async function fetchXAnalytics(brandId?: string) {
+  const connection = await getXConnection(brandId);
   if (!connection) throw new Error("X_NOT_CONNECTED");
 
   const meResponse = await fetch("https://api.x.com/2/users/me?user.fields=public_metrics,name,username", {

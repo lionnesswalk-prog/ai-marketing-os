@@ -467,8 +467,8 @@ export async function getTikTokPublishStatus(publishId: string, brandId?: string
 }
 
 
-export async function fetchTikTokAnalytics() {
-  const connection = await getTikTokConnection();
+export async function fetchTikTokAnalytics(brandId?: string) {
+  const connection = await getTikTokConnection(brandId);
   if (!connection) throw new Error("TIKTOK_NOT_CONNECTED");
 
   const profileUrl = new URL("https://open.tiktokapis.com/v2/user/info/");

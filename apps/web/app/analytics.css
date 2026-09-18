@@ -58,3 +58,37 @@
   .learning-grid { grid-template-columns: 1fr; }
   .learning-overview { grid-template-columns: 1fr; }
 }
+
+.performance-review-card { display: grid; gap: 18px; }
+.performance-review-head { display: grid; grid-template-columns: minmax(0,1fr) 210px; gap: 22px; align-items: start; }
+.performance-review-head h3 { margin: 10px 0 7px; font-size: 21px; line-height: 1.25; }
+.performance-review-head p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.performance-review-meta { display: grid; gap: 5px; padding: 14px; border-radius: 13px; background: rgba(114,103,240,.07); border: 1px solid rgba(114,103,240,.14); }
+.performance-review-meta strong { font-size: 30px; line-height: 1; letter-spacing: -.05em; }
+.performance-review-meta span, .performance-review-meta small { color: var(--muted); font-size: 9px; line-height: 1.45; }
+.review-comparison-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; }
+.review-comparison-grid > div { display: grid; gap: 6px; padding: 11px; border: 1px solid var(--border); border-radius: 11px; background: rgba(255,255,255,.55); }
+.review-comparison-grid strong { text-transform: capitalize; font-size: 11px; }
+.review-comparison-grid span { color: var(--muted); font-size: 9px; line-height: 1.45; }
+.review-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.review-columns > div { display: grid; align-content: start; gap: 8px; }
+.review-signal { padding: 11px; border: 1px solid var(--border); border-radius: 11px; background: rgba(255,255,255,.55); }
+.review-signal strong { font-size: 11px; }
+.review-signal p { margin: 5px 0 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.review-experiments { display: grid; gap: 8px; }
+.review-experiments article { display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 10px; padding: 11px; border: 1px solid var(--border); border-radius: 11px; background: rgba(255,255,255,.55); }
+.review-experiments article > span { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: #171817; color: #fff; font-size: 8px; font-weight: 800; }
+.review-experiments article > div { display: grid; gap: 4px; }
+.review-experiments strong { font-size: 11px; }
+.review-experiments p { margin: 0; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
+.review-experiments small { color: var(--muted); font-size: 9px; line-height: 1.45; }
+.review-priorities { padding-top: 4px; }
+.review-priorities ol { margin: 8px 0 10px 18px; padding: 0; display: grid; gap: 6px; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
+.review-empty { margin-top: 0; }
+@media (max-width: 1050px) {
+  .review-comparison-grid { grid-template-columns: 1fr; }
+  .performance-review-head { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .review-columns { grid-template-columns: 1fr; }
+}

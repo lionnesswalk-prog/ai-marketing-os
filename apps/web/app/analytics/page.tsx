@@ -1,6 +1,8 @@
-import { requireSession } from "../../lib/auth";
+import { canManageMarketing, requireSession } from "../../lib/auth";
 import { getSocialAnalytics } from "../../lib/social-analytics";
 import { getContentLearningSummary, refreshContentLearning } from "../../lib/content-learning";
+import { getLatestWeeklyPerformanceReview } from "../../lib/performance-review";
+import { PerformanceReviewCard } from "../../components/PerformanceReviewCard";
 
 const number = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 });
 
@@ -25,10 +27,12 @@ export default async function AnalyticsPage() {
   const session = await requireSession();
   let data;
   let learning;
+  let weeklyReview;
   try {
     const refreshed = await refreshContentLearning(session);
     data = refreshed.analytics;
     learning = refreshed.summary;
+    weeklyReview = await getLatestWeeklyPerformanceReview(session).catch(() => null);
   } catch (error) {
     console.error("analytics learning refresh failed", error);
     data = await getSocialAnalytics();
@@ -38,6 +42,7 @@ export default async function AnalyticsPage() {
       platformSummaries: [],
       note: "Content learning is not available yet.",
     }));
+    weeklyReview = await getLatestWeeklyPerformanceReview(session).catch(() => null);
   }
 
   const overview = [
@@ -134,6 +139,11 @@ export default async function AnalyticsPage() {
           </div>
         )}
       </section>
+
+      <PerformanceReviewCard
+        initialReview={weeklyReview}
+        canRefresh={canManageMarketing(session.role)}
+      />
 
       <section>
         <div className="section-head">

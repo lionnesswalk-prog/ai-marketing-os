@@ -480,8 +480,8 @@ export async function getYouTubeVideoStatus(videoId: string, brandId?: string) {
 }
 
 
-export async function fetchYouTubeAnalytics() {
-  const connection = await getYouTubeConnection();
+export async function fetchYouTubeAnalytics(brandId?: string) {
+  const connection = await getYouTubeConnection(brandId);
   if (!connection) throw new Error("YOUTUBE_NOT_CONNECTED");
 
   const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
