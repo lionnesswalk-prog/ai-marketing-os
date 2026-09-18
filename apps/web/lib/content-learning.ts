@@ -110,10 +110,9 @@ async function currentBrand(session: AppSession) {
   return brand;
 }
 
-export async function getContentLearningSummary(session: AppSession): Promise<ContentLearningSummary> {
-  const brand = await currentBrand(session);
+export async function getContentLearningSummaryForBrand(brandId: string): Promise<ContentLearningSummary> {
   const rows = await getPrisma().contentPerformanceSnapshot.findMany({
-    where: { brandId: brand.id },
+    where: { brandId },
     orderBy: [{ capturedAt: "desc" }],
     take: 120,
   });
@@ -156,6 +155,11 @@ export async function getContentLearningSummary(session: AppSession): Promise<Co
   };
 }
 
+export async function getContentLearningSummary(session: AppSession): Promise<ContentLearningSummary> {
+  const brand = await currentBrand(session);
+  return getContentLearningSummaryForBrand(brand.id);
+}
+
 export function buildContentLearningContext(summary: ContentLearningSummary) {
   if (!summary.matchedPostCount) {
     return "CONTENT LEARNING: No portal-published posts have verified provider-performance matches yet. Keep the next plan exploratory and do not claim learned winners.";
@@ -184,18 +188,17 @@ export function buildContentLearningContext(summary: ContentLearningSummary) {
   ].join("\n\n");
 }
 
-export async function refreshContentLearning(session: AppSession): Promise<{
+export async function refreshContentLearningForBrand(brandId: string): Promise<{
   analytics: SocialAnalyticsView;
   summary: ContentLearningSummary;
   matchedThisRefresh: number;
 }> {
   const prisma = getPrisma();
-  const brand = await currentBrand(session);
-  const analytics = await getSocialAnalytics();
+  const analytics = await getSocialAnalytics(brandId);
 
   const posts = await prisma.socialPost.findMany({
     where: {
-      brandId: brand.id,
+      brandId,
       status: "published",
       externalId: { not: null },
     },
@@ -233,7 +236,7 @@ export async function refreshContentLearning(session: AppSession): Promise<{
     await prisma.contentPerformanceSnapshot.upsert({
       where: { socialPostId: post.id },
       create: {
-        brandId: brand.id,
+        brandId: brandId,
         socialPostId: post.id,
         providerContentId: item.id,
         platform: item.platform,
@@ -257,7 +260,12 @@ export async function refreshContentLearning(session: AppSession): Promise<{
 
   return {
     analytics,
-    summary: await getContentLearningSummary(session),
+    summary: await getContentLearningSummaryForBrand(brandId),
     matchedThisRefresh: matched.length,
   };
+}
+
+export async function refreshContentLearning(session: AppSession) {
+  const brand = await currentBrand(session);
+  return refreshContentLearningForBrand(brand.id);
 }
