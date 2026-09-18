@@ -41,6 +41,7 @@ export type ContentCalendarInput = {
   postCount: number;
   brandContext: string;
   timingContext: string;
+  learningContext?: string;
 };
 
 export type AiExecutionMode = "live" | "mock" | "fallback";
@@ -195,6 +196,8 @@ export async function buildContentCalendar(input: ContentCalendarInput) {
         "Use verified workspace knowledge as factual source-of-truth.",
         "Treat supplied performance timing as recent correlation, never causation or a guarantee.",
         "Treat test timing as an experiment, never as historical evidence.",
+        "Use supplied content-learning examples only as directional recent evidence. Do not copy old wording, do not overfit sparse samples, and preserve deliberate experimentation.",
+        "Never compare raw engagement totals across platforms as if the scales were equivalent.",
         "Do not invent prices, offers, inventory, customer proof, policies or historical metrics.",
         "Keep each entry different enough to serve a distinct content purpose.",
       ],
