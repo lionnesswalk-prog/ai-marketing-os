@@ -19,7 +19,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "postinstall": "prisma generate",
     "test:billing": "tsx tests/billing.test.ts",
-    "test": "npm run test:core && npm run test:billing && npm run test:operations && npm run test:runtime && npm run test:scheduler && npm run test:github-scheduler-oidc && npm run test:provider-diagnostics && npm run test:social-preflight && npm run test:provider-processing && npm run test:security-qa && npm run test:runtime-health && npm run test:observability && npm run test:security-hardening && npm run test:ai-runtime && npm run test:runtime-consistency && npm run test:provider-runtime && npm run test:launch-readiness && npm run test:meta-page-selection && npm run test:linkedin-x-stability && npm run test:tiktok-youtube-token-lifecycle && npm run test:pinterest-token-board-safety && npm run test:brand-studio && npm run test:content-calendar",
+    "test": "npm run test:core && npm run test:billing && npm run test:operations && npm run test:runtime && npm run test:scheduler && npm run test:github-scheduler-oidc && npm run test:provider-diagnostics && npm run test:social-preflight && npm run test:provider-processing && npm run test:security-qa && npm run test:runtime-health && npm run test:observability && npm run test:security-hardening && npm run test:ai-runtime && npm run test:runtime-consistency && npm run test:provider-runtime && npm run test:launch-readiness && npm run test:meta-page-selection && npm run test:linkedin-x-stability && npm run test:tiktok-youtube-token-lifecycle && npm run test:pinterest-token-board-safety && npm run test:brand-studio && npm run test:content-calendar && npm run test:content-learning",
     "test:operations": "tsx tests/operations.test.ts",
     "test:runtime": "tsx tests/runtime.test.ts",
     "test:scheduler": "tsx tests/scheduler.test.ts",
@@ -43,7 +43,8 @@
     "test:tiktok-youtube-token-lifecycle": "tsx tests/tiktok-youtube-token-lifecycle.test.ts",
     "test:pinterest-token-board-safety": "tsx tests/pinterest-token-board-safety.test.ts",
     "test:brand-studio": "tsx tests/brand-studio.test.ts",
-    "test:content-calendar": "tsx tests/content-calendar.test.ts"
+    "test:content-calendar": "tsx tests/content-calendar.test.ts",
+    "test:content-learning": "tsx tests/content-learning.test.ts"
   },
   "dependencies": {
     "@openai/agents": "0.18.0",
