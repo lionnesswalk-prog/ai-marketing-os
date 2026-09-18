@@ -435,8 +435,8 @@ function pinterestPinMetrics(value: unknown) {
   return candidate as Record<string, unknown>;
 }
 
-export async function fetchPinterestAnalytics() {
-  const connection = await getPinterestConnection();
+export async function fetchPinterestAnalytics(brandId?: string) {
+  const connection = await getPinterestConnection(brandId);
   if (!connection) throw new Error("PINTEREST_NOT_CONNECTED");
 
   const pinsUrl = new URL("https://api.pinterest.com/v5/pins");
