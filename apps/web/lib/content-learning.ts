@@ -84,6 +84,22 @@ function serializeMetrics(value: unknown): LearningMetrics {
   };
 }
 
+export function matchProviderAnalytics(
+  posts: Array<{ id: string; platform: string; externalId: string | null; title: string }>,
+  recentContent: ContentAnalytics[],
+) {
+  const byProviderKey = new Map(
+    posts
+      .filter((post) => Boolean(post.externalId))
+      .map((post) => [`${post.platform}:${post.externalId}`, post] as const),
+  );
+
+  return recentContent.flatMap((item) => {
+    const post = byProviderKey.get(`${item.platform}:${item.id}`);
+    return post ? [{ item, post }] : [];
+  });
+}
+
 async function currentBrand(session: AppSession) {
   const brand = await getPrisma().brand.findFirst({
     where: { workspaceId: session.workspaceId },
@@ -194,16 +210,7 @@ export async function refreshContentLearning(session: AppSession): Promise<{
     },
   });
 
-  const byProviderKey = new Map(
-    posts
-      .filter((post) => Boolean(post.externalId))
-      .map((post) => [`${post.platform}:${post.externalId}`, post] as const),
-  );
-
-  const matched = analytics.recentContent.flatMap((item) => {
-    const post = byProviderKey.get(`${item.platform}:${item.id}`);
-    return post ? [{ item, post }] : [];
-  });
+  const matched = matchProviderAnalytics(posts, analytics.recentContent);
 
   const calendarItems = matched.length
     ? await prisma.contentCalendarItem.findMany({
