@@ -88,7 +88,7 @@ const active: ContentLearningSummary = {
 const activeContext = buildContentLearningContext(active);
 assert.ok(activeContext.includes("5 verified portal→provider performance matches"));
 assert.ok(activeContext.includes("directional evidence"));
-assert.ok(activeContext.includes("do not compare raw engagement scores across platforms"));
+assert.ok(activeContext.includes("Do not compare raw engagement scores across platforms"));
 
 const schema = await readFile("prisma/schema.prisma", "utf8");
 assert.ok(schema.includes("model ContentPerformanceSnapshot"));
