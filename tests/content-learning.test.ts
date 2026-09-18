@@ -102,7 +102,7 @@ assert.ok(generateRoute.includes("learningContext"));
 
 const analyticsPage = await readFile("apps/web/app/analytics/page.tsx", "utf8");
 assert.ok(analyticsPage.includes("AI LEARNING LOOP"));
-assert.ok(analyticsPage.includes("verified matches"));
+assert.ok(analyticsPage.includes("portal-published posts matched to provider analytics"));
 assert.ok(analyticsPage.includes("Building history"));
 
 console.log("Content learning tests passed");
