@@ -35,6 +35,7 @@ model Brand {
   copilotMessages BrandCopilotMessage[]
   assets BrandAsset[]
   contentCalendarPlans ContentCalendarPlan[]
+  performanceSnapshots ContentPerformanceSnapshot[]
 
   @@index([workspaceId])
 }
@@ -200,6 +201,7 @@ model SocialPost {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   brand        Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  performanceSnapshot ContentPerformanceSnapshot?
 
   @@index([brandId, status, scheduledAt])
 }
@@ -233,6 +235,25 @@ model KnowledgeItem {
   brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
 
   @@index([brandId, verified, updatedAt])
+}
+
+model ContentPerformanceSnapshot {
+  id                String     @id @default(cuid())
+  brandId           String
+  socialPostId      String     @unique
+  providerContentId String
+  platform          String
+  theme             String?
+  headline          String
+  publishedAt       DateTime?
+  metricsJson       Json
+  engagementScore   Float
+  capturedAt        DateTime   @default(now()) @updatedAt
+  brand             Brand      @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  socialPost        SocialPost @relation(fields: [socialPostId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, platform, capturedAt])
+  @@index([providerContentId])
 }
 
 model ContentCalendarPlan {
