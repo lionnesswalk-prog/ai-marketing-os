@@ -109,10 +109,16 @@ export function ContentCalendar({
       setPlan(body.plan);
       setSummary(body.summary || "");
       setWarning(body.warning || (body.mode === "mock" ? "Safe built-in planning mode is active." : ""));
+      const learnedPosts = Number(body.learning?.matchedPostCount || 0);
+      const timingIsPerformanceInformed = body.plan.items.some(
+        (item: CalendarItem) => item.timingEvidence === "performance",
+      );
       setNotice(
-        body.plan.items.some((item: CalendarItem) => item.timingEvidence === "performance")
-          ? "Calendar generated with available recent account-performance timing signals."
-          : "Calendar generated with test timing. As published-post history grows, recommendations can become performance-informed.",
+        learnedPosts >= 3
+          ? `Calendar generated using ${learnedPosts} verified post-performance matches plus ${timingIsPerformanceInformed ? "available performance-informed timing" : "controlled test timing"}.`
+          : timingIsPerformanceInformed
+            ? "Calendar generated with available recent account-performance timing signals. Content-theme learning is still building history."
+            : "Calendar generated with test timing and exploratory content. As verified post history grows, the learning loop will influence future plans.",
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to generate content calendar.");

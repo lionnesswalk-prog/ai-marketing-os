@@ -1,5 +1,6 @@
 import { requireSession } from "../../lib/auth";
 import { getSocialAnalytics } from "../../lib/social-analytics";
+import { getContentLearningSummary, refreshContentLearning } from "../../lib/content-learning";
 
 const number = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 });
 
@@ -21,8 +22,23 @@ function statusClass(status: string) {
 }
 
 export default async function AnalyticsPage() {
-  await requireSession();
-  const data = await getSocialAnalytics();
+  const session = await requireSession();
+  let data;
+  let learning;
+  try {
+    const refreshed = await refreshContentLearning(session);
+    data = refreshed.analytics;
+    learning = refreshed.summary;
+  } catch (error) {
+    console.error("analytics learning refresh failed", error);
+    data = await getSocialAnalytics();
+    learning = await getContentLearningSummary(session).catch(() => ({
+      matchedPostCount: 0,
+      evidence: "insufficient" as const,
+      platformSummaries: [],
+      note: "Content learning is not available yet.",
+    }));
+  }
 
   const overview = [
     ["Live channels", String(data.liveChannels), "Channels returning live provider data"],
@@ -58,6 +74,66 @@ export default async function AnalyticsPage() {
           </article>
         ))}
       </div>
+
+      <section>
+        <div className="section-head">
+          <div>
+            <p className="eyebrow">AI LEARNING LOOP</p>
+            <h2>Learning from your own published content</h2>
+          </div>
+          <span className={"pill " + (learning.evidence === "learning" ? "accent" : "")}>
+            {learning.evidence === "learning" ? "Learning active" : "Building history"} · {learning.matchedPostCount} verified
+          </span>
+        </div>
+
+        <div className="card learning-overview">
+          <div>
+            <strong>{learning.matchedPostCount}</strong>
+            <span>portal-published posts matched to provider analytics</span>
+          </div>
+          <p>{learning.note}</p>
+          <a className="text-link" href="/studio">Use learning in Brand Studio →</a>
+        </div>
+
+        {learning.platformSummaries.length ? (
+          <div className="learning-grid">
+            {learning.platformSummaries.map((platform) => (
+              <article className="card learning-card" key={platform.platform}>
+                <div className="analytics-channel-head">
+                  <div>
+                    <span className="analytics-platform">{platform.platform}</span>
+                    <h3>{platform.sampleSize} matched posts</h3>
+                  </div>
+                  <span className="pill">{platform.sampleSize >= 3 ? "Useful history" : "Sparse sample"}</span>
+                </div>
+                <div className="learning-examples">
+                  {platform.examples.map((example, index) => (
+                    <div className="learning-example" key={example.socialPostId}>
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                      <div>
+                        <strong>{example.theme || example.headline}</strong>
+                        <small>
+                          {example.metrics.views ? value(example.metrics.views) + " views · " : ""}
+                          {example.metrics.impressions ? value(example.metrics.impressions) + " impressions · " : ""}
+                          {example.metrics.likes ? value(example.metrics.likes) + " likes · " : ""}
+                          {example.metrics.comments ? value(example.metrics.comments) + " comments · " : ""}
+                          {example.metrics.saves ? value(example.metrics.saves) + " saves" : ""}
+                        </small>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="card analytics-empty learning-empty">
+            <p className="eyebrow">LEARNING HISTORY IS EMPTY</p>
+            <h3>Publish through the portal, then let provider analytics accumulate.</h3>
+            <p className="muted">The learning loop only learns from posts it can verify against the connected provider account. It will not infer results from unmatched external content.</p>
+          </div>
+        )}
+      </section>
 
       <section>
         <div className="section-head">

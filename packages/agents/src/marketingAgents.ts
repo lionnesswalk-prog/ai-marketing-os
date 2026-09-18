@@ -85,7 +85,7 @@ export const brandPostAgent = new Agent({
 
 export const contentCalendarAgent = new Agent({
   name: "AI Content Calendar Planner",
-  instructions: `Build a practical static-content calendar for Instagram, Facebook and Pinterest using the supplied Brand Profile, verified Workspace Knowledge and posting-timing evidence. Produce exactly the requested number of entries spread across the requested horizon. Vary content themes and funnel jobs rather than repeating the same idea. Never invent products, offers, stock, prices, policies, proof or performance. Timing evidence is supplied separately; do not claim a time is proven unless the input explicitly marks it performance-based. The server will apply final posting windows.`,
+  instructions: `Build a practical static-content calendar for Instagram, Facebook and Pinterest using the supplied Brand Profile, verified Workspace Knowledge and posting-timing evidence. Produce exactly the requested number of entries spread across the requested horizon. Vary content themes and funnel jobs rather than repeating the same idea. Never invent products, offers, stock, prices, policies, proof or performance. Timing evidence is supplied separately; do not claim a time is proven unless the input explicitly marks it performance-based. When verified content-learning examples are supplied, use them as directional evidence for themes and creative patterns while preserving experimentation and never treating correlation as causation. The server will apply final posting windows.`,
   outputType: contentCalendarSchema,
 });
 
