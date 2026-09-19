@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { canManageMarketing, getSession } from "../../../../../lib/auth";
-import { assertBillingFeature } from "../../../../../lib/billing";
-import { consumeAiRequest } from "../../../../../lib/ai-rate-limit";
-import { getPrisma } from "../../../../../lib/prisma";
-import { getContentCalendarPlanBySourceReview } from "../../../../../lib/content-calendar";
-import { generateContentCalendarForSession } from "../../../../../lib/content-calendar-generator";
+import { canManageMarketing, getSession } from "../../../../lib/auth";
+import { assertBillingFeature } from "../../../../lib/billing";
+import { consumeAiRequest } from "../../../../lib/ai-rate-limit";
+import { getPrisma } from "../../../../lib/prisma";
+import { getContentCalendarPlanBySourceReview } from "../../../../lib/content-calendar";
+import { generateContentCalendarForSession } from "../../../../lib/content-calendar-generator";
 
 const schema = z.object({
   reviewId: z.string().min(1),
