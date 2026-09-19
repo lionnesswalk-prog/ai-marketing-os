@@ -50,6 +50,8 @@ const schema = await readFile("prisma/schema.prisma", "utf8");
 assert.ok(schema.includes("model WeeklyPerformanceReview"));
 assert.ok(schema.includes("@@unique([brandId, periodKey])"));
 assert.ok(schema.includes("performanceReviews WeeklyPerformanceReview[]"));
+assert.ok(schema.includes("sourceReviewId String?"));
+assert.ok(schema.includes("@unique"));
 
 const engine = await readFile("apps/web/lib/performance-review.ts", "utf8");
 assert.ok(engine.includes("recent7DirectionalIndexAvg"));
@@ -85,5 +87,21 @@ assert.ok(reviewUi.includes("OBSERVED IMPROVEMENTS"));
 assert.ok(reviewUi.includes("WEAK / UNCERTAIN SIGNALS"));
 assert.ok(reviewUi.includes("NEXT-WEEK EXPERIMENTS"));
 assert.ok(reviewUi.includes("NEXT-WEEK PRIORITIES"));
+assert.ok(reviewUi.includes("Build next week plan"));
+assert.ok(reviewUi.includes("/api/performance-review/next-week-plan"));
+
+const reviewPlanRoute = await readFile("apps/web/app/api/performance-review/next-week-plan/route.ts", "utf8");
+assert.ok(reviewPlanRoute.includes("getContentCalendarPlanBySourceReview"));
+assert.ok(reviewPlanRoute.includes('brand: { is: { workspaceId: session.workspaceId } }'));
+assert.ok(reviewPlanRoute.includes("sourceReviewId: review.id"));
+assert.ok(reviewPlanRoute.includes("review-next-week-plan"));
+
+const generator = await readFile("apps/web/lib/content-calendar-generator.ts", "utf8");
+assert.ok(generator.includes("sourceReviewId"));
+assert.ok(generator.includes("getContentCalendarPlanBySourceReview"));
+assert.ok(generator.includes("generateContentCalendarForSession"));
+
+const calendarUi = await readFile("apps/web/components/ContentCalendar.tsx", "utf8");
+assert.ok(calendarUi.includes('id="content-calendar"'));
 
 console.log("Performance review tests passed");
