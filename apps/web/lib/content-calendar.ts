@@ -140,6 +140,18 @@ export async function saveContentCalendarPlan(input: {
   return serializePlan(plan);
 }
 
+export async function getContentCalendarPlanBySourceReview(
+  session: AppSession,
+  sourceReviewId: string,
+) {
+  const brand = await currentBrand(session);
+  const plan = await getPrisma().contentCalendarPlan.findFirst({
+    where: { brandId: brand.id, sourceReviewId },
+    include: { items: { orderBy: [{ dayOffset: "asc" }, { createdAt: "asc" }] } },
+  });
+  return plan ? serializePlan(plan) : null;
+}
+
 export async function getLatestContentCalendarPlan(session: AppSession) {
   const brand = await currentBrand(session);
   const plan = await getPrisma().contentCalendarPlan.findFirst({
