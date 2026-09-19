@@ -44,12 +44,12 @@ export function PerformanceReviewCard({
   canRefresh: boolean;
 }) {
   const [review, setReview] = useState<ReviewView | null>(initialReview);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"refresh" | "plan" | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
   async function refresh() {
-    setBusy(true);
+    setBusy("refresh");
     setNotice("");
     setError("");
     try {
@@ -61,7 +61,31 @@ export function PerformanceReviewCard({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to refresh review.");
     } finally {
-      setBusy(false);
+      setBusy(null);
+    }
+  }
+
+  async function buildNextWeekPlan() {
+    if (!review) return;
+    setBusy("plan");
+    setNotice("");
+    setError("");
+    try {
+      const response = await fetch("/api/performance-review/next-week-plan", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          reviewId: review.id,
+          timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Unable to build next-week plan.");
+      setNotice(body.message || "Next-week content calendar is ready.");
+      window.location.href = "/studio#content-calendar";
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to build next-week plan.");
+      setBusy(null);
     }
   }
 
@@ -74,8 +98,8 @@ export function PerformanceReviewCard({
           <p className="muted">The review compares verified same-platform post cohorts. It treats newer posts as less mature and does not turn correlation into causal claims.</p>
         </div>
         {canRefresh && (
-          <button className="btn secondary" type="button" disabled={busy} onClick={refresh}>
-            {busy ? "Refreshing…" : "Refresh review"}
+          <button className="btn secondary" type="button" disabled={busy !== null} onClick={refresh}>
+            {busy === "refresh" ? "Refreshing…" : "Refresh review"}
           </button>
         )}
       </div>
@@ -149,7 +173,13 @@ export function PerformanceReviewCard({
             <ol>
               {review.review.nextWeekPriorities.map((item) => <li key={item}>{item}</li>)}
             </ol>
-            <a className="text-link" href="/studio">Turn this into a Content Calendar →</a>
+            {canRefresh ? (
+              <button className="btn" type="button" disabled={busy !== null} onClick={buildNextWeekPlan}>
+                {busy === "plan" ? "Building next week…" : "Build next week plan"}
+              </button>
+            ) : (
+              <a className="text-link" href="/studio">Open Content Calendar →</a>
+            )}
           </div>
         </div>
       ) : (
@@ -157,7 +187,7 @@ export function PerformanceReviewCard({
           <p className="eyebrow">FIRST REVIEW NOT GENERATED YET</p>
           <h3>The automatic review will appear after the weekly maintenance run.</h3>
           <p className="muted">You can also refresh it now. If verified post history is still sparse, the review will focus on evidence-building experiments instead of declaring winners.</p>
-          {canRefresh && <button className="btn" type="button" disabled={busy} onClick={refresh}>{busy ? "Generating…" : "Generate first review"}</button>}
+          {canRefresh && <button className="btn" type="button" disabled={busy !== null} onClick={refresh}>{busy === "refresh" ? "Generating…" : "Generate first review"}</button>}
         </div>
       )}
 
