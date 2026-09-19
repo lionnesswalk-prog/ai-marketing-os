@@ -44,6 +44,7 @@ function serializePlan(plan: {
   focus: string | null;
   aiMode: string | null;
   timingJson: unknown;
+  sourceReviewId: string | null;
   createdAt: Date;
   updatedAt: Date;
   items: Array<{
@@ -70,6 +71,7 @@ function serializePlan(plan: {
     focus: plan.focus || "",
     aiMode: plan.aiMode || undefined,
     timing: plan.timingJson,
+    sourceReviewId: plan.sourceReviewId || undefined,
     createdAt: plan.createdAt.toISOString(),
     updatedAt: plan.updatedAt.toISOString(),
     items: plan.items.map((item) => ({
@@ -97,6 +99,7 @@ export async function saveContentCalendarPlan(input: {
   objective: string;
   focus?: string;
   aiMode: string;
+  sourceReviewId?: string;
   timing: {
     updatedAt: string;
     timezoneOffsetMinutes: number;
@@ -113,6 +116,7 @@ export async function saveContentCalendarPlan(input: {
       objective: input.objective,
       focus: input.focus || null,
       aiMode: input.aiMode,
+      sourceReviewId: input.sourceReviewId || null,
       timingJson: input.timing as any,
       items: {
         create: input.entries.map((entry) => ({
