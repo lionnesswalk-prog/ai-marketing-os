@@ -95,10 +95,10 @@ assert.ok(schema.includes("model ContentPerformanceSnapshot"));
 assert.ok(schema.includes("socialPostId      String     @unique"));
 assert.ok(schema.includes("performanceSnapshot ContentPerformanceSnapshot?"));
 
-const generateRoute = await readFile("apps/web/app/api/content-calendar/generate/route.ts", "utf8");
-assert.ok(generateRoute.includes("refreshContentLearning"));
-assert.ok(generateRoute.includes("buildContentLearningContext"));
-assert.ok(generateRoute.includes("learningContext"));
+const calendarGenerator = await readFile("apps/web/lib/content-calendar-generator.ts", "utf8");
+assert.ok(calendarGenerator.includes("refreshContentLearning"));
+assert.ok(calendarGenerator.includes("buildContentLearningContext"));
+assert.ok(calendarGenerator.includes("learningContext"));
 
 const analyticsPage = await readFile("apps/web/app/analytics/page.tsx", "utf8");
 assert.ok(analyticsPage.includes("AI LEARNING LOOP"));
