@@ -281,6 +281,7 @@ model ContentCalendarPlan {
   focus       String?
   aiMode      String?
   timingJson  Json?
+  sourceReviewId String?            @unique
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
   brand       Brand                 @relation(fields: [brandId], references: [id], onDelete: Cascade)
