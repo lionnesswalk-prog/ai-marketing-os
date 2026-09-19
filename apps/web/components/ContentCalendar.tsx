@@ -178,7 +178,7 @@ export function ContentCalendar({
   }
 
   return (
-    <section className="card calendar-card">
+    <section id="content-calendar" className="card calendar-card">
       <div className="section-head top-align">
         <div>
           <p className="eyebrow">AI CONTENT CALENDAR</p>
