@@ -14,6 +14,7 @@ const nav = [
   ["/campaigns", "Campaigns"],
   ["/strategy", "AI Strategy"],
   ["/social", "Social Hub"],
+  ["/connections", "Connections"],
   ["/operations", "Operations"],
   ["/analytics", "Analytics"],
   ["/leads", "Leads"],
