@@ -92,7 +92,8 @@ export default async function SocialPage({
           <p className="muted large">Open every social channel directly, prepare captions and media, schedule posts, and move from AI ideas to publishing without leaving the portal.</p>
         </div>
         <div className="hero-badges">
-          <span className="pill accent">Multi-channel publisher</span>
+          <a className="pill accent dashboard-badge-link" href="/connections">Manage connections</a>
+          <span className="pill">Multi-channel publisher</span>
           <span className="pill">AI-assisted content</span>
         </div>
       </div>
