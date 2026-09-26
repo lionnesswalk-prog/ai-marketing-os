@@ -39,8 +39,9 @@ export async function GET(request: NextRequest) {
       pages: result.pages,
     });
     return NextResponse.redirect(new URL("/social?meta=choose-page", request.url));
-  } catch (error) {
-    console.error("Meta OAuth callback failed", error);
+  } catch {
+    // Provider/network errors can contain credentials in request URLs.
+    console.error("Meta OAuth callback failed");
     return NextResponse.redirect(new URL("/social?meta=failed", request.url));
   }
 }

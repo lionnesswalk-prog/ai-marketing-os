@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     throw error;
   }
 
-  const setup = getMetaSetupState();
+  const setup = await getMetaSetupState();
   if (!setup.appConfigured) return NextResponse.redirect(new URL("/social?meta=app-required", request.url));
   if (!setup.storageReady) return NextResponse.redirect(new URL("/social?meta=storage-required", request.url));
 
@@ -44,5 +44,5 @@ export async function GET(request: NextRequest) {
     maxAge: 60 * 10,
   });
 
-  return NextResponse.redirect(buildMetaOAuthUrl(redirectUri, state));
+  return NextResponse.redirect(await buildMetaOAuthUrl(redirectUri, state));
 }

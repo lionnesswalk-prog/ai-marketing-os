@@ -44,17 +44,15 @@ Create/configure the Meta app and add the production callback URL:
 https://<production-domain>/api/integrations/meta/callback
 ```
 
-Set:
+Apply the `20260926133000_platform_provider_config` migration before deploying the Meta settings form. Sign in with a **Platform Admin** account, then open **Platform Setup → Meta app settings** (also linked from **Connections → Meta app settings**). Enter the App ID and App Secret and select **Save Meta settings**.
 
-```env
-META_APP_ID=<app id>
-META_APP_SECRET=<app secret>
-META_GRAPH_VERSION=v26.0
-```
+The secret is encrypted in the central `PlatformProviderConfig` table and is never returned to the browser. Saved credentials take priority over the optional `META_APP_ID` / `META_APP_SECRET` environment variables and apply immediately without redeploying. Leave the secret blank to retain it for the same App ID; changing the App ID requires a new matching secret. Simultaneous edits are rejected until the administrator reloads the latest settings.
+
+Copy the OAuth redirect URL shown in the form into the Meta app configuration. App permissions, App Review and business verification still have to be completed in Meta. The optional `META_GRAPH_VERSION` environment variable defaults to `v26.0`.
 
 The portal requests the Page and Instagram publishing permissions needed by the current adapter. Tokens received through OAuth are encrypted before database storage and scoped to the current workspace.
 
-From Social Hub, use **Connect** on Facebook or Instagram, approve the requested account permissions, and return to the portal. The connection selects the first Page with a linked Instagram professional account when one is available.
+From **Connections**, use **Connect** on Facebook or Instagram, approve the requested account permissions, and return to the portal. A single Page connects directly; if Meta returns multiple Pages, the user chooses the Page and linked Instagram professional account for the current workspace.
 
 Supported live Meta formats in the current adapter:
 

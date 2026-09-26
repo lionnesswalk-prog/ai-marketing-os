@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { requireSession } from "../../lib/auth";
 import { getPlatformReadiness } from "../../lib/platform-readiness";
+import { getMetaSettingsView } from "../../lib/platform-meta-settings";
+import { MetaAppSettingsForm } from "../../components/MetaAppSettingsForm";
+
+export const dynamic = "force-dynamic";
 
 function stateLabel(ready: boolean) {
   return ready ? "Ready" : "Needs setup";
@@ -10,7 +14,11 @@ export default async function PlatformPage() {
   const session = await requireSession();
   if (!session.platformAdmin) redirect("/dashboard");
 
-  const data = await getPlatformReadiness();
+  const [data, metaSettings] = await Promise.all([
+    getPlatformReadiness(),
+    getMetaSettingsView(session).catch(() => null),
+  ]);
+  const metaProvider = data.providers.find((provider) => provider.id === "meta")!;
 
   return (
     <div className="platform-page">
@@ -29,6 +37,12 @@ export default async function PlatformPage() {
           <span className="pill">{data.summary.readyProviders}/{data.summary.totalProviders} providers ready</span>
         </div>
       </div>
+
+      {metaSettings ? (
+        <MetaAppSettingsForm initial={metaSettings} callbackUrl={metaProvider.callbackUrl} />
+      ) : (
+        <div className="profile-notice error" role="alert">Meta settings could not be loaded. Please try again after database storage is available.</div>
+      )}
 
       <div className="platform-model card">
         <div>

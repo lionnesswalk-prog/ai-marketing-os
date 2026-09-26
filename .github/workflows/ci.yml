@@ -66,3 +66,6 @@ jobs:
         env:
           INITIAL_ADMIN_EMAIL: seed-admin@example.com
       - run: npm run test:durable-scheduler-db
+      - run: npm run test:platform-meta-db
+        env:
+          TEST_DATABASE_ISOLATED: "true"
