@@ -34,7 +34,7 @@ export async function getSocialPlatforms(brandId?: string): Promise<SocialPlatfo
   const tiktok = tiktokResult.status === "fulfilled" ? tiktokResult.value : null;
   const youtube = youtubeResult.status === "fulfilled" ? youtubeResult.value : null;
   const pinterest = pinterestResult.status === "fulfilled" ? pinterestResult.value : null;
-  const metaSetup = getMetaSetupState();
+  const metaSetup = await getMetaSetupState();
   const linkedinSetup = getLinkedInSetupState();
   const xSetup = getXSetupState();
   const tiktokSetup = getTikTokSetupState();
@@ -59,7 +59,7 @@ export async function getSocialPlatforms(brandId?: string): Promise<SocialPlatfo
       connectUrl: "/api/integrations/meta/connect",
       disconnectUrl: instagramConnected ? "/api/integrations/meta/disconnect" : undefined,
       setupReady: metaSetup.appConfigured && metaSetup.storageReady,
-      connectionCheckFailed: metaResult.status === "rejected",
+      connectionCheckFailed: metaResult.status === "rejected" || metaSetup.configurationError,
     },
     {
       id: "facebook",
@@ -71,7 +71,7 @@ export async function getSocialPlatforms(brandId?: string): Promise<SocialPlatfo
       connectUrl: "/api/integrations/meta/connect",
       disconnectUrl: facebookConnected ? "/api/integrations/meta/disconnect" : undefined,
       setupReady: metaSetup.appConfigured && metaSetup.storageReady,
-      connectionCheckFailed: metaResult.status === "rejected",
+      connectionCheckFailed: metaResult.status === "rejected" || metaSetup.configurationError,
     },
     {
       id: "linkedin",

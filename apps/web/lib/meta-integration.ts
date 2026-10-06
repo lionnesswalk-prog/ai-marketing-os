@@ -2,6 +2,7 @@ import { getPrisma } from "./prisma";
 import { getSession } from "./auth";
 import { canEncryptIntegrations, decryptIntegrationSecret, encryptIntegrationSecret } from "./integration-crypto";
 import { isPostgresBackend } from "./runtime-mode";
+import { getMetaAppCredentials } from "./platform-meta-settings";
 
 const graphVersion = process.env.META_GRAPH_VERSION || "v26.0";
 const graphBase = `https://graph.facebook.com/${graphVersion}`;
@@ -33,10 +34,6 @@ function usePostgres() {
   return isPostgresBackend();
 }
 
-function metaAppConfigured() {
-  return Boolean(process.env.META_APP_ID && process.env.META_APP_SECRET);
-}
-
 function integrationStorageReady() {
   return usePostgres() && canEncryptIntegrations();
 }
@@ -60,9 +57,17 @@ async function currentBrand(brandId?: string) {
   return brand;
 }
 
-export function getMetaSetupState() {
+export async function getMetaSetupState() {
+  let appConfigured = false;
+  let configurationError = false;
+  try {
+    appConfigured = Boolean(await getMetaAppCredentials());
+  } catch {
+    configurationError = true;
+  }
   return {
-    appConfigured: metaAppConfigured(),
+    appConfigured,
+    configurationError,
     storageReady: integrationStorageReady(),
     graphVersion,
   };
@@ -78,10 +83,11 @@ function metaScopes() {
   ];
 }
 
-export function buildMetaOAuthUrl(redirectUri: string, state: string) {
-  if (!process.env.META_APP_ID) throw new Error("META_APP_ID_REQUIRED");
+export async function buildMetaOAuthUrl(redirectUri: string, state: string) {
+  const credentials = await getMetaAppCredentials();
+  if (!credentials) throw new Error("META_APP_ID_REQUIRED");
   const url = new URL(`https://www.facebook.com/${graphVersion}/dialog/oauth`);
-  url.searchParams.set("client_id", process.env.META_APP_ID);
+  url.searchParams.set("client_id", credentials.appId);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("state", state);
   url.searchParams.set("response_type", "code");
@@ -100,19 +106,20 @@ async function graphJson<T>(url: URL | string, init?: RequestInit): Promise<T> {
 }
 
 export async function exchangeMetaCode(code: string, redirectUri: string) {
-  if (!process.env.META_APP_ID || !process.env.META_APP_SECRET) throw new Error("META_APP_NOT_CONFIGURED");
+  const credentials = await getMetaAppCredentials();
+  if (!credentials) throw new Error("META_APP_NOT_CONFIGURED");
 
   const tokenUrl = new URL(`${graphBase}/oauth/access_token`);
-  tokenUrl.searchParams.set("client_id", process.env.META_APP_ID);
-  tokenUrl.searchParams.set("client_secret", process.env.META_APP_SECRET);
+  tokenUrl.searchParams.set("client_id", credentials.appId);
+  tokenUrl.searchParams.set("client_secret", credentials.appSecret);
   tokenUrl.searchParams.set("redirect_uri", redirectUri);
   tokenUrl.searchParams.set("code", code);
   const shortToken = await graphJson<{ access_token: string }>(tokenUrl);
 
   const longUrl = new URL(`${graphBase}/oauth/access_token`);
   longUrl.searchParams.set("grant_type", "fb_exchange_token");
-  longUrl.searchParams.set("client_id", process.env.META_APP_ID);
-  longUrl.searchParams.set("client_secret", process.env.META_APP_SECRET);
+  longUrl.searchParams.set("client_id", credentials.appId);
+  longUrl.searchParams.set("client_secret", credentials.appSecret);
   longUrl.searchParams.set("fb_exchange_token", shortToken.access_token);
   const longToken = await graphJson<{ access_token: string }>(longUrl);
 

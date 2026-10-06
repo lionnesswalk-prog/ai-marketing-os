@@ -30,6 +30,7 @@ export default async function ConnectionsPage() {
           <span className="pill accent">{connectedCount}/{platforms.length} connected</span>
           <span className="pill">{readyCount}/{platforms.length} providers ready</span>
           <a className="pill dashboard-badge-link" href="/social">Back to Social Hub</a>
+          {session.platformAdmin && <a className="pill dashboard-badge-link" href="/platform#meta-settings">Meta app settings</a>}
         </div>
       </div>
 
@@ -88,7 +89,7 @@ export default async function ConnectionsPage() {
 
                   {canManage && !platform.connected && !setupReady && (
                     session.platformAdmin
-                      ? <a className="connect-social" href="/platform">Finish setup</a>
+                      ? <a className="connect-social" href={platform.id === "facebook" || platform.id === "instagram" ? "/platform#meta-settings" : "/platform"}>Finish setup</a>
                       : <span className="pill" title="The platform administrator must finish the central provider setup.">Setup pending</span>
                   )}
 

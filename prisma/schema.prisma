@@ -7,6 +7,17 @@ datasource db {
   provider = "postgresql"
 }
 
+// Central OAuth app credentials. Client account tokens remain workspace-scoped.
+model PlatformProviderConfig {
+  provider        String   @id
+  appId           String
+  secretEncrypted String
+  revision        String   @default(cuid())
+  updatedBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 model Workspace {
   id        String          @id @default(cuid())
   name      String

@@ -46,7 +46,7 @@ function callback(path: string) {
 }
 
 export async function getPlatformReadiness() {
-  const meta = getMetaSetupState();
+  const meta = await getMetaSetupState();
   const linkedin = getLinkedInSetupState();
   const x = getXSetupState();
   const tiktok = getTikTokSetupState();
@@ -170,7 +170,9 @@ export async function getPlatformReadiness() {
       callbackUrl: callback("/api/integrations/meta/callback"),
       scopes: ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "instagram_basic", "instagram_content_publish"],
       capabilities: ["Facebook Page connection", "Instagram Professional connection", "Supported direct publishing", "Organic analytics"],
-      note: "Graph API " + meta.graphVersion + ". Provider review/business verification is managed in Meta and is not inferred from environment variables.",
+      note: meta.configurationError
+        ? "Meta app settings could not be read. Check secure storage or save the credentials again."
+        : "Graph API " + meta.graphVersion + ". Save credentials in Meta app settings above. Provider review/business verification is managed in Meta and is not inferred from saved credentials.",
     }),
     provider({
       id: "linkedin",
