@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "npm ci",
-  "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then npm run db:deploy && npm run build; else npm run build; fi",
+  "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then node scripts/reconcile-production-migrations.mjs --apply && npm run db:deploy && npm run build; else node scripts/reconcile-production-migrations.mjs --check && npm run build; fi",
   "outputDirectory": "apps/web/.next",
   "crons": [
     {
