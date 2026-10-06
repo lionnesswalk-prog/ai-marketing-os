@@ -21,6 +21,7 @@ jobs:
     timeout-minutes: 5
     env:
       PRODUCTION_APP_URL_OVERRIDE: ${{ vars.PRODUCTION_APP_URL }}
+      EXPECTED_PRODUCTION_COMMIT: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.sha) || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_sha) || '' }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - name: Request Vercel trusted-source OIDC token
@@ -58,7 +59,7 @@ jobs:
               exit 1
             fi
 
-            if [ "$code" = "200" ] && python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); assert data.get("ok") is True; assert data.get("service") == "ai-marketing-os"' /tmp/health-body 2>/dev/null; then
+            if [ "$code" = "200" ] && python3 -c 'import json,os,re,sys; data=json.load(open(sys.argv[1])); expected=os.environ.get("EXPECTED_PRODUCTION_COMMIT", ""); actual=data.get("commit"); assert data.get("ok") is True; assert data.get("service") == "ai-marketing-os"; assert not expected or (isinstance(actual,str) and re.fullmatch(r"[0-9a-f]{12,40}",actual) and expected.startswith(actual)), "Production commit mismatch"' /tmp/health-body 2>/dev/null; then
               echo "Production health passed: $effective"
               cat /tmp/health-body
               exit 0
@@ -69,6 +70,7 @@ jobs:
             echo
             sleep 10
           done
+          echo "Production health/commit verification failed. Expected commit: ${EXPECTED_PRODUCTION_COMMIT:-not scoped}."
           exit 1
 
       - name: Check public authentication pages
