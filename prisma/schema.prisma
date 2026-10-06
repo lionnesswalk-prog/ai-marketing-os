@@ -392,7 +392,7 @@ model WorkspaceSubscription {
   currentPeriodEnd     DateTime?
   cancelAtPeriodEnd    Boolean   @default(false)
   createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  updatedAt            DateTime  @default(now()) @updatedAt
   workspace            Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([status, planKey])
@@ -413,7 +413,7 @@ model AuthThrottle {
   attempts     Int       @default(0)
   windowStart  DateTime  @default(now())
   blockedUntil DateTime?
-  updatedAt    DateTime  @updatedAt
+  updatedAt    DateTime  @default(now()) @updatedAt
 
   @@index([blockedUntil])
 }
