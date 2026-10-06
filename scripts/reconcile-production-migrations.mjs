@@ -16,7 +16,7 @@ export const historicalMigrations = Object.freeze({
 
 export class RecoveryError extends Error {}
 
-export function assertTarget(env) {
+export function assertTarget(env, { apply = false } = {}) {
   let target;
   try { target = new URL(env.DATABASE_URL); } catch { throw new RecoveryError("DATABASE_URL is required for migration history verification."); }
   const database = decodeURIComponent(target.pathname.slice(1));
@@ -24,6 +24,9 @@ export function assertTarget(env) {
   const isolatedTest = env.TEST_DATABASE_ISOLATED === "true" && ["localhost", "127.0.0.1", "[::1]"].includes(target.hostname) && database.startsWith("migration_recovery_test_");
   if (!["postgres:", "postgresql:"].includes(target.protocol) || (!production && !isolatedTest)) {
     throw new RecoveryError("Migration history recovery is restricted to the verified production database or an isolated local fixture.");
+  }
+  if (apply && production && env.VERCEL_ENV !== "production") {
+    throw new RecoveryError("Production migration history may only be resolved in a production build.");
   }
 }
 
@@ -71,10 +74,7 @@ function runPrisma(args, env) {
 }
 
 export async function reconcile({ apply = false, env = process.env, log = console.log } = {}) {
-  assertTarget(env);
-  if (apply && env.VERCEL_ENV !== "production" && env.TEST_DATABASE_ISOLATED !== "true") {
-    throw new RecoveryError("Migration history may only be resolved in a production build or isolated test.");
-  }
+  assertTarget(env, { apply });
   verifyMigrationFiles();
   const { Client } = await import("pg");
   const client = new Client({ connectionString: env.DATABASE_URL, connectionTimeoutMillis: 15_000 });

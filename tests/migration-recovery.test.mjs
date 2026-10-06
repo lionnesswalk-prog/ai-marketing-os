@@ -7,8 +7,13 @@ const metaSql = readFileSync(new URL("../prisma/migrations/20260926133000_platfo
 const rows = Object.entries(historicalMigrations).map(([migration_name, checksum]) => ({ migration_name, checksum, finished_at: "2026-09-26", rolled_back_at: null }));
 
 test("only the observed production database or explicitly isolated fixture is accepted", () => {
-  assertTarget({ DATABASE_URL: "postgresql://user:secret@ep-little-heart-b3sceml5-pooler.c-4.ap-southeast-1.aws.neon.tech/ai_marketing_os" });
+  const production = { DATABASE_URL: "postgresql://user:secret@ep-little-heart-b3sceml5-pooler.c-4.ap-southeast-1.aws.neon.tech/ai_marketing_os" };
+  assertTarget(production);
+  assertTarget({ ...production, VERCEL_ENV: "production" }, { apply: true });
+  assert.throws(() => assertTarget({ ...production, VERCEL_ENV: "preview", TEST_DATABASE_ISOLATED: "true" }, { apply: true }), /production build/);
+  assert.throws(() => assertTarget(production, { apply: true }), /production build/);
   assertTarget({ DATABASE_URL: "postgresql://postgres@localhost/migration_recovery_test_123", TEST_DATABASE_ISOLATED: "true" });
+  assertTarget({ DATABASE_URL: "postgresql://postgres@localhost/migration_recovery_test_123", TEST_DATABASE_ISOLATED: "true" }, { apply: true });
   for (const DATABASE_URL of [undefined, "invalid", "postgresql://localhost/ai_marketing_os", "postgresql://other.neon.tech/ai_marketing_os", "postgresql://ep-little-heart-b3sceml5-pooler.c-4.ap-southeast-1.aws.neon.tech/other"]) {
     assert.throws(() => assertTarget({ DATABASE_URL }), /required|restricted/);
   }
